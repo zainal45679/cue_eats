@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/core", "ultracite/react"],
+  "files": {
+    "includes": [
+      "resources/**/*.{js,jsx,ts,tsx,json,jsonc,css,graphql}",
+      "!**/generated/**/*",
+      "!vendor/**/*",
+      "!storage/**/*",
+      "!app/**/*",
+      "!test/**/*",
+      "!public/**/*"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "noMagicNumbers": "off",
+        "useConsistentTypeDefinitions": "info"
+      },
+      "complexity": {
+        "noUselessFragments": {
+          "level": "error",
+          "fix": "safe"
+        }
+      },
+      "suspicious": {
+        "noDoubleEquals": "info"
+      },
+
+      "a11y": {
+        "noPositiveTabindex": "off",
+        "noNoninteractiveElementInteractions": "off"
+      }
+    }
+  }
+}

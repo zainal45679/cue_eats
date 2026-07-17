@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "laravel.vscode-laravel",
+    "bradlc.vscode-tailwindcss",
+    "gruntfuggly.todo-tree"
+  ]
+}
