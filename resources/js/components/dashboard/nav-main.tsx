@@ -30,8 +30,8 @@ function groupBy<T>(arr: T[], key: keyof T) {
 // Helper to check if any child or the item itself is active
 function isItemActive(item: NavItem, currentUrl: string): boolean {
   if (item.href) {
-    const href = typeof item.href === "object" ? item.href.url : item.href;
-    if (currentUrl.startsWith(href)) return true;
+    const href = typeof item.href === "object" ? (item.href as any).url : item.href;
+    if (href && typeof href === "string" && currentUrl.startsWith(href)) return true;
   }
   if (item.children) {
     return item.children.some((child) => isItemActive(child, currentUrl));
@@ -74,7 +74,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 asChild
                                 isActive={isItemActive(child, page.url)}
                               >
-                                <Link href={child.href} prefetch>
+                                <Link href={child.href as string} prefetch>
                                   {child.icon && (
                                     <child.icon className="mr-2 h-4 w-4" />
                                   )}
@@ -96,7 +96,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     isActive={isActive}
                     tooltip={{ children: item.title }}
                   >
-                    <Link href={item.href} prefetch>
+                    <Link href={item.href as string} prefetch>
                       {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                       <span>{item.title}</span>
                     </Link>

@@ -5,10 +5,10 @@ import { Button } from "@/components/shadcn/ui/button";
 import { Input } from "@/components/shadcn/ui/input";
 import { toast } from "sonner";
 import HeadingSmall from "@/components/dashboard/heading-small";
-import FieldLabel from "@/components/dashboard/field-label";
-import { OrganizationController } from "@/generated/routes/settings";
+import { Label } from "@/components/shadcn/ui/label";
+import AppLayout from "@/layouts/app-layout";
 import SettingsLayout from "@/layouts/settings/layout";
-import { XSwitch } from "@/components/x/components/XSwitch";
+import { Switch } from "@/components/shadcn/ui/switch";
 
 export default function Organization({ organization }: { organization: any }) {
   const form = useForm({
@@ -45,99 +45,101 @@ export default function Organization({ organization }: { organization: any }) {
   };
 
   return (
-    <SettingsLayout>
-      <Head title="Organization Settings" />
-      <div className="space-y-6">
-        <HeadingSmall
-          description="Update your organization's name, code, and logo"
-          title="Organization"
-        />
+    <AppLayout>
+      <SettingsLayout>
+        <Head title="Organization Settings" />
+        <div className="space-y-6">
+          <HeadingSmall
+            description="Update your organization's name, code, and logo"
+            title="Organization"
+          />
 
-        <form onSubmit={submit} className="space-y-6">
-          <div className="grid gap-4">
-            <div>
-              <FieldLabel htmlFor="name">Organization Name</FieldLabel>
-              <Input
-                id="name"
-                name="name"
-                value={form.data.name}
-                onChange={(e) => form.setData("name", e.target.value)}
-                className="mt-2"
-                disabled={form.processing}
-              />
-              {form.errors.name && <p className="text-sm text-destructive mt-1">{form.errors.name}</p>}
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="code">Organization Code</FieldLabel>
-              <Input
-                id="code"
-                name="code"
-                value={form.data.code}
-                onChange={(e) => form.setData("code", e.target.value)}
-                className="mt-2"
-                disabled={form.processing}
-              />
-              {form.errors.code && <p className="text-sm text-destructive mt-1">{form.errors.code}</p>}
-            </div>
-
-            <div>
-              <FieldLabel htmlFor="logo">Logo</FieldLabel>
-              <div className="flex items-center gap-4 mt-2">
-                {currentLogo && !imgError ? (
-                  <div className="h-16 w-16 overflow-hidden rounded-md border border-border bg-white p-1">
-                    <img 
-                      src={currentLogo} 
-                      alt="Organization Logo" 
-                      className="h-full w-full object-contain" 
-                      onError={() => setImgError(true)}
-                    />
-                  </div>
-                ) : (
-                  <div className="h-16 w-16 overflow-hidden rounded-md border border-border flex items-center justify-center bg-muted text-xs text-muted-foreground">
-                    {imgError ? "Broken" : "No Logo"}
-                  </div>
-                )}
-                
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
+          <form onSubmit={submit} className="space-y-6">
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="name">Organization Name</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={form.data.name}
+                  onChange={(e) => form.setData("name", e.target.value)}
+                  className="mt-2"
                   disabled={form.processing}
-                >
-                  Change Logo
-                </Button>
+                />
+                {form.errors.name && <p className="text-sm text-destructive mt-1">{form.errors.name}</p>}
               </div>
-              {form.errors.logo && <p className="text-sm text-destructive mt-1">{form.errors.logo}</p>}
+
+              <div>
+                <Label htmlFor="code">Organization Code</Label>
+                <Input
+                  id="code"
+                  name="code"
+                  value={form.data.code}
+                  onChange={(e) => form.setData("code", e.target.value)}
+                  className="mt-2"
+                  disabled={form.processing}
+                />
+                {form.errors.code && <p className="text-sm text-destructive mt-1">{form.errors.code}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="logo">Logo</Label>
+                <div className="flex items-center gap-4 mt-2">
+                  {currentLogo && !imgError ? (
+                    <div className="h-16 w-16 overflow-hidden rounded-md border border-border bg-white p-1">
+                      <img 
+                        src={currentLogo} 
+                        alt="Organization Logo" 
+                        className="h-full w-full object-contain" 
+                        onError={() => setImgError(true)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 overflow-hidden rounded-md border border-border flex items-center justify-center bg-muted text-xs text-muted-foreground">
+                      {imgError ? "Broken" : "No Logo"}
+                    </div>
+                  )}
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={form.processing}
+                  >
+                    Change Logo
+                  </Button>
+                </div>
+                {form.errors.logo && <p className="text-sm text-destructive mt-1">{form.errors.logo}</p>}
+              </div>
+
+              <div className="flex items-center space-x-4 mt-4">
+                <Label htmlFor="status">Organization Status</Label>
+                <Switch
+                  checked={form.data.status}
+                  onCheckedChange={(checked) => form.setData("status", checked)}
+                  disabled={form.processing}
+                />
+                {form.errors.status && <p className="text-sm text-destructive mt-1">{form.errors.status}</p>}
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4 mt-4">
-              <FieldLabel htmlFor="status">Organization Status</FieldLabel>
-              <XSwitch
-                checked={form.data.status}
-                onCheckedChange={(checked) => form.setData("status", checked)}
-                disabled={form.processing}
-              />
-              {form.errors.status && <p className="text-sm text-destructive mt-1">{form.errors.status}</p>}
+            <div className="flex items-center gap-4">
+              <Button disabled={form.processing} type="submit">
+                Save
+              </Button>
             </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button disabled={form.processing} type="submit">
-              Save
-            </Button>
-          </div>
-        </form>
-      </div>
-    </SettingsLayout>
+          </form>
+        </div>
+      </SettingsLayout>
+    </AppLayout>
   );
 }

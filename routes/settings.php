@@ -15,8 +15,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::middleware('role:admin')->group(function () {
-        Route::get('settings/organization', [\App\Http\Controllers\Settings\OrganizationController::class, 'edit'])->name('organization.edit');
-        Route::patch('settings/organization', [\App\Http\Controllers\Settings\OrganizationController::class, 'update'])->name('organization.update');
+        Route::get('settings/organization', [App\Http\Controllers\Settings\OrganizationController::class, 'edit'])->name('organization.edit');
+        Route::patch('settings/organization', [App\Http\Controllers\Settings\OrganizationController::class, 'update'])->name('organization.update');
     });
 
     Route::get('settings/password', [PasswordController::class, 'edit'])->name('password.edit');

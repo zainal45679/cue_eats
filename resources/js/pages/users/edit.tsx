@@ -1,21 +1,14 @@
-import { FormMode } from "@/components/x/enum";
 import { XPage } from "@/components/x/page/XPage";
 import UserForm from "./_components/form-page";
+import type { PageProps } from "@/types";
 
-type User = {
-  id: number;
-  name: string;
-  email: string;
-};
-
-type EditUserProps = {
-  user: User;
-};
-
-export default function EditUser({ user }: EditUserProps) {
+export default function EditUser({
+  user,
+  businessLocations,
+}: PageProps<{ user: any; businessLocations: any[] }>) {
   return (
     <XPage breadcrumbs={[{ label: "Users", href: "/users" }]}>
-      <UserForm mode={FormMode.EDIT} title={"Edit User"} user={user} />
+      <UserForm mode="edit" title="Edit User" user={user} businessLocations={businessLocations} />
     </XPage>
   );
 }

@@ -24,6 +24,7 @@ export interface NavItem {
   children?: NavItem[];
   group?: string;
   permission?: string;
+  adminOnly?: boolean;
 }
 
 export interface SharedData {

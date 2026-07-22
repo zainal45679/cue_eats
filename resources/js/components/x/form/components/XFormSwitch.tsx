@@ -39,17 +39,7 @@ export function XFormSwitch<T extends Record<string, unknown>>({
 
   return (
     <div className={cn("col-span-full md:col-span-1", wrapperClassName)}>
-      <div className="flex flex-row items-center gap-6">
-        {label && (
-          <Label htmlFor={id}>
-            {label}
-            {isRequired ? (
-              <span className="text-red-500">*</span>
-            ) : (
-              <span className="text-muted-foreground/50">(Optional)</span>
-            )}
-          </Label>
-        )}
+      <div className="flex flex-row items-center gap-4">
         <Switch
           checked={field.value}
           className={cn("scale-110", className)}
@@ -60,6 +50,16 @@ export function XFormSwitch<T extends Record<string, unknown>>({
           onCheckedChange={(checked) => field.onChange(checked)}
           ref={field.ref}
         />
+        {label && (
+          <Label htmlFor={id} className="whitespace-nowrap cursor-pointer">
+            {label}
+            {isRequired ? (
+              <span className="text-red-500 ml-1">*</span>
+            ) : (
+              <span className="text-muted-foreground/50 ml-1">(Optional)</span>
+            )}
+          </Label>
+        )}
       </div>
       <InputError className="mt-2" message={errorMessage} />
     </div>

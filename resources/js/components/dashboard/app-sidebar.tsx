@@ -16,14 +16,20 @@ import { AdvancedScrollArea } from "../shadcn/ui/advanced-scroll-area";
 import AppLogo from "./app-logo";
 
 export function AppSidebar() {
-  const { permissions } = usePage().props.auth as {
+  const { permissions, roles } = usePage().props.auth as {
     permissions: string[];
     roles: string[];
   };
 
   const filteredMenu = Configs.mainNavItems.filter((item) => {
+    if (item.adminOnly) {
+      if (!roles?.includes("admin")) {
+        return false;
+      }
+    }
+
     if (item.permission) {
-      const hasPermission = permissions.some((userPerm) =>
+      const hasPermission = permissions?.some((userPerm) =>
         userPerm.endsWith(`.${item.permission}`)
       );
 
@@ -40,7 +46,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
-              <Link href={dashboard()} prefetch>
+              <Link href={dashboard().url} prefetch>
                 <AppLogo />
               </Link>
             </SidebarMenuButton>

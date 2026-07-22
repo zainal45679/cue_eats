@@ -8,9 +8,22 @@ export const Action = {
 } as const;
 
 export const Entity = {
-  Products : "products",
-  Roles : "roles",
-  Users : "users",
-  Dashboard : "dashboard",
-  System : "system",
-} as const; 
+  Users: "users",
+  Roles: "roles",
+  Products: "products",
+  Dashboard: "dashboard",
+  System: "system",
+  Countries: "countries",
+  CurrencyTax: "currency-tax",
+  BusinessLocations: "business-locations",
+  StorageLocations: "storage-locations",
+  UnitsOfMeasure: "units-of-measure",
+  Brands: "brands",
+  IngredientCategories: "ingredient-categories",
+  Ingredients: "ingredients",
+  PaymentTerms: "payment-terms",
+  Suppliers: "suppliers",
+  IngredientSuppliers: "ingredient-suppliers",
+  ApprovalConfigurations: "approval-configurations",
+  InventoryBalances: "inventory-balances",
+} as const;

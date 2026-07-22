@@ -4,9 +4,12 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  Boxes,
 } from "lucide-react";
 import { dashboard } from "@/generated/routes";
-import products from "@/generated/routes/products";
+import brands from "@/generated/routes/brands";
+import countries from "@/generated/routes/countries";
+import currencyTax from "@/generated/routes/currency-tax";
 import roles from "@/generated/routes/roles";
 import users from "@/generated/routes/users";
 import type { NavItem } from "@/types";
@@ -71,26 +74,34 @@ export const Configs: TConfigs = {
   mainNavItems: [
     {
       title: "Dashboard",
-      href: dashboard(),
+      href: dashboard().url,
       icon: LayoutGrid,
     },
     {
-      title: "Product",
-      href: products.index(),
-      icon: Package,
-      group: "Operations",
-      permission: "products",
+      title: "Supply Chain",
+      href: brands.index().url,
+      icon: Boxes,
+      group: "Procurement & Inventory",
+      permission: "brands",
+    },
+    {
+      title: "Inventory Setup",
+      href: countries.index().url,
+      icon: Settings,
+      group: "Procurement & Inventory",
+      permission: "countries",
     },
     {
       title: "Roles and Permissions",
-      href: roles.index(),
+      href: roles.index().url,
       icon: ShieldCheck,
       group: "Access Control",
       permission: "roles",
+      adminOnly: true,
     },
     {
       title: "Users",
-      href: users.index(),
+      href: users.index().url,
       icon: Users,
       group: "Access Control",
       permission: "users",

@@ -87,5 +87,6 @@ export type XDataTableProps<T extends { id: string | number }> = {
     icon?: React.ReactNode;
     name?: string;
     onClick?: (row: T) => void;
+    show?: (row: T) => boolean;
   }[];
 };

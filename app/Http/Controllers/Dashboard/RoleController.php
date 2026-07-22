@@ -17,6 +17,8 @@ final class RoleController extends Controller
 {
     public function index()
     {
+        abort_if(! auth()->user()->can('read.roles'), 403, 'Unauthorized. Missing read.roles permission.');
+
         return Inertia::render('roles/index', [
             'permissions' => Permission::all(),
             'roles' => Role::with('permissions')
@@ -30,6 +32,8 @@ final class RoleController extends Controller
 
     public function create()
     {
+        abort_if(! auth()->user()->can('create.roles'), 403, 'Unauthorized. Missing create.roles permission.');
+
         return Inertia::render('roles/add', [
             'permissions' => Permission::all(),
         ]);
@@ -37,6 +41,8 @@ final class RoleController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(! auth()->user()->can('create.roles'), 403, 'Unauthorized. Missing create.roles permission.');
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:roles,name',
             'description' => 'nullable|string|max:500',
@@ -71,6 +77,8 @@ final class RoleController extends Controller
      */
     public function show(Role $role)
     {
+        abort_if(! auth()->user()->can('read.roles'), 403, 'Unauthorized. Missing read.roles permission.');
+
         return inertia('roles/index', [
             'role' => $role->load('permissions', 'users'),
             'permissions' => Permission::all(),
@@ -79,6 +87,7 @@ final class RoleController extends Controller
 
     public function edit(Role $role)
     {
+        abort_if(! auth()->user()->can('update.roles'), 403, 'Unauthorized. Missing update.roles permission.');
 
         return Inertia::render('roles/edit', [
             'role' => $role->load('permissions'),
@@ -88,6 +97,8 @@ final class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        abort_if(! auth()->user()->can('update.roles'), 403, 'Unauthorized. Missing update.roles permission.');
+
         Log::info('Store Request Data:', $request->all());
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:roles,name,'.$role->id,
@@ -120,11 +131,10 @@ final class RoleController extends Controller
 
     public function search(Request $request)
     {
+        // Search is left open so Managers can fetch the dropdown list when creating a User
         $query = $request->get('q', '');
 
-        $roles = Role::when($query, function ($q) use ($query) {
-            return $q->where('name', 'like', '%'.$query.'%');
-        })
+        $roles = Role::when($query, fn ($q) => $q->where('name', 'like', '%'.$query.'%'))
             ->where('name', '!=', 'admin')
             ->where('name', '!=', 'delivery-boy')
             ->select('id', 'name')
@@ -136,6 +146,8 @@ final class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        abort_if(! auth()->user()->can('delete.roles'), 403, 'Unauthorized. Missing delete.roles permission.');
+
         try {
             if ($role->users()->count() > 0) {
                 return back()->withErrors(['error' => 'Cannot delete role that is assigned to users.']);

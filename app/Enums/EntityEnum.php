@@ -6,11 +6,23 @@ namespace App\Enums;
 
 enum EntityEnum: string
 {
-    case Products = 'products';
+    case Ingredients = 'ingredients';
+    case PaymentTerms = 'payment-terms';
     case Roles = 'roles';
     case Users = 'users';
     case Dashboard = 'dashboard';
     case System = 'system';
+    case Countries = 'countries';
+    case CurrencyTax = 'currency-tax';
+    case BusinessLocations = 'business-locations';
+    case StorageLocations = 'storage-locations';
+    case UnitsOfMeasure = 'units-of-measure';
+    case Brands = 'brands';
+    case IngredientCategories = 'ingredient-categories';
+    case Suppliers = 'suppliers';
+    case IngredientSuppliers = 'ingredient-suppliers';
+    case ApprovalConfigurations = 'approval-configurations';
+    case InventoryBalances = 'inventory-balances';
 
     public function actions(): array
     {

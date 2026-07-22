@@ -180,7 +180,8 @@ export function XDataTable<T extends { id: string | number }>({
                 {actions.map((action) => {
                   if (
                     (action.action === "edit" && !ability.canUpdate) ||
-                    (action.action === "delete" && !ability.canDelete)
+                    (action.action === "delete" && !ability.canDelete) ||
+                    (action.show && !action.show(row))
                   ) {
                     return null;
                   }

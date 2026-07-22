@@ -41,7 +41,7 @@ export function XFormInput<T extends Record<string, unknown>>({
   return (
     <div className={cn("col-span-full md:col-span-1", wrapperClassName)}>
       {label && (
-        <Label className="mb-2" htmlFor={id}>
+        <Label className="mb-2 block" htmlFor={id}>
           {label}
           {isRequired ? (
             <span className="text-red-500">*</span>

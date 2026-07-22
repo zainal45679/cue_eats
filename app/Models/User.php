@@ -11,13 +11,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Scopes\TenantScope;
 
 /**
  * @mixin IdeHelperUser
  */
 final class User extends Authenticatable
 {
-    use HasFactory, HasRoles, HasStatus, HasUuid, Notifiable, TrackUser;
+    use HasFactory, HasRoles, HasStatus, HasUuid, Notifiable, TrackUser, SoftDeletes;
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new TenantScope);
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -28,7 +38,10 @@ final class User extends Authenticatable
         'name',
         'email',
         'password',
+        'uuid',
         'status',
+        'business_location_id',
+        'created_by',
     ];
 
     /**
@@ -53,5 +66,22 @@ final class User extends Authenticatable
             'password' => 'hashed',
             'status' => 'integer',
         ];
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        $hash = md5(strtolower(trim($this->email)));
+
+        return "https://www.gravatar.com/avatar/$hash?d=mp";
+    }
+
+    public function businessLocation()
+    {
+        return $this->belongsTo(BusinessLocation::class, 'business_location_id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

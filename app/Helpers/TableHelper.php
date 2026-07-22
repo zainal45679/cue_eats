@@ -72,8 +72,8 @@ final class TableHelper
         }
 
         // Apply global search if provided
-        if ($search && trim((string) $search) !== '' && $this->searchColumns !== []) {
-            $searchTerm = trim((string) $search);
+        if ($search && mb_trim((string) $search) !== '' && $this->searchColumns !== []) {
+            $searchTerm = mb_trim((string) $search);
             $this->query->where(function ($q) use ($searchTerm): void {
                 foreach ($this->searchColumns as $column) {
                     $q->orWhere($column, 'like', '%'.$searchTerm.'%');
