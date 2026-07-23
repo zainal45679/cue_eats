@@ -28,14 +28,6 @@ export default function UserForm({ mode, user, title, businessLocations = [] }: 
       : z.string().min(6, "Password must be at least 6 characters"),
     business_location_id: z.number().nullable().optional(),
     status: z.boolean().default(true),
-  }).superRefine((data, ctx) => {
-    if (data.role !== "admin" && !data.business_location_id) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Assigned branch is required for this role.",
-        path: ["business_location_id"],
-      });
-    }
   });
 
   type TSchema = z.infer<typeof schema>;

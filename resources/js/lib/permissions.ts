@@ -26,4 +26,6 @@ export const Entity = {
   IngredientSuppliers: "ingredient-suppliers",
   ApprovalConfigurations: "approval-configurations",
   InventoryBalances: "inventory-balances",
+  InternalRequests: "internal-requests",
+  PurchaseOrders: "purchase-orders",
 } as const;

@@ -50,6 +50,7 @@ final class HandleInertiaRequests extends Middleware
                     'created_at' => $request->user()->created_at,
                     'updated_at' => $request->user()->updated_at,
                     'status' => $request->user()->status,
+                    'business_location_id' => $request->user()->business_location_id,
                 ] : null,
                 'permissions' => $request->user()?->getAllPermissions()->pluck('name') ?? [],
                 'roles' => $request->user()?->getRoleNames() ?? [],

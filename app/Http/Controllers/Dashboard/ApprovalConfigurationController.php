@@ -20,7 +20,7 @@ class ApprovalConfigurationController extends Controller
             ->searchColumns(['org_size_tier', 'approver_sequence_rule'])
             ->get();
 
-        return Inertia::render('supply-chain/approval-configurations/index', [
+        return Inertia::render('inventory-setup/approval-configurations/index', [
             'approvalConfigurations' => $data,
         ]);
     }
@@ -28,7 +28,7 @@ class ApprovalConfigurationController extends Controller
     public function create()
     {
         GateHelper::create(EntityEnum::ApprovalConfigurations);
-        return Inertia::render('supply-chain/approval-configurations/add');
+        return Inertia::render('inventory-setup/approval-configurations/add');
     }
 
     public function store(Request $request)
@@ -53,7 +53,7 @@ class ApprovalConfigurationController extends Controller
         
         $approvalConfiguration = ApprovalConfiguration::where('uuid', $uuid)->firstOrFail();
 
-        return Inertia::render('supply-chain/approval-configurations/edit', [
+        return Inertia::render('inventory-setup/approval-configurations/edit', [
             'approvalConfiguration' => $approvalConfiguration
         ]);
     }

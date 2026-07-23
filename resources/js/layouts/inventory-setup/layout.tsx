@@ -11,7 +11,7 @@ import { index as indexUnitsOfMeasure } from "@/generated/routes/units-of-measur
 import { index as indexApprovalConfigurations } from "@/generated/routes/approval-configurations";
 import { index as indexInventoryBalances } from "@/generated/routes/inventory-balances";
 import { Entity } from "@/lib/permissions";
-import { Earth, Building2, Warehouse, FileText, Scale, Settings2, PackageSearch } from "lucide-react";
+import { Earth, Building2, Warehouse, FileText, Scale, Settings2, PackageSearch, ClipboardList, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavItem, SharedData } from "@/types";
 import { usePage } from "@inertiajs/react";
@@ -48,16 +48,16 @@ const sidebarNavItems: (NavItem & { permission?: string })[] = [
     permission: "units-of-measure",
   },
   {
-    title: "Approval Config",
-    icon: <Settings2 className="h-4 w-4" />,
-    href: indexApprovalConfigurations(),
-    permission: "approval-configurations",
+    title: "Inventory Balances",
+    href: indexInventoryBalances().url,
+    icon: <ClipboardList className="h-4 w-4" />,
+    permission: "inventory-balances",
   },
   {
-    title: "Inventory Balances",
-    icon: <PackageSearch className="h-4 w-4" />,
-    href: indexInventoryBalances(),
-    permission: "inventory-balances",
+    title: "Approval Configurations",
+    href: indexApprovalConfigurations().url,
+    icon: <ShieldCheck className="h-4 w-4" />,
+    permission: "approval-configurations",
   },
 ];
 

@@ -37,7 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('units-of-measure/search', [UnitOfMeasureController::class, 'search'])->name('units-of-measure.search');
         Route::resource('units-of-measure', UnitOfMeasureController::class);
 
-        Route::resource('inventory-balances', InventoryBalanceController::class)->only(['index']);
+        Route::resource('inventory-balances', InventoryBalanceController::class);
+        Route::resource('approval-configurations', ApprovalConfigurationController::class);
     });
 
     // Supply Chain
@@ -62,7 +63,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'ingredient-suppliers' => 'mapping'
         ]);
 
-        Route::resource('approval-configurations', ApprovalConfigurationController::class);
+    });
+
+    // Inventory Module
+    Route::prefix('inventory')->group(function () {
+        Route::get('ledger', [\App\Http\Controllers\Dashboard\InventoryLedgerController::class, 'index'])->name('ledger.index');
+    });
+
+    // Purchasing
+    Route::prefix('purchasing')->group(function () {
+        Route::post('internal-requests/{internal_request}/approve', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'approve'])->name('internal-requests.approve');
+        Route::post('internal-requests/{internal_request}/reject', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'reject'])->name('internal-requests.reject');
+        Route::resource('internal-requests', \App\Http\Controllers\Dashboard\InternalRequestController::class);
+
+        Route::post('stos/{stock_transfer_order}/dispatch', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'dispatchSto'])->name('stos.dispatch');
+        Route::get('stos', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'index'])->name('stos.index');
+        Route::get('stos/{stock_transfer_order}', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'show'])->name('stos.show');
+        
+        Route::get('grns', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'index'])->name('grns.index');
+        Route::get('grns/create', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'create'])->name('grns.create');
+        Route::post('grns', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'store'])->name('grns.store');
+        Route::get('grns/{goods_receipt_note}', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'show'])->name('grns.show');
+        
+        Route::post('purchase-orders/{purchase_order}/approve', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
+        Route::post('purchase-orders/{purchase_order}/reject', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
+        Route::resource('purchase-orders', \App\Http\Controllers\Dashboard\PurchaseOrderController::class);
     });
 
     // Roles Routes

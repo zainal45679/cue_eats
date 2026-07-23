@@ -3,14 +3,14 @@
 namespace App\Models;
 
 use App\Traits\TrackUser;
+use App\Traits\HasUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
 class ApprovalConfiguration extends Model
 {
-    use HasFactory, SoftDeletes, TrackUser;
+    use HasFactory, SoftDeletes, TrackUser, HasUuid;
 
     protected $fillable = [
         'org_size_tier',
@@ -23,14 +23,4 @@ class ApprovalConfiguration extends Model
         'status' => 'boolean',
         'num_approvers_required' => 'integer',
     ];
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-            }
-        });
-    }
 }

@@ -20,7 +20,12 @@ final class StorageLocationController extends Controller
     {
         GateHelper::read(EntityEnum::StorageLocations);
 
-        $storageLocations = TableHelper::query(StorageLocation::with('businessLocation'))
+        $query = StorageLocation::with('businessLocation');
+        if (!auth()->user()->hasRole('admin')) {
+            $query->where('business_location_id', auth()->user()->business_location_id);
+        }
+
+        $storageLocations = TableHelper::query($query)
             ->searchColumns(['storage_name', 'storage_type'])
             ->get();
 
@@ -119,6 +124,10 @@ final class StorageLocationController extends Controller
     {
         GateHelper::read(EntityEnum::StorageLocations);
         $query = StorageLocation::query();
+
+        if (!auth()->user()->hasRole('admin')) {
+            $query->where('business_location_id', auth()->user()->business_location_id);
+        }
 
         return TableHelper::search($request, $query, ['storage_name', 'storage_type']);
     }

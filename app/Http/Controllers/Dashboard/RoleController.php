@@ -132,7 +132,7 @@ final class RoleController extends Controller
     public function search(Request $request)
     {
         // Search is left open so Managers can fetch the dropdown list when creating a User
-        $query = $request->get('q', '');
+        $query = $request->get('query', '');
 
         $roles = Role::when($query, fn ($q) => $q->where('name', 'like', '%'.$query.'%'))
             ->where('name', '!=', 'admin')

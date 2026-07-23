@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 import { useZodSchema } from "@/provider/ZodSchemaProvider";
 import { getFormError, getFormRealName, getFormRequired } from "../utils";
 
-type TXFormInput<T> = {
+type TXFormInput<T> = React.InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
   name: keyof T;
   wrapperClassName?: string;
   placeholder?: string;
-  type?: "text" | "number" | "email" | "password";
+  type?: "text" | "number" | "email" | "password" | "date";
   className?: string;
   disabled?: boolean;
 };
@@ -25,6 +25,7 @@ export function XFormInput<T extends Record<string, unknown>>({
   className,
   placeholder,
   disabled = false,
+  ...props
 }: TXFormInput<T>) {
   const {
     register,
@@ -66,6 +67,7 @@ export function XFormInput<T extends Record<string, unknown>>({
           `Enter ${(label ?? getFormRealName(name)).toLowerCase()}`
         }
         type={type}
+        {...props}
         {...register(name as Path<T>, {
           setValueAs: (value) => (type === "number" ? Number(value) : value),
         })}

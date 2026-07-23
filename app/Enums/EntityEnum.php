@@ -23,12 +23,16 @@ enum EntityEnum: string
     case IngredientSuppliers = 'ingredient-suppliers';
     case ApprovalConfigurations = 'approval-configurations';
     case InventoryBalances = 'inventory-balances';
+    case InternalRequests = 'internal-requests';
+    case PurchaseOrders = 'purchase-orders';
 
     public function actions(): array
     {
         return match ($this) {
             self::Dashboard => [ActionEnum::Access],
             self::System => [ActionEnum::Manage],
+            self::PurchaseOrders => [...ActionEnum::common(), ActionEnum::Approve, ActionEnum::Receive],
+            self::InternalRequests => [...ActionEnum::common(), ActionEnum::Approve, ActionEnum::Fulfill, ActionEnum::Receive],
             default => ActionEnum::common(),
         };
     }

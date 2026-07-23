@@ -1,6 +1,11 @@
 import { Check, ChevronsUpDown } from "lucide-react";
 import React, { useId } from "react";
-import { type Path, type PathValue, useFormContext } from "react-hook-form";
+import {
+  type Path,
+  type PathValue,
+  useFormContext,
+  useController,
+} from "react-hook-form";
 import { useDebounce } from "use-debounce";
 import InputError from "@/components/dashboard/input-error";
 import { Button } from "@/components/shadcn/ui/button";
@@ -107,12 +112,15 @@ export function XFormSelect<T extends Record<string, unknown>>({
   const [loading, setLoading] = React.useState(false);
 
   const {
-    setValue,
-    watch,
     clearErrors,
     formState: { errors },
   } = useFormContext<T>();
-  const value = watch(name as Path<T>);
+  const { field } = useController({
+    name: name as Path<T>,
+  });
+  const value = field.value;
+  const setValue = field.onChange;
+
   const schema = useZodSchema();
   const id = useId();
 
@@ -234,10 +242,10 @@ export function XFormSelect<T extends Record<string, unknown>>({
         )
           ? current.filter((v) => v !== selectedValue)
           : [...current, selectedValue];
-        setValue(name as Path<T>, newValue as PathValue<T, Path<T>>);
+        setValue(newValue as PathValue<T, Path<T>>);
         clearErrors(name as Path<T>);
       } else {
-        setValue(name as Path<T>, selectedValue as PathValue<T, Path<T>>);
+        setValue(selectedValue as PathValue<T, Path<T>>);
         clearErrors(name as Path<T>);
         if (onSelect) {
           const selectedOption = displayOptions.find(

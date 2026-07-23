@@ -22,6 +22,13 @@ export default function InventoryBalancesIndex({
       <Head title="Inventory Balances" />
       <div className="space-y-6">
         <XDataTable
+          titleButtons={[
+            {
+              label: "Add Balance",
+              link: "/inventory-setup/inventory-balances/create",
+              type: "create",
+            },
+          ]}
           columns={[
             {
               header: 'Ingredient',
@@ -30,30 +37,40 @@ export default function InventoryBalancesIndex({
             },
             {
               header: 'Storage Location',
-              accessorKey: 'storage_location.name',
+              accessorKey: 'storage_location.storage_name',
               sortable: true,
             },
             {
               header: 'Branch',
-              accessorKey: 'storage_location.business_location.name',
+              accessorKey: 'storage_location.business_location.location_name',
             },
             {
               header: 'Available',
               accessorKey: 'available_qty',
-              cell: (row) => `${row.available_qty} ${row.ingredient?.base_uom?.code || ''}`,
+              cell: ({ row }) => `${row.original.available_qty} ${row.original.ingredient?.base_uom?.code || ''}`,
             },
             {
               header: 'Reserved',
               accessorKey: 'reserved_qty',
-              cell: (row) => `${row.reserved_qty} ${row.ingredient?.base_uom?.code || ''}`,
+              cell: ({ row }) => `${row.original.reserved_qty} ${row.original.ingredient?.base_uom?.code || ''}`,
             },
             {
               header: 'On Order',
               accessorKey: 'on_order_qty',
-              cell: (row) => `${row.on_order_qty} ${row.ingredient?.base_uom?.code || ''}`,
+              cell: ({ row }) => `${row.original.on_order_qty} ${row.original.ingredient?.base_uom?.code || ''}`,
             },
           ]}
           data={inventoryBalances}
+          actions={[
+            { 
+              action: "edit",
+              url: (row) => `/inventory-setup/inventory-balances/${row.uuid}/edit`
+            },
+            { 
+              action: "delete",
+              url: (row) => `/inventory-setup/inventory-balances/${row.uuid}`
+            },
+          ]}
           entity={Entity.InventoryBalances}
           title="Inventory Balances"
         />

@@ -12,6 +12,9 @@ enum ActionEnum: string
     case Delete = 'delete';
     case Access = 'access';
     case Manage = 'manage';
+    case Approve = 'approve';
+    case Fulfill = 'fulfill';
+    case Receive = 'receive';
 
     public static function common(): array
     {

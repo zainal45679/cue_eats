@@ -67,7 +67,10 @@ export function useLaravelForm<T extends z.ZodType<any, any, any>>({
 
   return {
     form,
-    handleSubmit: form.handleSubmit(onSubmit),
+    handleSubmit: form.handleSubmit(onSubmit, (errors) => {
+      console.error("Frontend Validation Errors:", errors);
+      alert("Validation failed:\n\n" + JSON.stringify(errors, null, 2));
+    }),
     processing,
     schema,
   };
