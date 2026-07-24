@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Package, Truck, ShoppingCart, Settings, Shield } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -39,74 +39,135 @@ function isItemActive(item: NavItem, currentUrl: string): boolean {
   return false;
 }
 
+const getGroupIcon = (groupName: string) => {
+  switch (groupName) {
+    case "Inventory Operations": return <Package className="h-5 w-5 text-primary" />;
+    case "Internal Transfers": return <Truck className="h-5 w-5 text-primary" />;
+    case "External Purchasing": return <ShoppingCart className="h-5 w-5 text-primary" />;
+    case "Setup & Config": return <Settings className="h-5 w-5 text-primary" />;
+    case "Settings": return <Settings className="h-5 w-5 text-primary" />;
+    default: return null;
+  }
+};
+
 export function NavMain({ items = [] }: { items: NavItem[] }) {
   const page = usePage();
   const groupedItems = groupBy(items, "group");
 
   return (
     <>
-      {Object.entries(groupedItems).map(([groupName, groupItems]) => (
-        <SidebarGroup className="px-2 py-0" key={groupName}>
-          {!!groupName && <SidebarGroupLabel>{groupName}</SidebarGroupLabel>}
-          <SidebarMenu>
-            {groupItems.map((item) => {
-              const isActive = isItemActive(item, page.url);
-              if (item.children && item.children.length > 0) {
-                return (
-                  <Collapsible asChild defaultOpen={isActive} key={item.title}>
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
+      {Object.entries(groupedItems).map(([groupName, groupItems]) => {
+        const isGroupActive = groupItems.some((item) => isItemActive(item, page.url));
+
+        if (!groupName) {
+          return (
+            <SidebarGroup className="px-2 py-0" key="root-items">
+              <SidebarMenu>
+                {groupItems.map((item) => {
+                  const isActive = isItemActive(item, page.url);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        className="!text-[14px] !font-normal !h-10 px-3"
+                        isActive={isActive}
+                        tooltip={{ children: item.title }}
+                      >
+                        <Link href={item.href as string} prefetch>
+                          {item.icon && <item.icon className="mr-2 h-5 w-5" />}
+                          <span className="pl-[3px] pr-[6px]">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroup>
+          );
+        }
+
+        return (
+          <SidebarGroup className="px-2 py-0" key={groupName}>
+            <SidebarMenu>
+              <Collapsible asChild defaultOpen={isGroupActive} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton 
+                      className="!text-[14px] !font-normal !h-10 px-3 group-data-[collapsible=icon]:!px-2"
+                      tooltip={{ children: groupName }}
+                    >
+                      {getGroupIcon(groupName)}
+                      <span className="pl-[3px] pr-[6px]">{groupName}</span>
+                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 opacity-50" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenu className="pt-2 gap-1.5">
+                      {groupItems.map((item) => {
+                        const isActive = isItemActive(item, page.url);
+                    if (item.children && item.children.length > 0) {
+                      return (
+                        <Collapsible asChild defaultOpen={isActive} key={item.title}>
+                          <SidebarMenuItem>
+                            <CollapsibleTrigger asChild>
+                              <SidebarMenuButton
+                                className="group cursor-pointer pl-9 text-[14px]"
+                                isActive={isActive}
+                                tooltip={{ children: item.title }}
+                              >
+                                {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                                <span className="pl-[3px] pr-[6px]">{item.title}</span>
+                                <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90 opacity-50" />
+                              </SidebarMenuButton>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <SidebarMenuSub className="mr-0 pr-0">
+                                {item.children.map((child) => (
+                                  <SidebarMenuSubItem key={child.title}>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      className="text-[14px]"
+                                      isActive={isItemActive(child, page.url)}
+                                    >
+                                      <Link href={child.href as string} prefetch>
+                                        {child.icon && (
+                                          <child.icon className="mr-2 h-4 w-4" />
+                                        )}
+                                        <span className="pl-[3px] pr-[6px]">{child.title}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                ))}
+                              </SidebarMenuSub>
+                            </CollapsibleContent>
+                          </SidebarMenuItem>
+                        </Collapsible>
+                      );
+                    }
+                    return (
+                      <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
-                          className="group cursor-pointer"
+                          asChild
+                          className={!groupName ? "!text-[14px] !font-normal !h-10 px-3" : "group cursor-pointer pl-9 text-[14px]"}
                           isActive={isActive}
                           tooltip={{ children: item.title }}
                         >
-                          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-                          <span>{item.title}</span>
-                          <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90" />
+                          <Link href={item.href as string} prefetch>
+                            {item.icon && <item.icon className={!groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4"} />}
+                            <span className="pl-[3px] pr-[6px]">{item.title}</span>
+                          </Link>
                         </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub className="mr-0 pr-0">
-                          {item.children.map((child) => (
-                            <SidebarMenuSubItem key={child.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isItemActive(child, page.url)}
-                              >
-                                <Link href={child.href as string} prefetch>
-                                  {child.icon && (
-                                    <child.icon className="mr-2 h-4 w-4" />
-                                  )}
-                                  <span>{child.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                );
-              }
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={{ children: item.title }}
-                  >
-                    <Link href={item.href as string} prefetch>
-                      {item.icon && <item.icon className="mr-2 h-4 w-4" />}
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </CollapsibleContent>
                 </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
-      ))}
+              </Collapsible>
+            </SidebarMenu>
+          </SidebarGroup>
+        );
+      })}
     </>
   );
 }

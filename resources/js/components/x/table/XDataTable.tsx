@@ -8,6 +8,7 @@ import type {
 } from "@tanstack/react-table";
 import { Edit, Eye, Plus, Trash2, X } from "lucide-react";
 import React, { useMemo } from "react";
+import { toast } from "sonner";
 import { DataTable } from "@/components/shadcn/data-table/data-table";
 import { DataTableActionBar } from "@/components/shadcn/data-table/data-table-action-bar";
 import { DataTableColumnHeader } from "@/components/shadcn/data-table/data-table-column-header";
@@ -168,7 +169,7 @@ export function XDataTable<T extends { id: string | number }>({
       };
     });
 
-    const actionsColumn = actions
+    const actionsColumn = actions && actions.length > 0
       ? ({
           id: "actions",
           header: "Actions",
@@ -259,8 +260,14 @@ export function XDataTable<T extends { id: string | number }>({
                           <Button
                             className="text-red-600 hover:bg-red-50 hover:text-red-800"
                             onClick={() => {
-                              setDeleteUrl(url);
-                              setDeleteDialogOpen(true);
+                              toast("Confirm Deletion", {
+                                description: "Are you sure you want to delete this item? This action cannot be undone.",
+                                action: {
+                                  label: "Delete",
+                                  onClick: () => router.visit(url, { method: "delete" }),
+                                },
+                                cancel: { label: "Cancel", onClick: () => {} }
+                              });
                             }}
                             size="sm"
                             variant="ghost"
@@ -596,38 +603,7 @@ export function XDataTable<T extends { id: string | number }>({
         </DataTableToolbar>
       </DataTable>
 
-      <Dialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
-              <p>Are you sure you want to delete this item?</p>
-              <p className="mt-2">
-                <strong>This action cannot be undone.</strong>
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (deleteUrl) {
-                  router.visit(deleteUrl, { method: "delete" });
-                }
-                setDeleteDialogOpen(false);
-              }}
-              variant="destructive"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       <Dialog onOpenChange={setActionDialogOpen} open={actionDialogOpen}>
         <DialogContent>

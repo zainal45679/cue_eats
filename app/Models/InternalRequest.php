@@ -23,6 +23,12 @@ class InternalRequest extends Model
         'updated_by',
     ];
 
+    protected $casts = [
+        'from_location_id' => 'integer',
+        'to_location_id' => 'integer',
+        'requested_by_id' => 'integer',
+    ];
+
     // Removed TenantScope because Internal Requests have from_location_id and to_location_id
 
     public function getRouteKeyName(): string

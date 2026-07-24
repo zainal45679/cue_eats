@@ -194,16 +194,82 @@ export function DataTableDateFilter<TData>({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto p-0">
         {multiple ? (
-          <Calendar
-            captionLayout="dropdown"
-            mode="range"
-            onSelect={onSelect}
-            selected={
-              getIsDateRange(selectedDates)
-                ? selectedDates
-                : { from: undefined, to: undefined }
-            }
-          />
+          <div className="flex">
+            <div className="flex flex-col gap-1 p-3 border-r border-border min-w-[140px]">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2">Quick Select</div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="justify-start font-normal h-8"
+                onClick={() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  onSelect({ from: today, to: today });
+                }}
+              >
+                Today
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="justify-start font-normal h-8"
+                onClick={() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  yesterday.setHours(0, 0, 0, 0);
+                  onSelect({ from: yesterday, to: yesterday });
+                }}
+              >
+                Yesterday
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="justify-start font-normal h-8"
+                onClick={() => {
+                  const today = new Date();
+                  const last7Days = new Date();
+                  last7Days.setDate(today.getDate() - 7);
+                  last7Days.setHours(0, 0, 0, 0);
+                  onSelect({ from: last7Days, to: today });
+                }}
+              >
+                Last 7 Days
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="justify-start font-normal h-8"
+                onClick={() => {
+                  const today = new Date();
+                  const last30Days = new Date();
+                  last30Days.setDate(today.getDate() - 30);
+                  last30Days.setHours(0, 0, 0, 0);
+                  onSelect({ from: last30Days, to: today });
+                }}
+              >
+                Last 30 Days
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="justify-start font-normal h-8 mt-4 text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={(e) => onReset(e as any)}
+              >
+                Clear
+              </Button>
+            </div>
+            <Calendar
+              captionLayout="dropdown"
+              mode="range"
+              onSelect={onSelect}
+              selected={
+                getIsDateRange(selectedDates)
+                  ? selectedDates
+                  : { from: undefined, to: undefined }
+              }
+            />
+          </div>
         ) : (
           <Calendar
             captionLayout="dropdown"

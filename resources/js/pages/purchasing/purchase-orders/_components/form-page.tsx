@@ -146,29 +146,29 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
+                        <div className="mt-8">
+                            <div className="flex flex-row items-center justify-between mb-4">
                                 <div>
-                                    <CardTitle>Line Items</CardTitle>
-                                    <CardDescription>
+                                    <h3 className="text-lg font-semibold tracking-tight">Line Items</h3>
+                                    <p className="text-sm text-muted-foreground">
                                         {mode === "supplier" 
                                             ? "Add items available from the selected supplier." 
                                             : "Add items from the selected category and choose a supplier for each."}
-                                    </CardDescription>
+                                    </p>
                                 </div>
                                 <Button type="button" variant="outline" size="sm" onClick={() => append({ ingredient_id: 0, quantity: 1, unit_price: 0, supplier_id: 0 })}>
                                     <Plus className="mr-2 size-4" /> Add Item
                                 </Button>
-                            </CardHeader>
-                            <CardContent>
+                            </div>
+                            <div>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-12 gap-4 px-4 text-sm font-medium text-muted-foreground">
-                                        <div className={mode === "category" ? "col-span-4" : "col-span-5"}>Ingredient</div>
+                                    <div className="grid grid-cols-12 gap-4 items-center border border-transparent p-3 text-sm font-medium text-muted-foreground">
+                                        <div className={mode === "category" ? "col-span-3" : "col-span-5"}>Ingredient</div>
                                         {mode === "category" && <div className="col-span-3">Supplier</div>}
                                         <div className="col-span-2">Quantity</div>
                                         <div className="col-span-2">Unit Price</div>
                                         <div className={mode === "category" ? "col-span-1 text-right" : "col-span-2 text-right"}>Subtotal</div>
-                                        <div className={mode === "category" ? "hidden" : "col-span-1 text-right"}>Action</div>
+                                        <div className="col-span-1 text-right">Action</div>
                                     </div>
                                     <div className="space-y-3">
                                         {fields.map((field, index) => {
@@ -184,8 +184,12 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                         }))
                                                     : ingredients.map((i: any) => ({ label: i.name, value: String(i.id), price: 0 }));
 
+                                                const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
+                                                const selectedIngredient = ingredients.find((i: any) => String(i.id) === String(currentIngredientId));
+                                                const uomSuffix = selectedIngredient?.base_uom?.name || "";
+
                                                 return (
-                                                    <div key={field.id} className="grid grid-cols-12 gap-4 items-start bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
+                                                    <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
                                                         <div className="col-span-5">
                                                             <XFormSelect
                                                                 name={`items.${index}.ingredient_id`}
@@ -194,15 +198,15 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                             />
                                                         </div>
                                                         <div className="col-span-2">
-                                                            <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} />
+                                                            <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} suffix={uomSuffix} />
                                                         </div>
                                                         <div className="col-span-2">
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.unit_price`} />
                                                         </div>
-                                                        <div className="col-span-2 flex justify-end pt-2 font-medium">
+                                                        <div className="col-span-2 flex justify-end font-medium">
                                                             ${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}
                                                         </div>
-                                                        <div className="col-span-1 flex justify-end pt-1">
+                                                        <div className="col-span-1 flex justify-end">
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="hover:bg-red-50 hover:text-red-500 transition-colors">
                                                                 <Trash2 className="size-4" />
                                                             </Button>
@@ -231,33 +235,36 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                         })
                                                     : [];
 
+                                                const selectedIngredient = ingredients.find((i: any) => String(i.id) === String(currentIngredientId));
+                                                const uomSuffix = selectedIngredient?.base_uom?.name || "";
+
                                                 return (
-                                                    <div key={field.id} className="grid grid-cols-12 gap-2 md:gap-4 items-start bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md relative">
-                                                        <div className="col-span-12 md:col-span-4">
+                                                    <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
+                                                        <div className="col-span-3">
                                                             <XFormSelect
                                                                 name={`items.${index}.ingredient_id`}
                                                                 options={availableIngredients.map((i: any) => ({ label: i.name, value: String(i.id) }))}
                                                             />
                                                         </div>
-                                                        <div className="col-span-12 md:col-span-3">
+                                                        <div className="col-span-3">
                                                             <XFormSelect
                                                                 name={`items.${index}.supplier_id`}
                                                                 options={availableSuppliers}
                                                                 onSelect={(opt) => form.setValue(`items.${index}.unit_price`, opt.price as number)}
                                                             />
                                                         </div>
-                                                        <div className="col-span-6 md:col-span-2">
-                                                            <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} />
+                                                        <div className="col-span-2">
+                                                            <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} suffix={uomSuffix} />
                                                         </div>
-                                                        <div className="col-span-6 md:col-span-2">
+                                                        <div className="col-span-2">
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.unit_price`} />
                                                         </div>
-                                                        <div className="col-span-10 md:col-span-1 flex justify-end pt-2 font-medium">
+                                                        <div className="col-span-1 flex justify-end font-medium">
                                                             ${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}
                                                         </div>
-                                                        <div className="absolute -top-3 -right-3 md:relative md:top-auto md:right-auto md:col-span-1 flex justify-end pt-1">
-                                                            <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="size-6 md:size-8 md:variant-ghost md:bg-transparent md:text-foreground md:hover:bg-red-50 md:hover:text-red-500 transition-colors rounded-full md:rounded-md">
-                                                                <Trash2 className="size-3 md:size-4" />
+                                                        <div className="col-span-1 flex justify-end">
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="hover:bg-red-50 hover:text-red-500 transition-colors">
+                                                                <Trash2 className="size-4" />
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -270,8 +277,8 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                 <div className="mt-6 flex justify-end text-xl font-bold bg-muted/50 p-4 rounded-lg">
                                     Total: ${subtotal.toFixed(2)}
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
 
                         <div className="flex justify-end gap-2">
                             <Button type="submit">

@@ -54,6 +54,8 @@ final class HandleInertiaRequests extends Middleware
                 ] : null,
                 'permissions' => $request->user()?->getAllPermissions()->pluck('name') ?? [],
                 'roles' => $request->user()?->getRoleNames() ?? [],
+                'active_location_id' => session('active_location_id'),
+                'all_business_locations' => $request->user()?->hasRole('admin') ? \App\Models\BusinessLocation::select('id', 'location_name')->get() : [],
             ],
 
             'flash' => array_filter([

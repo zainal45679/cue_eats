@@ -9,7 +9,6 @@ import { index as indexBusinessLocations } from "@/generated/routes/business-loc
 import { index as indexStorageLocations } from "@/generated/routes/storage-locations";
 import { index as indexUnitsOfMeasure } from "@/generated/routes/units-of-measure";
 import { index as indexApprovalConfigurations } from "@/generated/routes/approval-configurations";
-import { index as indexInventoryBalances } from "@/generated/routes/inventory-balances";
 import { Entity } from "@/lib/permissions";
 import { Earth, Building2, Warehouse, FileText, Scale, Settings2, PackageSearch, ClipboardList, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,12 +45,6 @@ const sidebarNavItems: (NavItem & { permission?: string })[] = [
     icon: <Scale className="h-4 w-4" />,
     href: indexUnitsOfMeasure(),
     permission: "units-of-measure",
-  },
-  {
-    title: "Inventory Balances",
-    href: indexInventoryBalances().url,
-    icon: <ClipboardList className="h-4 w-4" />,
-    permission: "inventory-balances",
   },
   {
     title: "Approval Configurations",

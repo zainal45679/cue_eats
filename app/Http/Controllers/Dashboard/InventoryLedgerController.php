@@ -13,8 +13,10 @@ class InventoryLedgerController extends Controller
     {
         $query = InventoryLedger::with(['location', 'ingredient', 'createdBy']);
         
-        if (!auth()->user()->hasRole('admin')) {
-            $query->where('business_location_id', auth()->user()->business_location_id);
+        $activeLocationId = session('active_location_id');
+        if (!auth()->user()->hasRole('admin') || $activeLocationId) {
+            $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
+            $query->where('business_location_id', $locationId);
         }
         
         if ($request->has('ingredient_id')) {

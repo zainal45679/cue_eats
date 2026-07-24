@@ -15,7 +15,7 @@ export function XBreadcrumbs({ items }: BreadcrumbsProps) {
   items = items || [];
   items = [{ label: "Dashboard", href: "/dashboard" }, ...items];
   return (
-    <nav className="mb-4 flex items-center text-muted-foreground text-sm">
+    <nav className="mb-4 flex items-center text-muted-foreground text-sm print:hidden">
       {items.map((item, idx) => (
         <span className="flex items-center" key={item.label}>
           {item.href ? (

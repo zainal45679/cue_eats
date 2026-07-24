@@ -5,12 +5,18 @@ import { Button } from "@/components/shadcn/ui/button";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { router, Link } from "@inertiajs/react";
 import { MapPin, CheckCircle2, Truck, Printer } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any, canDispatch: boolean, canReceive: boolean }) {
     const handleDispatch = () => {
-        if (confirm("Are you sure you want to dispatch this STO? This will deduct the items from your inventory.")) {
-            router.post(`/purchasing/stos/${sto.uuid}/dispatch`);
-        }
+        toast("Confirm Dispatch", {
+            description: "Are you sure you want to dispatch this STO? This will deduct the items from your inventory.",
+            action: {
+                label: "Dispatch",
+                onClick: () => router.post(`/purchasing/stos/${sto.uuid}/dispatch`),
+            },
+            cancel: { label: "Cancel", onClick: () => {} }
+        });
     };
 
     const getStatusBadge = (status: string) => {
@@ -26,69 +32,159 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
 
     return (
         <XPage title={`STO ${sto.sto_number}`} backUrl="/purchasing/stos">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-bold tracking-tight">{sto.sto_number}</h1>
-                    {getStatusBadge(sto.status)}
+            {/* --- PRINT ONLY VIEW --- */}
+            <div className="hidden print:block w-full bg-white text-black font-sans print:p-10 print:pb-24 relative min-h-screen">
+                <div className="flex justify-between items-start mb-12">
+                    <div>
+                        <h1 className="text-4xl font-light text-purple-800 mb-6 uppercase tracking-wide">STOCK TRANSFER</h1>
+                        <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm text-slate-600">
+                            <span className="font-semibold text-slate-700">STO No</span>
+                            <span className="text-slate-900 font-medium">{sto.sto_number}</span>
+                            
+                            <span className="font-semibold text-slate-700">Date</span>
+                            <span className="text-slate-900 font-medium">{new Date(sto.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                        <div className="text-3xl font-extrabold tracking-tighter text-slate-900 flex items-center">
+                            <div className="bg-purple-100 text-purple-600 p-2 rounded-sm mr-2 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact]">
+                                <Truck className="w-6 h-6" />
+                            </div>
+                            CUE EATS
+                        </div>
+                        <div className="text-sm text-slate-500 mt-4 text-right">
+                            123 Restaurant Way<br />
+                            Dubai, United Arab Emirates<br />
+                            contact@cue-eats.com
+                        </div>
+                    </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => window.print()}>
-                        <Printer className="mr-2 size-4" /> Print
-                    </Button>
-                    
-                    {canReceive && sto.status === 'dispatched' && (
-                        <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                <CheckCircle2 className="mr-2 size-4" /> Receive Items (GRN)
-                            </Button>
-                        </Link>
-                    )}
 
-                    {canDispatch && sto.status === 'pending_dispatch' && (
-                        <Button onClick={handleDispatch} className="bg-blue-600 hover:bg-blue-700">
-                            <Truck className="mr-2 size-4" /> Dispatch Items
-                        </Button>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <MapPin className="size-4" /> Dispatching Location (From)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="font-semibold text-lg">{sto.from_location?.location_name}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                    <div className="bg-purple-50/50 p-5 rounded-md border border-purple-100 print:bg-purple-50 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact] print:border-purple-100">
+                        <h3 className="text-lg text-purple-800 mb-3 font-medium">Dispatching Location (From)</h3>
+                        <div className="font-bold text-slate-900 text-base">{sto.from_location?.location_name}</div>
+                        <div className="text-sm text-slate-700 mt-2 space-y-1">
                             {sto.from_location?.address && <div>{sto.from_location.address}</div>}
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            <MapPin className="size-4" /> Receiving Location (To)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="font-semibold text-lg">{sto.to_location?.location_name}</div>
-                        <div className="text-sm text-muted-foreground mt-1">
+                    </div>
+                    
+                    <div className="bg-purple-50/50 p-5 rounded-md border border-purple-100 print:bg-purple-50 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact] print:border-purple-100">
+                        <h3 className="text-lg text-purple-800 mb-3 font-medium">Receiving Location (To)</h3>
+                        <div className="font-bold text-slate-900 text-base">{sto.to_location?.location_name}</div>
+                        <div className="text-sm text-slate-700 mt-2 space-y-1">
                             {sto.to_location?.address && <div>{sto.to_location.address}</div>}
+                            <div className="mt-2 text-slate-900 font-medium pt-2 border-t border-purple-200">
+                                Status: {sto.status.replace('_', ' ').toUpperCase()}
+                            </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
+
+                <div className="mb-8 overflow-hidden rounded-md border border-purple-200 print:border-purple-200">
+                    <table className="w-full text-sm text-left">
+                        <thead className="bg-purple-100 text-purple-900 print:bg-purple-100 print:text-purple-900 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact]">
+                            <tr>
+                                <th className="py-3 px-4 font-semibold">Ingredient</th>
+                                <th className="py-3 px-4 font-semibold text-center">UOM</th>
+                                <th className="py-3 px-4 font-semibold text-right">Approved Qty</th>
+                                <th className="py-3 px-4 font-semibold text-right">Dispatched Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-purple-100">
+                            {sto.items?.map((item: any, index: number) => (
+                                <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-purple-50/30 print:bg-purple-50/50 print:[color-adjust:exact]"}>
+                                    <td className="py-3 px-4 text-slate-900">{item.ingredient?.name}</td>
+                                    <td className="py-3 px-4 text-slate-600 text-center">{item.unit_of_measure?.name || '-'}</td>
+                                    <td className="py-3 px-4 text-slate-900 text-right">{Number(item.approved_quantity).toFixed(2)}</td>
+                                    <td className="py-3 px-4 text-purple-700 font-medium text-right">{sto.status !== 'pending_dispatch' ? Number(item.dispatched_quantity).toFixed(2) : '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="fixed bottom-10 left-0 w-full text-center text-xs text-purple-900/60 font-medium">
+                    This is an electronically generated document, no signature is required.
+                </div>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transfer Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
+            {/* --- WEB ONLY VIEW --- */}
+            <div className="print:hidden">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight">{sto.sto_number}</h1>
+                        {getStatusBadge(sto.status)}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => window.print()}>
+                            <Printer className="mr-2 size-4" /> Print
+                        </Button>
+                        
+                        {canReceive && (sto.status === 'dispatched' || sto.status === 'partially_received') && (
+                            <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
+                                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                    <CheckCircle2 className="mr-2 size-4" /> Receive Items (GRN)
+                                </Button>
+                            </Link>
+                        )}
+
+                        {canDispatch && sto.status === 'pending_dispatch' && (
+                            <>
+                                <Button variant="destructive" onClick={() => {
+                                    toast("Confirm Reject", {
+                                        description: "Are you sure you want to reject this STO?",
+                                        action: {
+                                            label: "Reject",
+                                            onClick: () => router.post(`/purchasing/stos/${sto.uuid}/reject`),
+                                        },
+                                        cancel: { label: "Cancel", onClick: () => {} }
+                                    });
+                                }}>
+                                    Reject
+                                </Button>
+                                <Button onClick={handleDispatch} className="bg-blue-600 hover:bg-blue-700">
+                                    <Truck className="mr-2 size-4" /> Dispatch Items
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <MapPin className="size-4" /> Dispatching Location (From)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="font-semibold text-lg">{sto.from_location?.location_name}</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                                {sto.from_location?.address && <div>{sto.from_location.address}</div>}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <MapPin className="size-4" /> Receiving Location (To)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="font-semibold text-lg">{sto.to_location?.location_name}</div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                                {sto.to_location?.address && <div>{sto.to_location.address}</div>}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="mb-8 mt-8">
+                    <h3 className="text-lg font-semibold mb-4">Transfer Items</h3>
+                    <div className="rounded-md border bg-card">
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground">
                                 <tr>
@@ -114,8 +210,8 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
                             </tbody>
                         </table>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </XPage>
     );
 }

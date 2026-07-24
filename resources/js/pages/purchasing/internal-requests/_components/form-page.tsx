@@ -92,19 +92,19 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between">
+                        <div className="mt-8">
+                            <div className="flex flex-row items-center justify-between mb-4">
                                 <div>
-                                    <CardTitle>Requested Items</CardTitle>
-                                    <CardDescription>Add ingredients you want to request.</CardDescription>
+                                    <h3 className="text-lg font-semibold tracking-tight">Requested Items</h3>
+                                    <p className="text-sm text-muted-foreground">Add ingredients you want to request.</p>
                                 </div>
                                 <Button type="button" variant="outline" size="sm" onClick={() => append({ ingredient_id: 0, quantity: 1 })}>
                                     <Plus className="mr-2 size-4" /> Add Item
                                 </Button>
-                            </CardHeader>
-                            <CardContent>
+                            </div>
+                            <div>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-12 gap-4 px-4 text-sm font-medium text-muted-foreground">
+                                    <div className="grid grid-cols-12 gap-4 items-center border border-transparent p-3 text-sm font-medium text-muted-foreground">
                                         <div className="col-span-3">Category</div>
                                         <div className="col-span-5">Ingredient</div>
                                         <div className="col-span-3">Quantity</div>
@@ -113,14 +113,18 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                     <div className="space-y-3">
                                         {fields.map((field, index) => {
                                             const currentCategoryId = form.watch(`items.${index}.category_id`);
+                                            const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
                                             
                                             // Filter ingredients by category
                                             const availableIngredients = currentCategoryId && Number(currentCategoryId) > 0
                                                 ? ingredients.filter((i: any) => String(i.ingredient_category_id) === String(currentCategoryId))
                                                 : ingredients;
 
+                                            const selectedIngredient = ingredients.find((i: any) => String(i.id) === String(currentIngredientId));
+                                            const uomSuffix = selectedIngredient?.base_uom?.name || "";
+
                                             return (
-                                                <div key={field.id} className="grid grid-cols-12 gap-4 items-start bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
+                                                <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
                                                     <div className="col-span-3">
                                                         <XFormSelect
                                                             name={`items.${index}.category_id`}
@@ -134,9 +138,9 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                         />
                                                     </div>
                                                     <div className="col-span-3">
-                                                        <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} />
+                                                        <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} suffix={uomSuffix} />
                                                     </div>
-                                                    <div className="col-span-1 flex justify-end pt-1">
+                                                    <div className="col-span-1 flex justify-end">
                                                         <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="hover:bg-red-50 hover:text-red-500 transition-colors">
                                                             <Trash2 className="size-4" />
                                                         </Button>
@@ -146,8 +150,8 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                         })}
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </div>
 
                         <div className="flex justify-end gap-2">
                             <Button type="submit">

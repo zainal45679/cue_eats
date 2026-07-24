@@ -120,9 +120,17 @@ final class UnitOfMeasureController extends Controller
         GateHelper::delete(EntityEnum::UnitsOfMeasure);
 
         $unitOfMeasure = UnitOfMeasure::findOrFail($id);
-        $unitOfMeasure->delete();
-
-        return redirect()->route('units-of-measure.index')
-            ->with('success', 'Unit of Measure deleted successfully.');
+        
+        try {
+            $unitOfMeasure->delete();
+            return redirect()->route('units-of-measure.index')
+                ->with('success', 'Unit of Measure deleted successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete this unit of measure because it is used in existing ingredients or as a base unit.');
+            }
+            throw $e;
+        }
     }
 }

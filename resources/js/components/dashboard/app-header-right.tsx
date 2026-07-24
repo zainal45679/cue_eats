@@ -21,6 +21,7 @@ import { useAppearance } from "@/hooks/use-appearance";
 import { useInitials } from "@/hooks/use-initials";
 import type { SharedData } from "@/types";
 import { UserMenuContent } from "./user-menu-content";
+import { AppHeaderLocationSwitcher } from "./app-header-location-switcher";
 
 export function AppHeaderRight() {
   const { appearance, updateAppearance } = useAppearance();
@@ -47,6 +48,7 @@ export function AppHeaderRight() {
   return (
     <TooltipProvider>
       <div className="ml-auto flex items-center gap-2">
+        <AppHeaderLocationSwitcher />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button onClick={toggleTheme} size="icon" variant="ghost">

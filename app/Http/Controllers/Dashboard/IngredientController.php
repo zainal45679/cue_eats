@@ -106,10 +106,18 @@ final class IngredientController extends Controller
         GateHelper::delete(EntityEnum::Ingredients);
 
         $ingredient = Ingredient::where('uuid', $uuid)->firstOrFail();
-        $ingredient->delete();
-
-        return redirect()->route('ingredients.index')
-            ->with('success', 'Ingredient deleted successfully.');
+        
+        try {
+            $ingredient->delete();
+            return redirect()->route('ingredients.index')
+                ->with('success', 'Ingredient deleted successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete this ingredient because it is used in existing transactions or recipes.');
+            }
+            throw $e;
+        }
     }
 
     public function search(Request $request)

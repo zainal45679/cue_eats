@@ -15,8 +15,10 @@ class PurchaseOrderController extends Controller
         
         $query = PurchaseOrder::with(['supplier', 'businessLocation', 'deliveryLocation']);
 
-        if (!auth()->user()->hasRole('admin')) {
-            $query->where('business_location_id', auth()->user()->business_location_id);
+        $activeLocationId = session('active_location_id');
+        if (!auth()->user()->hasRole('admin') || $activeLocationId) {
+            $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
+            $query->where('business_location_id', $locationId);
         }
 
         $query->latest();
@@ -41,7 +43,7 @@ class PurchaseOrderController extends Controller
         return Inertia::render('purchasing/purchase-orders/create', [
             'suppliers' => \App\Models\Supplier::all(),
             'businessLocations' => $businessLocationsQuery->get(),
-            'ingredients' => \App\Models\Ingredient::with('category')->get(),
+            'ingredients' => \App\Models\Ingredient::with(['category', 'baseUom'])->get(),
             'supplierIngredients' => \App\Models\IngredientSupplier::with('ingredient')->get(),
             'categories' => \App\Models\IngredientCategory::all(),
         ]);
@@ -73,7 +75,9 @@ class PurchaseOrderController extends Controller
             
             // Set business_location_id for multi-tenant scope
             // Assuming the branch ordering is also the delivery location
-            $data['business_location_id'] = $data['delivery_location_id'];
+            $deliveryLocId = auth()->user()->hasRole('admin') ? $data['delivery_location_id'] : auth()->user()->business_location_id;
+            $data['delivery_location_id'] = $deliveryLocId;
+            $data['business_location_id'] = $deliveryLocId;
 
             if ($mode === 'category') {
                 // Group items by supplier_id
@@ -168,7 +172,7 @@ class PurchaseOrderController extends Controller
             'purchaseOrder' => $purchaseOrder,
             'suppliers' => \App\Models\Supplier::all(),
             'businessLocations' => $businessLocationsQuery->get(),
-            'ingredients' => \App\Models\Ingredient::with('category')->get(),
+            'ingredients' => \App\Models\Ingredient::with(['category', 'baseUom'])->get(),
             'supplierIngredients' => \App\Models\IngredientSupplier::with('ingredient')->get(),
             'categories' => \App\Models\IngredientCategory::all(),
         ]);
@@ -176,19 +180,46 @@ class PurchaseOrderController extends Controller
 
     public function approve(PurchaseOrder $purchaseOrder)
     {
+        \Illuminate\Support\Facades\Log::info('Approve method hit for PO: ' . $purchaseOrder->uuid);
         $this->authorize('approve', $purchaseOrder);
 
-        $purchaseOrder->update(['status' => 'approved']);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($purchaseOrder) {
+            $purchaseOrder->update(['status' => 'approved']);
 
-        // Log approval (assuming an approvals table exists)
-        if (\Illuminate\Support\Facades\Schema::hasTable('purchase_order_approvals')) {
-            $purchaseOrder->approvals()->create([
-                'approver_id' => auth()->id(),
-                'status' => 'approved',
-                'comments' => request('notes'),
-                'acted_at' => now(),
-            ]);
-        }
+            // Log approval (assuming an approvals table exists)
+            if (\Illuminate\Support\Facades\Schema::hasTable('purchase_order_approvals')) {
+                $purchaseOrder->approvals()->create([
+                    'approver_id' => auth()->id(),
+                    'status' => 'approved',
+                    'comments' => request('notes'),
+                    'acted_at' => now(),
+                ]);
+            }
+
+            // Track items as on-order in the delivery location's inventory
+            foreach ($purchaseOrder->items as $item) {
+                $storageLocation = \App\Models\StorageLocation::firstOrCreate(
+                    [
+                        'business_location_id' => $purchaseOrder->delivery_location_id,
+                        'storage_name' => 'Main Store',
+                    ],
+                    [
+                        'storage_type' => 'Store',
+                        'status' => 1,
+                    ]
+                );
+
+                $balance = \App\Models\InventoryBalance::firstOrCreate(
+                    [
+                        'storage_location_id' => $storageLocation->id,
+                        'ingredient_id' => $item->ingredient_id,
+                    ],
+                    ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
+                );
+
+                $balance->increment('on_order_qty', $item->quantity);
+            }
+        });
 
         return redirect()->back()->with('success', 'Purchase Order approved successfully.');
     }
@@ -213,6 +244,12 @@ class PurchaseOrderController extends Controller
 
     public function update(\App\Http\Requests\UpdatePurchaseOrderRequest $request, PurchaseOrder $purchaseOrder)
     {
+        $this->authorize('update', $purchaseOrder);
+        
+        if (!in_array($purchaseOrder->status, ['draft', 'pending_approval'])) {
+            abort(403, 'Only draft or pending purchase orders can be updated.');
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $purchaseOrder) {
             $data = $request->validated();
             $items = \Illuminate\Support\Arr::pull($data, 'items');
@@ -257,6 +294,12 @@ class PurchaseOrderController extends Controller
 
     public function destroy(PurchaseOrder $purchaseOrder)
     {
+        $this->authorize('delete', $purchaseOrder);
+        
+        if (!in_array($purchaseOrder->status, ['draft', 'pending_approval'])) {
+            abort(403, 'Only draft or pending purchase orders can be deleted.');
+        }
+
         $purchaseOrder->delete();
         return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order deleted.');
     }

@@ -93,9 +93,17 @@ final class BrandController extends Controller
         GateHelper::delete(EntityEnum::Brands);
 
         $brand = Brand::where('uuid', $uuid)->firstOrFail();
-        $brand->delete();
-
-        return redirect()->route('brands.index')
-            ->with('success', 'Brand deleted successfully.');
+        
+        try {
+            $brand->delete();
+            return redirect()->route('brands.index')
+                ->with('success', 'Brand deleted successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete this brand because it is used in existing ingredients or transactions.');
+            }
+            throw $e;
+        }
     }
 }

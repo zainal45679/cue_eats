@@ -106,9 +106,17 @@ final class IngredientCategoryController extends Controller
         GateHelper::delete(EntityEnum::IngredientCategories);
 
         $category = IngredientCategory::where('uuid', $uuid)->firstOrFail();
-        $category->delete();
-
-        return redirect()->route('ingredient-categories.index')
-            ->with('success', 'Category deleted successfully.');
+        
+        try {
+            $category->delete();
+            return redirect()->route('ingredient-categories.index')
+                ->with('success', 'Category deleted successfully.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ($e->getCode() === '23000') {
+                return redirect()->back()
+                    ->with('error', 'Cannot delete this category because it is used in existing ingredients or sub-categories.');
+            }
+            throw $e;
+        }
     }
 }

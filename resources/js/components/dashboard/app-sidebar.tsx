@@ -41,7 +41,7 @@ export function AppSidebar() {
     return true;
   });
   return (
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="inset" className="print:hidden">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -55,7 +55,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <AdvancedScrollArea
-        className="flex min-h-0 flex-1 flex-col gap-2"
+        className="flex min-h-0 flex-1 flex-col gap-1"
         withNavigation
       >
         <SidebarContent>

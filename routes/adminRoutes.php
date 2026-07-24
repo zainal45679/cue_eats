@@ -37,7 +37,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('units-of-measure/search', [UnitOfMeasureController::class, 'search'])->name('units-of-measure.search');
         Route::resource('units-of-measure', UnitOfMeasureController::class);
 
-        Route::resource('inventory-balances', InventoryBalanceController::class);
         Route::resource('approval-configurations', ApprovalConfigurationController::class);
     });
 
@@ -68,6 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Inventory Module
     Route::prefix('inventory')->group(function () {
         Route::get('ledger', [\App\Http\Controllers\Dashboard\InventoryLedgerController::class, 'index'])->name('ledger.index');
+        Route::get('live-stock', [InventoryBalanceController::class, 'index'])->name('live-stock.index');
     });
 
     // Purchasing
@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('internal-requests', \App\Http\Controllers\Dashboard\InternalRequestController::class);
 
         Route::post('stos/{stock_transfer_order}/dispatch', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'dispatchSto'])->name('stos.dispatch');
+        Route::post('stos/{stock_transfer_order}/reject', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'rejectSto'])->name('stos.reject');
         Route::get('stos', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'index'])->name('stos.index');
         Route::get('stos/{stock_transfer_order}', [\App\Http\Controllers\Dashboard\StockTransferOrderController::class, 'show'])->name('stos.show');
         

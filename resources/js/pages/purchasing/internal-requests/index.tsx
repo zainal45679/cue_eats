@@ -1,17 +1,108 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { XPage } from "@/components/x/page/XPage";
 import { XDataTable } from "@/components/x/table/XDataTable";
 import type { XDataTableColumn } from "@/components/x/table/XDataTableType";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Entity } from "@/lib/permissions";
 import { router, Link, usePage } from "@inertiajs/react";
+import { Store, Factory, FileText, CheckCircle, Clock } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
+import { Card, CardContent } from "@/components/shadcn/ui/card";
+import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
 
-export default function InternalRequestsIndex({ internalRequests }: { internalRequests: any }) {
+export default function InternalRequestsIndex({ internalRequests, locations }: { internalRequests: any, locations: any[] }) {
     const { auth } = usePage<any>().props;
+    const [activeTab, setActiveTab] = useState("all");
+
+    // Filter logic for quick tabs
+    const filteredRequests = useMemo(() => {
+        if (activeTab === "all") return internalRequests;
+        
+        let newRows = internalRequests.rows || [];
+        if (activeTab === "incoming") {
+            newRows = newRows.filter((ir: any) => ir.to_location_id === auth.user.business_location_id);
+        } else if (activeTab === "outgoing") {
+            newRows = newRows.filter((ir: any) => ir.from_location_id === auth.user.business_location_id);
+        }
+        
+        return {
+            ...internalRequests,
+            rows: newRows
+        };
+    }, [internalRequests, activeTab, auth.user.business_location_id]);
+
+    // Dashboard metrics
+    const stats = useMemo(() => {
+        const rows = internalRequests.rows || [];
+        return {
+            pendingApprovals: rows.filter((ir: any) => ir.status === 'draft' || ir.status === 'pending_fulfillment').length,
+            convertedToSto: rows.filter((ir: any) => ir.status === 'converted_to_sto').length,
+            completed: rows.filter((ir: any) => ['fulfilled', 'received'].includes(ir.status)).length,
+        };
+    }, [internalRequests]);
+
+    const dateFilterValue = useMemo(() => {
+        const filters = internalRequests.filters || [];
+        const dateFilter = filters.find((f: any) => f.id === 'created_at');
+        if (dateFilter && dateFilter.value && Array.isArray(dateFilter.value)) {
+            const parseDate = (val: any) => {
+                if (!val) return undefined;
+                if (typeof val === 'string') {
+                    const [y, m, d] = val.split('-');
+                    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                }
+                return new Date(val); // fallback
+            };
+            return {
+                from: parseDate(dateFilter.value[0]),
+                to: parseDate(dateFilter.value[1])
+            };
+        }
+        return undefined;
+    }, [internalRequests.filters]);
+
+    const handleDateSelect = (date: any) => {
+        const queryParams = { ...Object.fromEntries(new URLSearchParams(window.location.search)) };
+        let filters = internalRequests.filters || [];
+        filters = filters.filter((f: any) => f.id !== 'created_at');
+        
+        if (date?.from || date?.to) {
+            const format = (d: Date) => {
+                const pad = (n: number) => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+            };
+            filters.push({
+                id: 'created_at',
+                value: [date.from ? format(date.from) : null, date.to ? format(date.to) : (date.from ? format(date.from) : null)]
+            });
+        }
+        
+        if (filters.length > 0) {
+            queryParams.filters = JSON.stringify(filters);
+        } else {
+            delete queryParams.filters;
+        }
+        queryParams.page = "1";
+        
+        router.get(window.location.pathname, queryParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const locationOptions = (locations || []).map(l => ({ label: l.location_name, value: l.location_name }));
+
+    const LocationIcon = ({ type }: { type: string }) => {
+        if (type?.toLowerCase().includes("warehouse")) return <Factory className="mr-2 size-4 text-blue-500 inline" />;
+        return <Store className="mr-2 size-4 text-emerald-500 inline" />;
+    };
+
     const columns: XDataTableColumn<any>[] = [
         {
             id: "request_number",
             header: "Request Number",
+            enableColumnFilter: true,
+            meta: { label: "Request Number", variant: "text" },
             cell: ({ row }: any) => (
                 <Link href={`/purchasing/internal-requests/${row.original.uuid}`} className="text-primary hover:underline font-medium">
                     {row.original.request_number}
@@ -21,16 +112,46 @@ export default function InternalRequestsIndex({ internalRequests }: { internalRe
         {
             id: "fromLocation",
             header: "From Location",
+            enableColumnFilter: true,
+            meta: { label: "From Location", variant: "select", options: locationOptions },
             accessorFn: (row: any) => row.from_location?.location_name || "-",
+            cell: ({ row }: any) => (
+                <div className="flex items-center font-medium">
+                    <LocationIcon type={row.original.from_location?.location_type} />
+                    {row.original.from_location?.location_name || "-"}
+                </div>
+            )
         },
         {
             id: "toLocation",
             header: "To Location",
+            enableColumnFilter: true,
+            meta: { label: "To Location", variant: "select", options: locationOptions },
             accessorFn: (row: any) => row.to_location?.location_name || "-",
+            cell: ({ row }: any) => (
+                <div className="flex items-center font-medium">
+                    <LocationIcon type={row.original.to_location?.location_type} />
+                    {row.original.to_location?.location_name || "-"}
+                </div>
+            )
         },
         {
             id: "status",
             header: "Status",
+            enableColumnFilter: true,
+            meta: {
+                label: "Status",
+                variant: "select",
+                options: [
+                    { label: "Draft", value: "draft" },
+                    { label: "Pending Fulfillment", value: "pending_fulfillment" },
+                    { label: "Approved", value: "approved" },
+                    { label: "Rejected", value: "rejected" },
+                    { label: "Fulfilled", value: "fulfilled" },
+                    { label: "Received", value: "received" },
+                    { label: "Converted to STO", value: "converted_to_sto" },
+                ],
+            },
             cell: ({ row }: any) => {
                 const status = row.original.status || "draft";
                 const colors: Record<string, string> = {
@@ -40,9 +161,10 @@ export default function InternalRequestsIndex({ internalRequests }: { internalRe
                     rejected: "bg-red-100 text-red-800",
                     fulfilled: "bg-amber-100 text-amber-800",
                     received: "bg-emerald-100 text-emerald-800",
+                    converted_to_sto: "bg-purple-100 text-purple-800",
                 };
                 return (
-                    <Badge variant="outline" className={colors[status] || "bg-gray-100"}>
+                    <Badge variant="outline" className={colors[status] || "bg-gray-100 text-gray-800"}>
                         {status.replace("_", " ").toUpperCase()}
                     </Badge>
                 );
@@ -57,10 +179,62 @@ export default function InternalRequestsIndex({ internalRequests }: { internalRe
 
     return (
         <XPage title="Indents (Internal Requests)">
+            
+            {/* Dashboard Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200/50 shadow-sm transition-all hover:shadow-md">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-medium text-yellow-800 mb-1">Pending Processing</p>
+                            <h3 className="text-2xl font-bold text-yellow-900">{stats.pendingApprovals}</h3>
+                        </div>
+                        <div className="p-3 bg-yellow-100/50 rounded-full text-yellow-600">
+                            <Clock className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200/50 shadow-sm transition-all hover:shadow-md">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-medium text-purple-800 mb-1">Converted to STO</p>
+                            <h3 className="text-2xl font-bold text-purple-900">{stats.convertedToSto}</h3>
+                        </div>
+                        <div className="p-3 bg-purple-100/50 rounded-full text-purple-600">
+                            <FileText className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200/50 shadow-sm transition-all hover:shadow-md">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-medium text-emerald-800 mb-1">Completed & Received</p>
+                            <h3 className="text-2xl font-bold text-emerald-900">{stats.completed}</h3>
+                        </div>
+                        <div className="p-3 bg-emerald-100/50 rounded-full text-emerald-600">
+                            <CheckCircle className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Quick Filter Tabs & Date Range */}
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                    <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
+                        <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Requests</TabsTrigger>
+                        <TabsTrigger value="incoming" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Incoming (To Me)</TabsTrigger>
+                        <TabsTrigger value="outgoing" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Outgoing (From Me)</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                <div className="shrink-0 w-full sm:w-auto flex justify-end">
+                    <XDateRangePicker value={dateFilterValue} onChange={handleDateSelect} />
+                </div>
+            </div>
+
             <XDataTable
                 title="Indents"
                 entity={Entity.InternalRequests}
-                data={internalRequests}
+                data={filteredRequests}
                 columns={columns}
                 actions={[
                     {
@@ -72,12 +246,12 @@ export default function InternalRequestsIndex({ internalRequests }: { internalRe
                     {
                         action: "edit",
                         url: (row) => `/purchasing/internal-requests/${row.uuid}/edit`,
-                        show: (row) => row.status === 'draft' && auth.permissions?.includes('update.internal-requests'),
+                        show: (row) => row.status === 'draft',
                     },
                     {
                         action: "delete",
                         url: (row) => `/purchasing/internal-requests/${row.uuid}`,
-                        show: (row) => row.status === 'draft' && auth.permissions?.includes('delete.internal-requests'),
+                        show: (row) => row.status === 'draft',
                     }
                 ]}
                 titleButtons={[
