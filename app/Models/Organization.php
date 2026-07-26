@@ -18,6 +18,7 @@ final class Organization extends Model
         'name',
         'code',
         'logo',
+        'theme_color',
         'status',
     ];
 

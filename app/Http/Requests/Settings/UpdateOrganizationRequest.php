@@ -27,6 +27,7 @@ final class UpdateOrganizationRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'code' => ['nullable', 'string', 'max:255'],
             'logo' => ['nullable', 'image', 'max:2048'], // 2MB Max
+            'theme_color' => ['nullable', 'string', 'max:50'],
             'status' => ['required', 'boolean'],
         ];
     }

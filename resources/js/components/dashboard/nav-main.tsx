@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
-import { ChevronRight, Package, Truck, ShoppingCart, Settings, Shield } from "lucide-react";
+import { ChevronRight, Package, Truck, ShoppingCart, Settings, Shield, ArrowRightLeft } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -42,8 +42,8 @@ function isItemActive(item: NavItem, currentUrl: string): boolean {
 const getGroupIcon = (groupName: string) => {
   switch (groupName) {
     case "Inventory Operations": return <Package className="h-5 w-5 text-primary" />;
-    case "Internal Transfers": return <Truck className="h-5 w-5 text-primary" />;
-    case "External Purchasing": return <ShoppingCart className="h-5 w-5 text-primary" />;
+    case "Internal Transfers": return <ArrowRightLeft className="h-5 w-5 text-primary" />;
+    case "External Purchasing": return <Truck className="h-5 w-5 text-primary" />;
     case "Setup & Config": return <Settings className="h-5 w-5 text-primary" />;
     case "Settings": return <Settings className="h-5 w-5 text-primary" />;
     default: return null;

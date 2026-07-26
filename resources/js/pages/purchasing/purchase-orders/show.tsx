@@ -179,58 +179,35 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <Building2 className="size-4" /> Supplier Details
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{purchaseOrder.supplier?.name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {purchaseOrder.supplier?.contact_name && <div>Contact: {purchaseOrder.supplier.contact_name}</div>}
-                                {purchaseOrder.supplier?.email && <div>Email: {purchaseOrder.supplier.email}</div>}
-                                {purchaseOrder.supplier?.phone && <div>Phone: {purchaseOrder.supplier.phone}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="flex flex-col md:flex-row justify-between gap-6 text-sm mb-8 bg-muted/20 border p-4 rounded-md">
+                    <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Supplier</div>
+                        <div className="font-semibold text-foreground text-base">{purchaseOrder.supplier?.name}</div>
+                        {purchaseOrder.supplier?.contact_name && <div className="text-muted-foreground">{purchaseOrder.supplier.contact_name}</div>}
+                        {purchaseOrder.supplier?.email && <div className="text-muted-foreground">{purchaseOrder.supplier.email}</div>}
+                        {purchaseOrder.supplier?.phone && <div className="text-muted-foreground">{purchaseOrder.supplier.phone}</div>}
+                    </div>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Delivery Location
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{purchaseOrder.delivery_location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {purchaseOrder.delivery_location?.address && <div>{purchaseOrder.delivery_location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Delivery Location</div>
+                        <div className="font-semibold text-foreground text-base">{purchaseOrder.delivery_location?.location_name}</div>
+                        {purchaseOrder.delivery_location?.address && <div className="text-muted-foreground">{purchaseOrder.delivery_location.address}</div>}
+                    </div>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <Calendar className="size-4" /> Order Dates
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Order Date:</span>
-                                <span className="font-medium">{new Date(purchaseOrder.created_at).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Expected Delivery:</span>
-                                <span className="font-medium">
-                                    {purchaseOrder.expected_delivery_date 
-                                        ? new Date(purchaseOrder.expected_delivery_date).toLocaleDateString()
-                                        : 'TBD'}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Order Info</div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                            <span className="text-muted-foreground">Date:</span>
+                            <span className="font-medium text-right">{new Date(purchaseOrder.created_at).toLocaleDateString()}</span>
+                            
+                            <span className="text-muted-foreground">Expected:</span>
+                            <span className="font-medium text-right">
+                                {purchaseOrder.expected_delivery_date 
+                                    ? new Date(purchaseOrder.expected_delivery_date).toLocaleDateString()
+                                    : 'TBD'}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 {purchaseOrder.notes && (

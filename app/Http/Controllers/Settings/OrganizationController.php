@@ -27,6 +27,8 @@ final class OrganizationController extends Controller
 
         if ($request->hasFile('logo')) {
             $validated['logo'] = $request->file('logo')->store('organization', 'public');
+        } else {
+            unset($validated['logo']);
         }
 
         $organization->update($validated);

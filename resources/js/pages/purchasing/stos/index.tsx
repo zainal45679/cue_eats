@@ -5,7 +5,7 @@ import type { XDataTableColumn } from "@/components/x/table/XDataTableType";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Link, usePage, router } from "@inertiajs/react";
 import { Entity } from "@/lib/permissions";
-import { Store, Factory, Truck, Package, PackageCheck, Clock, CheckCircle } from "lucide-react";
+import { Store, Factory, Truck, Package, PackageCheck, Clock, CheckCircle, FileText } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
@@ -38,9 +38,11 @@ export default function StockTransferOrdersIndex() {
     const stats = useMemo(() => {
         const rows = stos.rows || [];
         return {
+            total: rows.length,
             pendingDispatch: rows.filter((sto: any) => sto.status === 'pending_dispatch').length,
-            inTransit: rows.filter((sto: any) => sto.status === 'dispatched' || sto.status === 'partially_received').length,
-            received: rows.filter((sto: any) => sto.status === 'received').length,
+            inTransit: rows.filter((sto: any) => sto.status === 'dispatched').length,
+            partiallyReceived: rows.filter((sto: any) => sto.status === 'partially_received').length,
+            fullyReceived: rows.filter((sto: any) => sto.status === 'received').length,
         };
     }, [stos]);
 
@@ -173,37 +175,64 @@ export default function StockTransferOrdersIndex() {
         <XPage title="Dispatch Orders (STOs)">
             
             {/* Dashboard Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#64748b' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-yellow-800 mb-1">Pending Dispatch</p>
-                            <h3 className="text-2xl font-bold text-yellow-900">{stats.pendingDispatch}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Total Dispatches</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.total}</h3>
                         </div>
-                        <div className="p-3 bg-yellow-100/50 rounded-full text-yellow-600">
-                            <Clock className="size-5" />
+                        <div className="p-2 bg-slate-50 text-slate-600 rounded-md">
+                            <FileText className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f47a20' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-blue-800 mb-1">In Transit</p>
-                            <h3 className="text-2xl font-bold text-blue-900">{stats.inTransit}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Pending Dispatch</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.pendingDispatch}</h3>
                         </div>
-                        <div className="p-3 bg-blue-100/50 rounded-full text-blue-600">
-                            <Truck className="size-5" />
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-md">
+                            <Clock className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#2196f3' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-emerald-800 mb-1">Received</p>
-                            <h3 className="text-2xl font-bold text-emerald-900">{stats.received}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">In Transit</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.inTransit}</h3>
                         </div>
-                        <div className="p-3 bg-emerald-100/50 rounded-full text-emerald-600">
-                            <CheckCircle className="size-5" />
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-md">
+                            <Truck className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#9c27b0' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Partially Received</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.partiallyReceived}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-md">
+                            <Package className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#4caf50' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Fully Received</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.fullyReceived}</h3>
+                        </div>
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-md">
+                            <CheckCircle className="size-4" />
                         </div>
                     </CardContent>
                 </Card>

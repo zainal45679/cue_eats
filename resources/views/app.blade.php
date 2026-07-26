@@ -43,7 +43,7 @@
         }
     </style>
 
-    <title inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title inertia>{{ \App\Models\Organization::current()->name ?? config('app.name', 'Laravel') }}</title>
 
     <link
         rel="icon"

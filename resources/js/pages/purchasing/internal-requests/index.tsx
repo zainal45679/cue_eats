@@ -5,7 +5,7 @@ import type { XDataTableColumn } from "@/components/x/table/XDataTableType";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Entity } from "@/lib/permissions";
 import { router, Link, usePage } from "@inertiajs/react";
-import { Store, Factory, FileText, CheckCircle, Clock } from "lucide-react";
+import { Store, Factory, FileText, CheckCircle, Clock, Settings, Truck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
@@ -35,9 +35,11 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
     const stats = useMemo(() => {
         const rows = internalRequests.rows || [];
         return {
-            pendingApprovals: rows.filter((ir: any) => ir.status === 'draft' || ir.status === 'pending_fulfillment').length,
-            convertedToSto: rows.filter((ir: any) => ir.status === 'converted_to_sto').length,
-            completed: rows.filter((ir: any) => ['fulfilled', 'received'].includes(ir.status)).length,
+            total: rows.length,
+            pendingApproval: rows.filter((req: any) => req.status === 'pending_fulfillment' || req.status === 'draft').length,
+            processing: rows.filter((req: any) => req.status === 'approved').length,
+            inTransit: rows.filter((req: any) => req.status === 'converted_to_sto' || req.status === 'fulfilled').length,
+            completed: rows.filter((req: any) => req.status === 'received').length,
         };
     }, [internalRequests]);
 
@@ -181,37 +183,64 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
         <XPage title="Indents (Internal Requests)">
             
             {/* Dashboard Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#64748b' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-yellow-800 mb-1">Pending Processing</p>
-                            <h3 className="text-2xl font-bold text-yellow-900">{stats.pendingApprovals}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Total Requests</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.total}</h3>
                         </div>
-                        <div className="p-3 bg-yellow-100/50 rounded-full text-yellow-600">
-                            <Clock className="size-5" />
+                        <div className="p-2 bg-slate-50 text-slate-600 rounded-md">
+                            <FileText className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f47a20' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-purple-800 mb-1">Converted to STO</p>
-                            <h3 className="text-2xl font-bold text-purple-900">{stats.convertedToSto}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Pending Approval</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.pendingApproval}</h3>
                         </div>
-                        <div className="p-3 bg-purple-100/50 rounded-full text-purple-600">
-                            <FileText className="size-5" />
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-md">
+                            <Clock className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#2196f3' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-emerald-800 mb-1">Completed & Received</p>
-                            <h3 className="text-2xl font-bold text-emerald-900">{stats.completed}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Processing</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.processing}</h3>
                         </div>
-                        <div className="p-3 bg-emerald-100/50 rounded-full text-emerald-600">
-                            <CheckCircle className="size-5" />
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-md">
+                            <Settings className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#9c27b0' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">In Transit / STO</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.inTransit}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-md">
+                            <Truck className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#4caf50' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Completed & Received</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.completed}</h3>
+                        </div>
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-md">
+                            <CheckCircle className="size-4" />
                         </div>
                     </CardContent>
                 </Card>

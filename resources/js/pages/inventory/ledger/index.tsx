@@ -8,7 +8,7 @@ import { Entity } from "@/lib/permissions";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
-import { ArrowDownRight, ArrowUpRight, ArrowLeftRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ArrowLeftRight, Settings, Flame } from "lucide-react";
 
 export default function InventoryLedgerIndex() {
     const { props } = usePage<any>();
@@ -25,6 +25,8 @@ export default function InventoryLedgerIndex() {
             total: rows.length,
             inwards: rows.filter((l: any) => isPositive(l.transaction_type)).length,
             outwards: rows.filter((l: any) => isNegative(l.transaction_type)).length,
+            adjustments: rows.filter((l: any) => l.transaction_type === 'adjustment_up' || l.transaction_type === 'adjustment_down').length,
+            consumption: rows.filter((l: any) => l.transaction_type === 'consumption').length,
         };
     }, [ledgers]);
 
@@ -178,37 +180,65 @@ export default function InventoryLedgerIndex() {
 
     return (
         <XPage title="Inventory Ledger">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+            {/* Dashboard Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#2196f3' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-blue-800 mb-1">Total Movements</p>
-                            <h3 className="text-2xl font-bold text-blue-900">{stats.total}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Total Movements</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.total}</h3>
                         </div>
-                        <div className="p-3 bg-blue-100/50 rounded-full text-blue-600">
-                            <ArrowLeftRight className="size-5" />
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-md">
+                            <ArrowLeftRight className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#4caf50' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-emerald-800 mb-1">Inwards (+ Stock)</p>
-                            <h3 className="text-2xl font-bold text-emerald-900">{stats.inwards}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Inwards</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.inwards}</h3>
                         </div>
-                        <div className="p-3 bg-emerald-100/50 rounded-full text-emerald-600">
-                            <ArrowDownRight className="size-5" />
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-md">
+                            <ArrowDownRight className="size-4" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200/50 shadow-sm transition-all hover:shadow-md">
-                    <CardContent className="p-4 flex items-center justify-between">
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f44336' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-xs font-medium text-red-800 mb-1">Outwards (- Stock)</p>
-                            <h3 className="text-2xl font-bold text-red-900">{stats.outwards}</h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Outwards</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.outwards}</h3>
                         </div>
-                        <div className="p-3 bg-red-100/50 rounded-full text-red-600">
-                            <ArrowUpRight className="size-5" />
+                        <div className="p-2 bg-red-50 text-red-600 rounded-md">
+                            <ArrowUpRight className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f47a20' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Adjustments</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.adjustments}</h3>
+                        </div>
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-md">
+                            <Settings className="size-4" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#9c27b0' }} />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Consumption</p>
+                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.consumption}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-md">
+                            <Flame className="size-4" />
                         </div>
                     </CardContent>
                 </Card>

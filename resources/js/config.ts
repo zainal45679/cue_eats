@@ -62,15 +62,15 @@ export const AppSettings: AppConfig = {
     appName: "Laravel Starter Kit",
     display: {
       logo: true,
-      appName: false,
+      appName: true,
     },
     logo: {
-      className: "size-20 fill-current text-white",
+      className: "h-8 w-auto fill-current text-white",
     },
   },
   login: {
     logo: {
-      className: "size-10 fill-current text-white",
+      className: "h-10 w-auto fill-current text-white",
     },
   },
   defaultLogo: {
@@ -110,20 +110,20 @@ export const Configs: TConfigs = {
     {
       title: "Branch Requests",
       href: "/purchasing/internal-requests",
-      icon: ClipboardList,
+      icon: ArrowRightLeft,
       group: "Internal Transfers",
       permission: "internal-requests",
     },
     {
       title: "Dispatch Orders",
       href: "/purchasing/stos",
-      icon: Truck,
+      icon: Boxes,
       group: "Internal Transfers",
     },
     {
       title: "Purchase Orders",
       href: "/purchasing/purchase-orders",
-      icon: ShoppingCart,
+      icon: Truck,
       group: "External Purchasing",
       permission: "purchase-orders",
     },

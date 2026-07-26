@@ -1,5 +1,7 @@
 import type { SVGAttributes } from "react";
 import { AppSettings } from "@/config";
+import clsx from "clsx";
+import { usePage } from "@inertiajs/react";
 
 interface AppLogoIconProps extends SVGAttributes<SVGElement> {
   path?: string;
@@ -11,15 +13,18 @@ export default function AppLogoIcon({
 
   ...props
 }: AppLogoIconProps) {
-  if (path) {
-    return <img alt="App Logo" className={props.className} src={path} />;
+  const { organization } = usePage().props as any;
+  const logoPath = path || (organization?.logo ? `/storage/${organization.logo}` : null);
+
+  if (logoPath) {
+    return <img alt="App Logo" className={clsx(props.className, "object-contain")} src={logoPath} />;
   }
 
   if (AppSettings.defaultLogo?.path) {
     return (
       <img
         alt="App Logo"
-        className={props.className}
+        className={clsx(props.className, "object-contain")}
         src={AppSettings.defaultLogo.path}
       />
     );

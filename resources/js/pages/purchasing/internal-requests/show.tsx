@@ -150,34 +150,18 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Requesting Location (To)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{internalRequest.to_location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {internalRequest.to_location?.address && <div>{internalRequest.to_location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="flex flex-col md:flex-row justify-start gap-12 text-sm mb-8 bg-muted/20 border p-4 rounded-md">
+                    <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Requesting Location (To)</div>
+                        <div className="font-semibold text-foreground text-base">{internalRequest.to_location?.location_name}</div>
+                        {internalRequest.to_location?.address && <div className="text-muted-foreground">{internalRequest.to_location.address}</div>}
+                    </div>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Fulfilling Location (From)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{internalRequest.from_location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {internalRequest.from_location?.address && <div>{internalRequest.from_location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="space-y-1">
+                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Fulfilling Location (From)</div>
+                        <div className="font-semibold text-foreground text-base">{internalRequest.from_location?.location_name}</div>
+                        {internalRequest.from_location?.address && <div className="text-muted-foreground">{internalRequest.from_location.address}</div>}
+                    </div>
                 </div>
 
                 <div className="mb-8 mt-8">
