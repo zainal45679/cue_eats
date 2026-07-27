@@ -41,7 +41,7 @@ class GoodsReceiptNote extends Model
 
     public function receivedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'received_by_id');
+        return $this->belongsTo(User::class, 'received_by_id')->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->withTrashed();
     }
 
     public function items(): HasMany

@@ -13,7 +13,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorize('viewAny', PurchaseOrder::class);
         
-        $query = PurchaseOrder::with(['supplier', 'businessLocation', 'deliveryLocation']);
+        $query = PurchaseOrder::with(['supplier' => fn($q) => $q->withTrashed(), 'businessLocation', 'deliveryLocation', 'createdBy', 'grns.receivedBy']);
 
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -149,7 +149,7 @@ class PurchaseOrderController extends Controller
     {
         $this->authorize('view', $purchaseOrder);
         
-        $purchaseOrder->load(['items.ingredient', 'items.unitOfMeasure', 'supplier', 'deliveryLocation', 'businessLocation', 'approvals.approver']);
+        $purchaseOrder->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'supplier' => fn($q) => $q->withTrashed(), 'businessLocation', 'deliveryLocation', 'approvals.approver', 'createdBy']);
         
         return Inertia::render('purchasing/purchase-orders/show', [
             'purchaseOrder' => $purchaseOrder,
@@ -182,6 +182,10 @@ class PurchaseOrderController extends Controller
     {
         \Illuminate\Support\Facades\Log::info('Approve method hit for PO: ' . $purchaseOrder->uuid);
         $this->authorize('approve', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'draft' && $purchaseOrder->status !== 'pending_approval') {
+            abort(400, 'This Purchase Order cannot be approved in its current state.');
+        }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($purchaseOrder) {
             $purchaseOrder->update(['status' => 'approved']);
@@ -227,6 +231,10 @@ class PurchaseOrderController extends Controller
     public function reject(PurchaseOrder $purchaseOrder)
     {
         $this->authorize('reject', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'draft' && $purchaseOrder->status !== 'pending_approval') {
+            abort(400, 'This Purchase Order cannot be rejected in its current state.');
+        }
 
         $purchaseOrder->update(['status' => 'rejected']);
 

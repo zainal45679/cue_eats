@@ -20,7 +20,7 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
             <div className="hidden print:block w-full bg-white text-black font-sans print:p-10 print:pb-24 relative min-h-screen">
                 <div className="flex justify-between items-start mb-12">
                     <div>
-                        <h1 className="text-4xl font-light text-emerald-800 mb-6 uppercase tracking-wide">GOODS RECEIPT</h1>
+                        <h1 className="text-4xl font-light text-emerald-800 mb-6 uppercase tracking-wide">RECEIVED GOODS</h1>
                         <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm text-slate-600">
                             <span className="font-semibold text-slate-700">GRN No</span>
                             <span className="text-slate-900 font-medium">{grn.grn_number}</span>

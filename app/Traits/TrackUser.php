@@ -50,12 +50,12 @@ trait TrackUser
             ]);
         }
 
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->withTrashed();
     }
 
     public function updatedBy()
     {
-        if ($this->created_by === 0) {
+        if ($this->updated_by === 0) {
             return new User([
                 'id' => 0,
                 'name' => 'System',
@@ -63,6 +63,6 @@ trait TrackUser
             ]);
         }
 
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, 'updated_by')->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->withTrashed();
     }
 }

@@ -14,7 +14,7 @@ class StockTransferOrderController extends Controller
 {
     public function index()
     {
-        $query = StockTransferOrder::with(['fromLocation', 'toLocation']);
+        $query = StockTransferOrder::with(['fromLocation', 'toLocation', 'internalRequest.requestedBy', 'grns.receivedBy']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -38,7 +38,7 @@ class StockTransferOrderController extends Controller
 
     public function show(StockTransferOrder $stockTransferOrder)
     {
-        $stockTransferOrder->load(['items.ingredient', 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'createdBy', 'internalRequest']);
+        $stockTransferOrder->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'createdBy', 'internalRequest']);
         
         $canDispatch = auth()->user()->hasRole('admin') || (
             auth()->user()->hasPermissionTo('fulfill.internal-requests') && 

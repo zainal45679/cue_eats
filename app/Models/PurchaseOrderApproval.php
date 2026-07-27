@@ -28,6 +28,6 @@ class PurchaseOrderApproval extends Model
 
     public function approver()
     {
-        return $this->belongsTo(User::class, 'approver_id');
+        return $this->belongsTo(User::class, 'approver_id')->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->withTrashed();
     }
 }

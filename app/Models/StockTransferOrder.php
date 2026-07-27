@@ -48,4 +48,9 @@ class StockTransferOrder extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    public function grns(): HasMany
+    {
+        return $this->hasMany(GoodsReceiptNote::class, 'stock_transfer_order_id');
+    }
 }

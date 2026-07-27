@@ -5,7 +5,7 @@ import type { XDataTableColumn } from "@/components/x/table/XDataTableType";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Entity } from "@/lib/permissions";
 import { router, Link, usePage } from "@inertiajs/react";
-import { Store, Factory, FileText, CheckCircle, Clock, Settings, Truck } from "lucide-react";
+import { Store, Factory, FileText, CheckCircle, Clock, Settings, Truck, PackageCheck } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
@@ -177,70 +177,80 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
             header: "Requested By",
             accessorFn: (row: any) => row.requested_by?.name || "-",
         },
+        {
+            id: "receivedBy",
+            header: "Received By",
+            cell: ({ row }: any) => {
+                if (!row.original.sto || !row.original.sto.grns || row.original.sto.grns.length === 0) return "-";
+                // Get the latest GRN's receiver
+                const latestGrn = row.original.sto.grns[row.original.sto.grns.length - 1];
+                return latestGrn.received_by?.name || "-";
+            }
+        },
     ];
 
     return (
-        <XPage title="Indents (Internal Requests)">
+        <XPage title="Request Stock">
             
             {/* Dashboard Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#64748b' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Total Requests</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.total}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total IRs</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.total}</h3>
                         </div>
-                        <div className="p-2 bg-slate-50 text-slate-600 rounded-md">
-                            <FileText className="size-4" />
+                        <div className="p-2 bg-slate-500/10 text-slate-500 rounded-lg">
+                            <FileText className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f47a20' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Pending Approval</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.pendingApproval}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Draft / Pending</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.pendingApproval}</h3>
                         </div>
-                        <div className="p-2 bg-amber-50 text-amber-600 rounded-md">
-                            <Clock className="size-4" />
+                        <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                            <Clock className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#2196f3' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Processing</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.processing}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Approved</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.processing}</h3>
                         </div>
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-md">
-                            <Settings className="size-4" />
+                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                            <CheckCircle className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#9c27b0' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">In Transit / STO</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.inTransit}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">In Transit</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.inTransit}</h3>
                         </div>
-                        <div className="p-2 bg-purple-50 text-purple-600 rounded-md">
-                            <Truck className="size-4" />
+                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                            <Truck className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#4caf50' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Completed & Received</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.completed}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Fulfilled</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.completed}</h3>
                         </div>
-                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-md">
-                            <CheckCircle className="size-4" />
+                        <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                            <PackageCheck className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -261,7 +271,7 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
             </div>
 
             <XDataTable
-                title="Indents"
+                title="Request Stock"
                 entity={Entity.InternalRequests}
                 data={filteredRequests}
                 columns={columns}

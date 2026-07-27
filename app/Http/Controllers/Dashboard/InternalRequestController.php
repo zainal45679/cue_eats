@@ -13,14 +13,22 @@ class InternalRequestController extends Controller
     {
         $this->authorize('viewAny', InternalRequest::class);
         
-        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy']);
+        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy', 'sto.grns.receivedBy']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
             $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
             $query->where(function($q) use ($locationId) {
-                $q->where('from_location_id', $locationId)
-                  ->orWhere('to_location_id', $locationId);
+                // Requesting branch sees everything they requested
+                $q->where('to_location_id', $locationId)
+                  // Fulfilling branch sees it only if it has reached them (not draft and not rejected before STO)
+                  ->orWhere(function($subQ) use ($locationId) {
+                      $subQ->where('from_location_id', $locationId)
+                           ->where(function($q2) {
+                               $q2->whereNotIn('status', ['draft', 'rejected'])
+                                  ->orWhereHas('sto');
+                           });
+                  });
             });
         }
         
@@ -62,23 +70,23 @@ class InternalRequestController extends Controller
             $data['request_number'] = 'REQ-' . time(); // Simple generator
             $data['status'] = 'draft'; // Always save as draft initially
 
-            $ir = InternalRequest::create($data);
+        $ir = InternalRequest::create($data);
 
-            foreach ($items as $item) {
-                $ingredient = \App\Models\Ingredient::find($item['ingredient_id']);
-                $item['uom_id'] = $ingredient->base_uom_id;
-                $ir->items()->create($item);
-            }
-        });
+        foreach ($items as $item) {
+            $ingredient = \App\Models\Ingredient::find($item['ingredient_id']);
+            $item['uom_id'] = $ingredient->base_uom_id;
+            $ir->items()->create($item);
+        }
+    });
 
-        return redirect()->route('internal-requests.index')->with('success', 'Internal Request created.');
+    return redirect()->route('internal-requests.index')->with('success', 'Internal Request created.');
     }
 
     public function show(InternalRequest $internalRequest)
     {
         $this->authorize('view', $internalRequest);
         
-        $internalRequest->load(['items.ingredient', 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'requestedBy']);
+        $internalRequest->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'requestedBy']);
         
         return Inertia::render('purchasing/internal-requests/show', [
             'internalRequest' => $internalRequest,
@@ -103,6 +111,11 @@ class InternalRequestController extends Controller
     public function update(\App\Http\Requests\UpdateInternalRequestRequest $request, InternalRequest $internalRequest)
     {
         $this->authorize('update', $internalRequest);
+        
+        if (!in_array($internalRequest->status, ['draft', 'pending_approval'])) {
+            abort(403, 'Only draft or pending internal requests can be updated.');
+        }
+
         \Illuminate\Support\Facades\DB::transaction(function () use ($request, $internalRequest) {
             $data = $request->validated();
             $items = \Illuminate\Support\Arr::pull($data, 'items');
@@ -127,6 +140,11 @@ class InternalRequestController extends Controller
     public function destroy(InternalRequest $internalRequest)
     {
         $this->authorize('delete', $internalRequest);
+        
+        if (!in_array($internalRequest->status, ['draft', 'pending_approval'])) {
+            abort(403, 'Only draft or pending internal requests can be deleted.');
+        }
+
         $internalRequest->items()->forceDelete();
         $internalRequest->forceDelete();
         return redirect()->route('internal-requests.index')->with('success', 'Internal Request deleted.');
@@ -136,6 +154,10 @@ class InternalRequestController extends Controller
     {
         $this->authorize('approve', $internalRequest);
         
+        if ($internalRequest->status !== 'draft') {
+            abort(400, 'This Internal Request cannot be approved in its current state.');
+        }
+
         $insufficientItems = [];
         \Illuminate\Support\Facades\DB::transaction(function () use ($internalRequest, &$insufficientItems) {
             // First check if all items have enough stock
@@ -223,6 +245,9 @@ class InternalRequestController extends Controller
     public function reject(InternalRequest $internalRequest)
     {
         $this->authorize('reject', $internalRequest);
+        if ($internalRequest->status !== 'draft') {
+            abort(400, 'This Internal Request cannot be rejected in its current state.');
+        }
         $internalRequest->update(['status' => 'rejected']);
         return redirect()->back()->with('success', 'Indent rejected.');
     }

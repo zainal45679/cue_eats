@@ -46,7 +46,7 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
             <div className="hidden print:block w-full bg-white text-black font-sans print:p-10 print:pb-24 relative min-h-screen">
                 <div className="flex justify-between items-start mb-12">
                     <div>
-                        <h1 className="text-4xl font-light text-blue-800 mb-6 uppercase tracking-wide">INTERNAL REQUEST</h1>
+                        <h1 className="text-4xl font-light text-blue-800 mb-6 uppercase tracking-wide">REQUEST STOCK</h1>
                         <div className="grid grid-cols-[100px_1fr] gap-y-2 text-sm text-slate-600">
                             <span className="font-semibold text-slate-700">Request No</span>
                             <span className="text-slate-900 font-medium">{internalRequest.request_number}</span>

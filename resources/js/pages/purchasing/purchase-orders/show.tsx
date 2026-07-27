@@ -206,6 +206,9 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                                     ? new Date(purchaseOrder.expected_delivery_date).toLocaleDateString()
                                     : 'TBD'}
                             </span>
+
+                            <span className="text-muted-foreground">Requested By:</span>
+                            <span className="font-medium text-right">{purchaseOrder.created_by?.name || '-'}</span>
                         </div>
                     </div>
                 </div>

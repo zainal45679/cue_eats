@@ -68,4 +68,14 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(BusinessLocation::class, 'delivery_location_id');
     }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScope(\App\Models\Scopes\TenantScope::class)->withTrashed();
+    }
+
+    public function grns()
+    {
+        return $this->hasMany(GoodsReceiptNote::class, 'purchase_order_id');
+    }
 }

@@ -50,7 +50,7 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (confirm("Submit Goods Receipt Note? This will update your location's inventory.")) {
+        if (confirm("Submit Received Goods? This will update your location's inventory.")) {
             router.post("/purchasing/grns", {
                 ...(isPO ? { po_id: document.id } : { sto_id: document.id }),
                 remarks,

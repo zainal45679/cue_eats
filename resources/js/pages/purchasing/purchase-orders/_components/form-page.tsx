@@ -219,7 +219,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                 const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
 
                                                 const availableIngredients = globalCategoryId && Number(globalCategoryId) > 0
-                                                    ? ingredients.filter((i: any) => String(i.category_id) === String(globalCategoryId))
+                                                    ? ingredients.filter((i: any) => String(i.ingredient_category_id) === String(globalCategoryId))
                                                     : ingredients;
 
                                                 const availableSuppliers = currentIngredientId && Number(currentIngredientId) > 0

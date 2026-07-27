@@ -102,20 +102,20 @@ export const Configs: TConfigs = {
       group: "Inventory Operations",
     },
     {
-      title: "Receive Goods (GRN)",
+      title: "Received Goods",
       href: "/purchasing/grns",
       icon: PackageCheck,
       group: "Inventory Operations",
     },
     {
-      title: "Branch Requests",
+      title: "Request Stock",
       href: "/purchasing/internal-requests",
       icon: ArrowRightLeft,
       group: "Internal Transfers",
       permission: "internal-requests",
     },
     {
-      title: "Dispatch Orders",
+      title: "Dispatch Stock",
       href: "/purchasing/stos",
       icon: Boxes,
       group: "Internal Transfers",

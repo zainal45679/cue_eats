@@ -53,6 +53,11 @@ class InternalRequest extends Model
 
     public function requestedBy()
     {
-        return $this->belongsTo(User::class, 'requested_by_id');
+        return $this->belongsTo(User::class, 'requested_by_id')->withoutGlobalScope(TenantScope::class)->withTrashed();
+    }
+
+    public function sto()
+    {
+        return $this->hasOne(StockTransferOrder::class, 'internal_request_id');
     }
 }

@@ -32,6 +32,7 @@ final class UserFactory extends Factory
             'password' => self::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'status' => 1, // Default to active
+            'business_location_id' => \App\Models\BusinessLocation::factory(),
         ];
     }
 

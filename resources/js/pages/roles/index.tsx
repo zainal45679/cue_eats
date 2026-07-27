@@ -139,7 +139,9 @@ export default function RolesPermissionsManager() {
             <Card key={role.id}>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{role.name}</CardTitle>
+                  <CardTitle className="text-lg capitalize">
+                    {role.name.replace(/[-_]/g, " ")}
+                  </CardTitle>
                   <div className="flex space-x-1">
                     {ability.can(Action.Update, Entity.Roles) && (
                       <Button
@@ -183,8 +185,8 @@ export default function RolesPermissionsManager() {
                     ]
                       .slice(0, 3)
                       .map((label, index) => (
-                        <Badge className="text-xs" key={index} variant="outline">
-                          {label}
+                        <Badge className="text-xs capitalize" key={index} variant="outline">
+                          {label.replace(/[-_]/g, " ")}
                         </Badge>
                       ))}
 

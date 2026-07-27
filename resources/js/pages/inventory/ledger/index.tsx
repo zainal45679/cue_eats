@@ -182,63 +182,63 @@ export default function InventoryLedgerIndex() {
         <XPage title="Inventory Ledger">
             {/* Dashboard Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#2196f3' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Total Movements</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.total}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Entries</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.total}</h3>
                         </div>
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-md">
-                            <ArrowLeftRight className="size-4" />
+                        <div className="p-2 bg-slate-500/10 text-slate-500 rounded-lg">
+                            <ArrowLeftRight className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#4caf50' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Inwards</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.inwards}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Inwards</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.inwards}</h3>
                         </div>
-                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-md">
-                            <ArrowDownRight className="size-4" />
+                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
+                            <ArrowDownRight className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f44336' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Outwards</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.outwards}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Outwards</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.outwards}</h3>
                         </div>
-                        <div className="p-2 bg-red-50 text-red-600 rounded-md">
-                            <ArrowUpRight className="size-4" />
+                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                            <ArrowUpRight className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#f47a20' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Adjustments</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.adjustments}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Adjustments</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.adjustments}</h3>
                         </div>
-                        <div className="p-2 bg-amber-50 text-amber-600 rounded-md">
-                            <Settings className="size-4" />
+                        <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                            <Settings className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-lg shadow-sm border border-slate-200 bg-white relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: '#9c27b0' }} />
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1">Consumption</p>
-                            <h3 className="text-xl font-black text-slate-800 leading-none">{stats.consumption}</h3>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Consumption</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.consumption}</h3>
                         </div>
-                        <div className="p-2 bg-purple-50 text-purple-600 rounded-md">
-                            <Flame className="size-4" />
+                        <div className="p-2 bg-red-500/10 text-red-500 rounded-lg">
+                            <Flame className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

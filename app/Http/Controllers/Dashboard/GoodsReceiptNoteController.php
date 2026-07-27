@@ -15,7 +15,7 @@ class GoodsReceiptNoteController extends Controller
 {
     public function index()
     {
-        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder', 'purchaseOrder']);
+        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder.internalRequest.requestedBy', 'purchaseOrder.createdBy']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -88,6 +88,12 @@ class GoodsReceiptNoteController extends Controller
             'items.*.uom_id' => 'required|exists:units_of_measure,id',
         ]);
         
+        foreach ($data['items'] as $item) {
+            if (($item['received_quantity'] + $item['rejected_quantity']) > $item['expected_quantity']) {
+                abort(422, 'Total processed quantity cannot exceed expected quantity.');
+            }
+        }
+
         if (!empty($data['po_id'])) {
             return $this->storePoGrn($data);
         }
@@ -108,13 +114,14 @@ class GoodsReceiptNoteController extends Controller
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        if (!in_array($sto->status, ['dispatched', 'partially_received'])) {
-            abort(403, 'STO must be dispatched before receiving.');
-        }
-
         DB::transaction(function () use ($data, $sto) {
+            $stoLocked = StockTransferOrder::where('id', $sto->id)->lockForUpdate()->first();
+            if (!in_array($stoLocked->status, ['dispatched', 'partially_received'])) {
+                abort(403, 'STO must be dispatched before receiving.');
+            }
+
             $grn = GoodsReceiptNote::create([
-                'stock_transfer_order_id' => $sto->id,
+                'stock_transfer_order_id' => $stoLocked->id,
                 'grn_number' => 'GRN-' . time(),
                 'location_id' => $sto->to_location_id,
                 'received_by_id' => auth()->id(),
@@ -159,7 +166,7 @@ class GoodsReceiptNoteController extends Controller
                     $balance->increment('available_qty', $itemData['received_quantity']);
 
                     InventoryLedger::create([
-                        'business_location_id' => $sto->to_location_id,
+                        'business_location_id' => $stoLocked->to_location_id,
                         'ingredient_id' => $itemData['ingredient_id'],
                         'transaction_type' => 'transfer_in',
                         'reference_type' => GoodsReceiptNote::class,
@@ -174,19 +181,19 @@ class GoodsReceiptNoteController extends Controller
             }
 
             if ($allRejected && !$allReceived) {
-                $sto->update(['status' => 'cancelled']);
+                $stoLocked->update(['status' => 'cancelled']);
             } elseif (!$allReceived && !$allRejected) {
-                $sto->update(['status' => 'partially_received']);
+                $stoLocked->update(['status' => 'partially_received']);
             } else {
-                $sto->update(['status' => 'received']);
+                $stoLocked->update(['status' => 'received']);
             }
             
-            if ($sto->internalRequest) {
-                $sto->internalRequest->update(['status' => 'received']);
+            if ($stoLocked->internalRequest) {
+                $stoLocked->internalRequest->update(['status' => 'received']);
             }
         });
 
-        return redirect()->route('grns.index')->with('success', 'Goods Receipt Note created successfully.');
+        return redirect()->route('grns.index')->with('success', 'Received Goods recorded successfully.');
     }
 
     private function storePoGrn($data)
@@ -198,13 +205,14 @@ class GoodsReceiptNoteController extends Controller
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        if (!in_array($po->status, ['approved', 'partially_received'])) {
-            abort(403, 'PO must be approved before receiving.');
-        }
-
         DB::transaction(function () use ($data, $po) {
+            $poLocked = \App\Models\PurchaseOrder::where('id', $po->id)->lockForUpdate()->first();
+            if (!in_array($poLocked->status, ['approved', 'partially_received'])) {
+                abort(403, 'PO must be approved before receiving.');
+            }
+
             $grn = GoodsReceiptNote::create([
-                'purchase_order_id' => $po->id,
+                'purchase_order_id' => $poLocked->id,
                 'grn_number' => 'GRN-' . time(),
                 'location_id' => $po->delivery_location_id,
                 'received_by_id' => auth()->id(),
@@ -224,7 +232,7 @@ class GoodsReceiptNoteController extends Controller
                 ]);
 
                 // Update PO Item received quantity
-                $poItem = $po->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
+                $poItem = $poLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
                 if ($poItem) {
                     $poItem->increment('received_quantity', $itemData['received_quantity']);
                     
@@ -234,7 +242,7 @@ class GoodsReceiptNoteController extends Controller
                     
                     // Update supplier price tracking
                     $supplierIngredient = \App\Models\IngredientSupplier::where('ingredient_id', $itemData['ingredient_id'])
-                        ->where('supplier_id', $po->supplier_id)
+                        ->where('supplier_id', $poLocked->supplier_id)
                         ->first();
                     
                     if ($supplierIngredient) {
@@ -262,16 +270,19 @@ class GoodsReceiptNoteController extends Controller
                         ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
                     );
                     
-                    // Deduct from on-order qty
+                    // Deduct from on-order qty safely
                     $processedQty = $itemData['received_quantity'] + $itemData['rejected_quantity'];
-                    $balance->decrement('on_order_qty', $processedQty);
+                    $decrementAmount = min($balance->on_order_qty, $processedQty);
+                    if ($decrementAmount > 0) {
+                        $balance->decrement('on_order_qty', $decrementAmount);
+                    }
 
                     // Add to available qty if received
                     if ($itemData['received_quantity'] > 0) {
                         $balance->increment('available_qty', $itemData['received_quantity']);
 
                         InventoryLedger::create([
-                            'business_location_id' => $po->delivery_location_id,
+                            'business_location_id' => $poLocked->delivery_location_id,
                             'ingredient_id' => $itemData['ingredient_id'],
                             'transaction_type' => 'purchase',
                             'reference_type' => GoodsReceiptNote::class,
@@ -285,9 +296,9 @@ class GoodsReceiptNoteController extends Controller
             }
 
             if ($allItemsFullyReceived) {
-                $po->update(['status' => 'received']);
+                $poLocked->update(['status' => 'received']);
             } else {
-                $po->update(['status' => 'partially_received']);
+                $poLocked->update(['status' => 'partially_received']);
             }
         });
 
@@ -296,7 +307,7 @@ class GoodsReceiptNoteController extends Controller
 
     public function show(GoodsReceiptNote $goodsReceiptNote)
     {
-        $goodsReceiptNote->load(['items.ingredient', 'items.unitOfMeasure', 'location', 'receivedBy', 'stockTransferOrder.fromLocation', 'purchaseOrder.supplier']);
+        $goodsReceiptNote->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'location', 'receivedBy', 'stockTransferOrder.fromLocation', 'purchaseOrder.supplier' => fn($q) => $q->withTrashed()]);
         
         return Inertia::render('purchasing/grns/show', [
             'grn' => $goodsReceiptNote,
