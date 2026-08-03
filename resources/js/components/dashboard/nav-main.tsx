@@ -31,7 +31,19 @@ function groupBy<T>(arr: T[], key: keyof T) {
 function isItemActive(item: NavItem, currentUrl: string): boolean {
   if (item.href) {
     const href = typeof item.href === "object" ? (item.href as any).url : item.href;
-    if (href && typeof href === "string" && currentUrl.startsWith(href)) return true;
+    if (href && typeof href === "string") {
+      if (currentUrl === href) return true;
+      if (currentUrl.startsWith(href + '/')) return true;
+      if (currentUrl.startsWith(href + '&')) return true;
+      
+      if (currentUrl.startsWith(href + '?')) {
+        // Prevent base menus from being active when viewing specific 'type' tabs
+        if (currentUrl.includes('type=') && !href.includes('type=')) {
+            return false;
+        }
+        return true;
+      }
+    }
   }
   if (item.children) {
     return item.children.some((child) => isItemActive(child, currentUrl));

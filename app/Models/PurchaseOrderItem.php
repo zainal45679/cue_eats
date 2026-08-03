@@ -14,6 +14,7 @@ class PurchaseOrderItem extends Model
         'ingredient_id',
         'quantity',
         'received_quantity',
+        'rejected_quantity',
         'purchase_uom_id',
         'unit_price',
         'tax_amount',

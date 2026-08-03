@@ -15,6 +15,8 @@ class StockTransferOrderItem extends Model
         'ingredient_id',
         'approved_quantity',
         'dispatched_quantity',
+        'received_quantity',
+        'rejected_quantity',
         'uom_id',
     ];
 

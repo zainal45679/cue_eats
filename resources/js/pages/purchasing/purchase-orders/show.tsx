@@ -2,21 +2,38 @@ import { XPage } from "@/components/x/page/XPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/ui/card";
 import { Button } from "@/components/shadcn/ui/button";
 import { Badge } from "@/components/shadcn/ui/badge";
-import { router } from "@inertiajs/react";
+import { router, Link, usePage } from "@inertiajs/react";
 import { Building2, Calendar, MapPin, Truck, CheckCircle2, XCircle, FileText, Printer, ShieldCheck, Mail, Phone, Clock, Users, Package } from "lucide-react";
-import { Link } from "@inertiajs/react";
+import { toast } from "sonner";
 
-export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder: any, canApprove: boolean }) {
+export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purchaseOrder: any, canApprove: boolean, workflow: string }) {
+    const hasRemainingItems = purchaseOrder.items?.some((item: any) => {
+        const expected = Number(item.quantity) || 0;
+        const received = Number(item.received_quantity) || 0;
+        const rejected = Number(item.rejected_quantity) || 0;
+        return expected - received - rejected > 0;
+    });
+
     const handleApprove = () => {
-        if (confirm("Are you sure you want to approve this Purchase Order?")) {
-            router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/approve`);
-        }
+        toast("Confirm Approval", {
+            description: "Are you sure you want to approve this purchase order?",
+            action: {
+                label: "Approve",
+                onClick: () => router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/approve`),
+            },
+            cancel: { label: "Cancel", onClick: () => {} }
+        });
     };
 
     const handleReject = () => {
-        if (confirm("Are you sure you want to reject this Purchase Order?")) {
-            router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/reject`);
-        }
+        toast("Confirm Reject", {
+            description: "Are you sure you want to reject this purchase order?",
+            action: {
+                label: "Reject",
+                onClick: () => router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/reject`),
+            },
+            cancel: { label: "Cancel", onClick: () => {} }
+        });
     };
 
     const getStatusBadge = (status: string) => {
@@ -101,6 +118,7 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                                 <th className="py-3 px-4 font-semibold text-center">UOM</th>
                                 <th className="py-3 px-4 font-semibold text-right">Ordered Qty</th>
                                 <th className="py-3 px-4 font-semibold text-right">Received Qty</th>
+                                <th className="py-3 px-4 font-semibold text-right">Rejected Qty</th>
                                 <th className="py-3 px-4 font-semibold text-right">Unit Price</th>
                                 <th className="py-3 px-4 font-semibold text-right">Subtotal</th>
                             </tr>
@@ -111,7 +129,8 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                                     <td className="py-3 px-4 text-slate-900">{item.ingredient?.name}</td>
                                     <td className="py-3 px-4 text-slate-600 text-center">{item.unit_of_measure?.name || '-'}</td>
                                     <td className="py-3 px-4 text-slate-900 text-right">{Number(item.quantity).toFixed(2)}</td>
-                                    <td className="py-3 px-4 text-slate-900 text-right">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                    <td className="py-3 px-4 text-emerald-700 font-semibold text-right">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                    <td className="py-3 px-4 text-red-600 font-semibold text-right">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
                                     <td className="py-3 px-4 text-slate-600 text-right">${Number(item.unit_price).toFixed(2)}</td>
                                     <td className="py-3 px-4 text-slate-900 font-medium text-right">
                                         ${(Number(item.quantity) * Number(item.unit_price)).toFixed(2)}
@@ -152,13 +171,13 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                             <Printer className="mr-2 size-4" /> Print
                         </Button>
                         
-                        {purchaseOrder.status === 'draft' && (
+                        {workflow !== 'incoming' && purchaseOrder.status === 'draft' && (
                             <Link href={`/purchasing/purchase-orders/${purchaseOrder.uuid}/edit`}>
                                 <Button variant="outline">Edit Order</Button>
                             </Link>
                         )}
                         
-                        {(purchaseOrder.status === 'approved' || purchaseOrder.status === 'partially_received') && (
+                        {workflow === 'incoming' && (purchaseOrder.status === 'approved' || purchaseOrder.status === 'partially_received') && hasRemainingItems && (
                             <Link href={`/purchasing/grns/create?po_id=${purchaseOrder.id}`}>
                                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
                                     <CheckCircle2 className="mr-2 size-4" /> Receive Items
@@ -166,7 +185,7 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                             </Link>
                         )}
                         
-                        {canApprove && purchaseOrder.status === 'draft' && (
+                        {workflow !== 'incoming' && canApprove && purchaseOrder.status === 'draft' && (
                             <>
                                 <Button variant="destructive" onClick={handleReject}>
                                     <XCircle className="mr-2 size-4" /> Reject
@@ -235,6 +254,7 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                                     <th className="h-10 px-4 text-left font-medium">Ingredient</th>
                                     <th className="h-10 px-4 text-right font-medium">Ordered Qty</th>
                                     <th className="h-10 px-4 text-right font-medium text-emerald-600">Received Qty</th>
+                                    <th className="h-10 px-4 text-right font-medium text-red-600">Rejected Qty</th>
                                     <th className="h-10 px-4 text-left font-medium">UOM</th>
                                     <th className="h-10 px-4 text-right font-medium">Unit Price</th>
                                     <th className="h-10 px-4 text-right font-medium">Subtotal</th>
@@ -245,7 +265,8 @@ export default function ShowPage({ purchaseOrder, canApprove }: { purchaseOrder:
                                     <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors">
                                         <td className="p-4 font-medium">{item.ingredient?.name}</td>
                                         <td className="p-4 text-right">{Number(item.quantity).toFixed(2)}</td>
-                                        <td className="p-4 text-right text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                        <td className="p-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                        <td className="p-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
                                         <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
                                         <td className="p-4 text-right">${Number(item.unit_price).toFixed(2)}</td>
                                         <td className="p-4 text-right font-medium">

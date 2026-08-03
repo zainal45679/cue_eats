@@ -137,14 +137,32 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         )}
 
                         {canApprove && internalRequest.status === 'draft' && (
-                            <Button onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700">
-                                <CheckCircle2 className="mr-2 size-4" /> Approve & Generate STO
+                            <Button onClick={() => {
+                                if (confirm("Submit this Indent request?")) {
+                                    router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
+                                }
+                            }} className="bg-emerald-600 hover:bg-emerald-700">
+                                <CheckCircle2 className="mr-2 size-4" /> Submit Indent
                             </Button>
+                        )}
+
+                        {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/fulfill`}>
+                                <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                    <CheckCircle2 className="mr-2 size-4" /> Fulfill Request
+                                </Button>
+                            </Link>
                         )}
 
                         {canApprove && internalRequest.status === 'draft' && (
                             <Button variant="destructive" onClick={handleReject}>
-                                <XCircle className="mr-2 size-4" /> Reject
+                                <XCircle className="mr-2 size-4" /> Reject Indent
+                            </Button>
+                        )}
+
+                        {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                            <Button variant="destructive" onClick={handleReject}>
+                                <XCircle className="mr-2 size-4" /> Reject Remaining Request
                             </Button>
                         )}
                     </div>
@@ -171,22 +189,90 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                             <thead className="bg-muted/50 text-muted-foreground">
                                 <tr>
                                     <th className="h-10 px-4 text-left font-medium">Ingredient</th>
-                                    <th className="h-10 px-4 text-right font-medium">Requested Qty</th>
+                                    <th className="h-10 px-4 text-center font-medium">Requested</th>
+                                    <th className="h-10 px-4 text-center font-medium text-emerald-600">Dispatched</th>
+                                    <th className="h-10 px-4 text-center font-medium text-red-600">Rejected</th>
+                                    <th className="h-10 px-4 text-center font-medium text-blue-600">Remaining</th>
                                     <th className="h-10 px-4 text-left font-medium">UOM</th>
+                                    <th className="h-10 px-4 text-right font-medium">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {internalRequest.items?.map((item: any) => (
                                     <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors">
                                         <td className="p-4 font-medium">{item.ingredient?.name}</td>
-                                        <td className="p-4 text-right font-semibold">{Number(item.quantity).toFixed(2)}</td>
+                                        <td className="p-4 text-center">{Number(item.quantity).toFixed(2)}</td>
+                                        <td className="p-4 text-center text-emerald-600 font-semibold">{Number(item.dispatched_quantity).toFixed(2)}</td>
+                                        <td className="p-4 text-center text-red-600 font-semibold">{Number(item.rejected_quantity).toFixed(2)}</td>
+                                        <td className="p-4 text-center text-blue-600 font-semibold">{Number(item.remaining_quantity).toFixed(2)}</td>
                                         <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
+                                        <td className="p-4 text-right">
+                                            <Badge variant={
+                                                item.fulfillment_status === 'Fulfilled' ? 'success' :
+                                                item.fulfillment_status === 'Pending Fulfillment' ? 'warning' :
+                                                item.fulfillment_status === 'Rejected' ? 'destructive' :
+                                                item.fulfillment_status === 'Partially Sent' ? 'secondary' :
+                                                'secondary'
+                                            }>
+                                                {item.fulfillment_status}
+                                            </Badge>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                {internalRequest.stos && internalRequest.stos.length > 0 && (
+                    <div className="mb-8 mt-8">
+                        <h3 className="text-lg font-semibold mb-4">Fulfillment History</h3>
+                        <div className="space-y-4">
+                            {internalRequest.stos.map((sto: any) => (
+                                <div key={sto.id} className="rounded-md border bg-card p-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div>
+                                            <span className="font-semibold text-base">{sto.sto_number}</span>
+                                            <span className="ml-4 text-sm text-muted-foreground">
+                                                Created on {new Date(sto.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <Badge variant={
+                                            sto.status === 'received' ? 'success' :
+                                            sto.status === 'partially_received' ? 'warning' :
+                                            sto.status === 'dispatched' ? 'default' :
+                                            'secondary'
+                                        }>
+                                            {sto.status.replace('_', ' ').toUpperCase()}
+                                        </Badge>
+                                    </div>
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-muted/30 text-muted-foreground">
+                                            <tr>
+                                                <th className="h-8 px-4 text-left font-medium">Ingredient</th>
+                                                <th className="h-8 px-4 text-right font-medium">Approved Qty</th>
+                                                <th className="h-8 px-4 text-right font-medium">Dispatched Qty</th>
+                                                <th className="h-8 px-4 text-right font-medium">Received Qty</th>
+                                                <th className="h-8 px-4 text-right font-medium">Rejected Qty</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {sto.items?.map((item: any) => (
+                                                <tr key={item.id} className="border-t hover:bg-muted/10 transition-colors">
+                                                    <td className="p-2 px-4">{item.ingredient?.name}</td>
+                                                    <td className="p-2 px-4 text-right font-semibold text-blue-600">{Number(item.approved_quantity || 0).toFixed(2)}</td>
+                                                    <td className="p-2 px-4 text-right font-semibold text-emerald-600">{Number(item.dispatched_quantity || 0).toFixed(2)}</td>
+                                                    <td className="p-2 px-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                                    <td className="p-2 px-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </XPage>
     );

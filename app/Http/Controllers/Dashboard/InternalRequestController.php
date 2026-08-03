@@ -13,23 +13,12 @@ class InternalRequestController extends Controller
     {
         $this->authorize('viewAny', InternalRequest::class);
         
-        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy', 'sto.grns.receivedBy']);
+        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy', 'updatedBy', 'stos.grns.receivedBy']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
             $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
-            $query->where(function($q) use ($locationId) {
-                // Requesting branch sees everything they requested
-                $q->where('to_location_id', $locationId)
-                  // Fulfilling branch sees it only if it has reached them (not draft and not rejected before STO)
-                  ->orWhere(function($subQ) use ($locationId) {
-                      $subQ->where('from_location_id', $locationId)
-                           ->where(function($q2) {
-                               $q2->whereNotIn('status', ['draft', 'rejected'])
-                                  ->orWhereHas('sto');
-                           });
-                  });
-            });
+            $query->where('to_location_id', $locationId);
         }
         
         $query->latest();
@@ -86,10 +75,13 @@ class InternalRequestController extends Controller
     {
         $this->authorize('view', $internalRequest);
         
-        $internalRequest->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'requestedBy']);
+        $internalRequest->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'fromLocation', 'toLocation', 'requestedBy', 'stos.items.ingredient' => fn($q) => $q->withTrashed()]);
         
         return Inertia::render('purchasing/internal-requests/show', [
             'internalRequest' => $internalRequest,
+            'locations' => \App\Models\BusinessLocation::all(),
+            'ingredients' => \App\Models\Ingredient::with(['category', 'baseUom'])->get(),
+            'categories' => \App\Models\IngredientCategory::all(),
             'canApprove' => auth()->user()->can('approve', $internalRequest),
             'canFulfill' => auth()->user()->can('fulfill', $internalRequest),
         ]);
@@ -158,58 +150,103 @@ class InternalRequestController extends Controller
             abort(400, 'This Internal Request cannot be approved in its current state.');
         }
 
-        $insufficientItems = [];
-        \Illuminate\Support\Facades\DB::transaction(function () use ($internalRequest, &$insufficientItems) {
-            // First check if all items have enough stock
-            foreach ($internalRequest->items as $item) {
-                $storageLocation = \App\Models\StorageLocation::firstOrCreate(
-                    [
-                        'business_location_id' => $internalRequest->from_location_id,
-                        'storage_name' => 'Main Store',
-                    ],
-                    [
-                        'storage_type' => 'Store',
-                        'status' => 1,
-                    ]
-                );
+        $internalRequest->update(['status' => 'pending_fulfillment']);
 
-                $balance = \App\Models\InventoryBalance::firstOrCreate(
-                    [
-                        'storage_location_id' => $storageLocation->id,
+        return redirect()->route('internal-requests.index')->with('success', 'Indent approved. Waiting for fulfillment by sender.');
+    }
+
+    public function fulfill(InternalRequest $internalRequest)
+    {
+        $this->authorize('fulfill', $internalRequest);
+        
+        if (!in_array($internalRequest->status, ['draft', 'pending_fulfillment', 'partially_fulfilled'])) {
+            abort(400, 'This Internal Request cannot be fulfilled in its current state.');
+        }
+        $internalRequest->load([
+            'items.ingredient', 
+            'items.unitOfMeasure', 
+            'fromLocation', 
+            'toLocation', 
+            'requestedBy',
+            'stos.items.ingredient' => fn($q) => $q->withTrashed()
+        ]);
+
+        // Load live stock for the sending location
+        foreach ($internalRequest->items as $item) {
+            $balance = \App\Models\InventoryBalance::whereHas('storageLocation', function($q) use ($internalRequest) {
+                $q->where('business_location_id', $internalRequest->from_location_id);
+            })->where('ingredient_id', $item->ingredient_id)->sum('available_qty');
+            
+            $item->live_stock = $balance;
+        }
+
+        return Inertia::render('purchasing/internal-requests/fulfill', [
+            'internalRequest' => $internalRequest,
+        ]);
+    }
+
+    public function storeFulfill(\Illuminate\Http\Request $request, InternalRequest $internalRequest)
+    {
+        $this->authorize('fulfill', $internalRequest);
+        
+        if (!in_array($internalRequest->status, ['draft', 'pending_fulfillment', 'partially_fulfilled'])) {
+            abort(400, 'This Internal Request cannot be fulfilled in its current state.');
+        }
+
+        $data = $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'required|exists:internal_request_items,id',
+            'items.*.dispatch_quantity' => 'required|numeric|min:0',
+            'items.*.reject_quantity' => 'required|numeric|min:0',
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($internalRequest, $data) {
+            $hasDispatchedAnything = false;
+            $allItemsProcessed = true;
+            
+            $dispatchedItems = [];
+
+            foreach ($data['items'] as $itemData) {
+                $item = $internalRequest->items()->find($itemData['id']);
+                
+                $remainingBefore = $item->quantity - $item->dispatched_quantity - $item->rejected_quantity;
+                $dispatchQty = $itemData['dispatch_quantity'];
+                $rejectQty = $itemData['reject_quantity'];
+                
+                if (round($dispatchQty + $rejectQty, 2) > round($remainingBefore, 2)) {
+                    abort(422, "Cannot process more than requested for {$item->ingredient->name}. (Pending: {$remainingBefore}, You entered Dispatch: {$dispatchQty}, Reject: {$rejectQty})");
+                }
+
+                $item->increment('dispatched_quantity', $dispatchQty);
+                $item->increment('rejected_quantity', $rejectQty);
+                
+                if ($dispatchQty > 0) {
+                    $hasDispatchedAnything = true;
+                    $dispatchedItems[] = [
                         'ingredient_id' => $item->ingredient_id,
-                    ],
-                    ['available_qty' => 0, 'reserved_qty' => 0]
-                );
+                        'approved_quantity' => $dispatchQty, 
+                        'dispatched_quantity' => $dispatchQty, 
+                        'uom_id' => $item->uom_id,
+                    ];
+                }
 
-                if ($balance->available_qty < $item->quantity) {
-                    $ingredientName = \App\Models\Ingredient::find($item->ingredient_id)->name ?? 'Unknown Item';
-                    $insufficientItems[] = "{$ingredientName} (Requested: {$item->quantity}, Available: {$balance->available_qty})";
+                $remainingAfter = $remainingBefore - $dispatchQty - $rejectQty;
+                if ($remainingAfter > 0) {
+                    $allItemsProcessed = false;
                 }
             }
-            
-            if (count($insufficientItems) > 0) {
-                return; // Rollback transaction via early exit (technically DB::transaction will commit what was done before, but we didn't write anything yet)
-            }
 
-            $internalRequest->update(['status' => 'converted_to_sto']);
-            $sto = \App\Models\StockTransferOrder::create([
-                'internal_request_id' => $internalRequest->id,
-                'sto_number' => 'STO-' . time(),
-                'from_location_id' => $internalRequest->from_location_id,
-                'to_location_id' => $internalRequest->to_location_id,
-                'status' => 'pending_dispatch',
-                'created_by' => auth()->id(),
-            ]);
-
-            foreach ($internalRequest->items as $item) {
-                $sto->items()->create([
-                    'ingredient_id' => $item->ingredient_id,
-                    'approved_quantity' => $item->quantity,
-                    'dispatched_quantity' => 0,
-                    'uom_id' => $item->uom_id,
+            if ($hasDispatchedAnything) {
+                $sto = \App\Models\StockTransferOrder::create([
+                    'internal_request_id' => $internalRequest->id,
+                    'sto_number' => 'STO-' . time(),
+                    'from_location_id' => $internalRequest->from_location_id,
+                    'to_location_id' => $internalRequest->to_location_id,
+                    'status' => 'dispatched',
+                    'dispatched_at' => now(),
+                    'created_by' => auth()->id(),
                 ]);
 
-                // Reserve the inventory
                 $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                     [
                         'business_location_id' => $internalRequest->from_location_id,
@@ -221,34 +258,90 @@ class InternalRequestController extends Controller
                     ]
                 );
 
-                $balance = \App\Models\InventoryBalance::firstOrCreate(
-                    [
-                        'storage_location_id' => $storageLocation->id,
-                        'ingredient_id' => $item->ingredient_id,
-                    ],
-                    ['available_qty' => 0, 'reserved_qty' => 0]
-                );
+                foreach ($dispatchedItems as $dItem) {
+                    $stoItem = $sto->items()->create($dItem);
+                    
+                    $balance = \App\Models\InventoryBalance::firstOrCreate(
+                        [
+                            'storage_location_id' => $storageLocation->id,
+                            'ingredient_id' => $dItem['ingredient_id'],
+                        ],
+                        ['available_qty' => 0, 'reserved_qty' => 0]
+                    );
+                    
+                    $balance->decrement('available_qty', $dItem['dispatched_quantity']);
 
-                $balance->decrement('available_qty', $item->quantity);
-                $balance->increment('reserved_qty', $item->quantity);
+                    \App\Models\InventoryLedger::create([
+                        'business_location_id' => $internalRequest->from_location_id,
+                        'ingredient_id' => $dItem['ingredient_id'],
+                        'transaction_type' => 'transfer_out',
+                        'reference_type' => \App\Models\StockTransferOrder::class,
+                        'reference_id' => $sto->id,
+                        'quantity' => -$dItem['dispatched_quantity'],
+                        'running_balance' => $balance->fresh()->available_qty,
+                        'created_by' => auth()->id(),
+                    ]);
+                }
+            }
+
+            if ($allItemsProcessed) {
+                $internalRequest->update(['status' => 'fulfilled']);
+                $message = "Your request {$internalRequest->request_number} has been fully completed.";
+                $type = 'success';
+            } else {
+                $internalRequest->update(['status' => 'partially_fulfilled']);
+                if ($hasDispatchedAnything) {
+                    $stoCount = \App\Models\StockTransferOrder::where('internal_request_id', $internalRequest->id)->count();
+                    $message = $stoCount > 1 
+                        ? "An additional shipment for {$internalRequest->request_number} has been dispatched."
+                        : "Your request {$internalRequest->request_number} has been partially fulfilled.";
+                    $type = 'info';
+                } else {
+                    $message = "Some remaining quantities for {$internalRequest->request_number} have been rejected.";
+                    $type = 'warning';
+                }
+            }
+
+            if ($internalRequest->requestedBy && isset($message)) {
+                $internalRequest->requestedBy->notify(new \App\Notifications\InternalRequestUpdatedNotification($internalRequest, $message, $type));
             }
         });
 
-        if (count($insufficientItems) > 0) {
-            $outletName = $internalRequest->fromLocation->location_name ?? 'this outlet';
-            return redirect()->back()->with('error', "Stock not available in {$outletName} for: " . implode(', ', $insufficientItems));
-        }
-
-        return redirect()->route('internal-requests.index')->with('success', 'Indent approved and STO generated.');
+        return redirect()->route('internal-requests.index')->with('success', 'Fulfillment recorded successfully.');
     }
 
     public function reject(InternalRequest $internalRequest)
     {
         $this->authorize('reject', $internalRequest);
-        if ($internalRequest->status !== 'draft') {
+        if (!in_array($internalRequest->status, ['draft', 'pending_fulfillment', 'partially_fulfilled'])) {
             abort(400, 'This Internal Request cannot be rejected in its current state.');
         }
-        $internalRequest->update(['status' => 'rejected']);
-        return redirect()->back()->with('success', 'Indent rejected.');
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($internalRequest) {
+            $hasDispatchedAnything = false;
+
+            foreach ($internalRequest->items as $item) {
+                if ($item->dispatched_quantity > 0) {
+                    $hasDispatchedAnything = true;
+                }
+                
+                $remaining = max(0, $item->quantity - $item->dispatched_quantity - $item->rejected_quantity);
+                if ($remaining > 0) {
+                    $item->increment('rejected_quantity', $remaining);
+                }
+            }
+
+            $internalRequest->update([
+                'status' => $hasDispatchedAnything ? 'partially_rejected' : 'rejected',
+                'updated_by' => auth()->id()
+            ]);
+
+            if ($internalRequest->requestedBy) {
+                $message = "The remaining quantities for {$internalRequest->request_number} have been rejected.";
+                $internalRequest->requestedBy->notify(new \App\Notifications\InternalRequestUpdatedNotification($internalRequest, $message, 'warning'));
+            }
+        });
+
+        return redirect()->back()->with('success', 'Remaining request rejected.');
     }
 }

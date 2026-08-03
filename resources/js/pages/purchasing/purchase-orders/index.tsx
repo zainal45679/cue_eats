@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
 import { Clock, FileText, CheckCircle, Package } from "lucide-react";
 
-export default function PurchaseOrdersIndex({ purchaseOrders }: { purchaseOrders: any }) {
+export default function PurchaseOrdersIndex({ purchaseOrders, type }: { purchaseOrders: any, type?: string }) {
     const [activeTab, setActiveTab] = useState("all");
 
     const stats = useMemo(() => {
@@ -90,7 +90,7 @@ export default function PurchaseOrdersIndex({ purchaseOrders }: { purchaseOrders
             enableColumnFilter: true,
             meta: { label: "PO Number", variant: "text" },
             cell: ({ row }: any) => (
-                <Link href={`/purchasing/purchase-orders/${row.original.uuid}`} className="text-primary hover:underline font-medium">
+                <Link href={`/purchasing/purchase-orders/${row.original.uuid}?workflow=${type || 'manage'}`} className="text-primary hover:underline font-medium">
                     {row.original.po_number}
                 </Link>
             ),
@@ -125,11 +125,21 @@ export default function PurchaseOrdersIndex({ purchaseOrders }: { purchaseOrders
                 const status = row.original.status || "draft";
                 const colors: Record<string, string> = {
                     draft: "bg-gray-100 text-gray-800",
+                    submitted: "bg-blue-100 text-blue-800",
                     pending_approval: "bg-yellow-100 text-yellow-800",
-                    approved: "bg-green-100 text-green-800",
-                    rejected: "bg-red-100 text-red-800",
+                    pending_fulfillment: "bg-yellow-100 text-yellow-800",
+                    pending_dispatch: "bg-yellow-100 text-yellow-800",
+                    approved: "bg-blue-100 text-blue-800",
+                    dispatched: "bg-blue-100 text-blue-800",
                     partially_received: "bg-amber-100 text-amber-800",
+                    partially_fulfilled: "bg-amber-100 text-amber-800",
                     received: "bg-emerald-100 text-emerald-800",
+                    fully_received: "bg-emerald-100 text-emerald-800",
+                    fulfilled: "bg-emerald-100 text-emerald-800",
+                    completed: "bg-emerald-100 text-emerald-800",
+                    rejected: "bg-red-100 text-red-800",
+                    cancelled: "bg-red-100 text-red-800",
+                    converted_to_sto: "bg-purple-100 text-purple-800",
                 };
                 return (
                     <Badge variant="outline" className={colors[status] || "bg-gray-100 text-gray-800"}>
@@ -161,7 +171,7 @@ export default function PurchaseOrdersIndex({ purchaseOrders }: { purchaseOrders
     ];
 
     return (
-        <XPage title="Purchase Orders">
+        <XPage title={type === 'incoming' ? 'Receive External Stock' : 'Purchase Orders'} className="p-6 max-w-7xl mx-auto">
             {/* Dashboard Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
@@ -228,29 +238,36 @@ export default function PurchaseOrdersIndex({ purchaseOrders }: { purchaseOrders
 
             {/* Quick Filter Tabs & Date Range */}
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-                    <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
-                        <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Orders</TabsTrigger>
-                        <TabsTrigger value="pending" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Pending Approval</TabsTrigger>
-                        <TabsTrigger value="received" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Received</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                {!type && (
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
+                            <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Orders</TabsTrigger>
+                            <TabsTrigger value="pending" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Pending Approval</TabsTrigger>
+                            <TabsTrigger value="received" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Received</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                )}
+                {type && <div className="w-full sm:w-auto" />}
                 <div className="shrink-0 w-full sm:w-auto flex justify-end">
                     <XDateRangePicker value={dateFilterValue} onChange={handleDateSelect} />
                 </div>
             </div>
 
             <XDataTable
-                title="Purchase Orders"
+                title={type === 'incoming' ? 'Receive External Stock' : 'Purchase Orders'}
                 entity={Entity.PurchaseOrders}
                 data={processedData}
                 columns={columns}
                 actions={[
                     {
-                        name: "View",
+                        name: type === 'incoming' ? "Receive Items" : "View",
                         action: "custom",
-                        icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
-                        url: (row) => `/purchasing/purchase-orders/${row.uuid}`,
+                        icon: type === 'incoming' ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-package-plus"><path d="M16 16h6"/><path d="M19 13v6"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-eye"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        ),
+                        url: (row) => `/purchasing/purchase-orders/${row.uuid}?workflow=${type || 'manage'}`,
                     },
                     {
                         action: "edit",

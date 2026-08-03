@@ -73,6 +73,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Purchasing
     Route::prefix('purchasing')->group(function () {
         Route::post('internal-requests/{internal_request}/approve', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'approve'])->name('internal-requests.approve');
+        Route::get('internal-requests/{internal_request}/fulfill', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'fulfill'])->name('internal-requests.fulfill');
+        Route::post('internal-requests/{internal_request}/fulfill', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'storeFulfill'])->name('internal-requests.store-fulfill');
         Route::post('internal-requests/{internal_request}/reject', [\App\Http\Controllers\Dashboard\InternalRequestController::class, 'reject'])->name('internal-requests.reject');
         Route::resource('internal-requests', \App\Http\Controllers\Dashboard\InternalRequestController::class);
 

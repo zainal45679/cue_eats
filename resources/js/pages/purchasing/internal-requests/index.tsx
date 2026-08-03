@@ -14,22 +14,10 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
     const { auth } = usePage<any>().props;
     const [activeTab, setActiveTab] = useState("all");
 
-    // Filter logic for quick tabs
+    // No tabs needed anymore since we only show requests raised by the user
     const filteredRequests = useMemo(() => {
-        if (activeTab === "all") return internalRequests;
-        
-        let newRows = internalRequests.rows || [];
-        if (activeTab === "incoming") {
-            newRows = newRows.filter((ir: any) => ir.to_location_id === auth.user.business_location_id);
-        } else if (activeTab === "outgoing") {
-            newRows = newRows.filter((ir: any) => ir.from_location_id === auth.user.business_location_id);
-        }
-        
-        return {
-            ...internalRequests,
-            rows: newRows
-        };
-    }, [internalRequests, activeTab, auth.user.business_location_id]);
+        return internalRequests;
+    }, [internalRequests]);
 
     // Dashboard metrics
     const stats = useMemo(() => {
@@ -149,6 +137,7 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
                     { label: "Pending Fulfillment", value: "pending_fulfillment" },
                     { label: "Approved", value: "approved" },
                     { label: "Rejected", value: "rejected" },
+                    { label: "Partially Fulfilled", value: "partially_fulfilled" },
                     { label: "Fulfilled", value: "fulfilled" },
                     { label: "Received", value: "received" },
                     { label: "Converted to STO", value: "converted_to_sto" },
@@ -158,16 +147,27 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
                 const status = row.original.status || "draft";
                 const colors: Record<string, string> = {
                     draft: "bg-gray-100 text-gray-800",
+                    submitted: "bg-blue-100 text-blue-800",
+                    pending_approval: "bg-yellow-100 text-yellow-800",
                     pending_fulfillment: "bg-yellow-100 text-yellow-800",
+                    pending_dispatch: "bg-yellow-100 text-yellow-800",
                     approved: "bg-blue-100 text-blue-800",
-                    rejected: "bg-red-100 text-red-800",
-                    fulfilled: "bg-amber-100 text-amber-800",
+                    dispatched: "bg-blue-100 text-blue-800",
+                    partially_received: "bg-amber-100 text-amber-800",
+                    partially_fulfilled: "bg-amber-100 text-amber-800",
                     received: "bg-emerald-100 text-emerald-800",
+                    fully_received: "bg-emerald-100 text-emerald-800",
+                    fulfilled: "bg-emerald-100 text-emerald-800",
+                    completed: "bg-emerald-100 text-emerald-800",
+                    rejected: "bg-red-100 text-red-800",
+                    cancelled: "bg-red-100 text-red-800",
                     converted_to_sto: "bg-purple-100 text-purple-800",
                 };
                 return (
                     <Badge variant="outline" className={colors[status] || "bg-gray-100 text-gray-800"}>
-                        {status.replace("_", " ").toUpperCase()}
+                        {status === 'partially_rejected' ? 'PARTIALLY SENT' : 
+                         status === 'partially_fulfilled' ? 'PENDING FULFILLMENT' : 
+                         status.replace("_", " ").toUpperCase()}
                     </Badge>
                 );
             },
@@ -179,12 +179,25 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
         },
         {
             id: "receivedBy",
-            header: "Received By",
+            header: "Rec / Rej By",
             cell: ({ row }: any) => {
-                if (!row.original.sto || !row.original.sto.grns || row.original.sto.grns.length === 0) return "-";
-                // Get the latest GRN's receiver
-                const latestGrn = row.original.sto.grns[row.original.sto.grns.length - 1];
-                return latestGrn.received_by?.name || "-";
+                if (row.original.status === 'rejected') {
+                    return row.original.updated_by?.name || "-";
+                }
+                if (!row.original.stos || row.original.stos.length === 0) return "-";
+                
+                // Find latest GRN across all STOs
+                let latestGrn: any = null;
+                for (const sto of row.original.stos) {
+                    if (sto.grns && sto.grns.length > 0) {
+                        const grn = sto.grns[sto.grns.length - 1];
+                        if (!latestGrn || new Date(grn.created_at) > new Date(latestGrn.created_at)) {
+                            latestGrn = grn;
+                        }
+                    }
+                }
+                
+                return latestGrn?.received_by?.name || "-";
             }
         },
     ];
@@ -256,15 +269,8 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
                 </Card>
             </div>
 
-            {/* Quick Filter Tabs & Date Range */}
-            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-                    <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
-                        <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Requests</TabsTrigger>
-                        <TabsTrigger value="incoming" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Incoming (To Me)</TabsTrigger>
-                        <TabsTrigger value="outgoing" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Outgoing (From Me)</TabsTrigger>
-                    </TabsList>
-                </Tabs>
+            {/* Date Range */}
+            <div className="mb-6 flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
                 <div className="shrink-0 w-full sm:w-auto flex justify-end">
                     <XDateRangePicker value={dateFilterValue} onChange={handleDateSelect} />
                 </div>

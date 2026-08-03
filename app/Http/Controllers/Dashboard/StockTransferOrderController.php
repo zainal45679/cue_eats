@@ -14,18 +14,36 @@ class StockTransferOrderController extends Controller
 {
     public function index()
     {
-        $query = StockTransferOrder::with(['fromLocation', 'toLocation', 'internalRequest.requestedBy', 'grns.receivedBy']);
+        $query = StockTransferOrder::with(['fromLocation', 'toLocation', 'internalRequest.requestedBy', 'internalRequest.updatedBy', 'grns.receivedBy']);
         
         $activeLocationId = session('active_location_id');
+        $locationId = null;
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
             $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
-            $query->where(function($q) use ($locationId) {
-                $q->where('from_location_id', $locationId)
-                  ->orWhere('to_location_id', $locationId);
-            });
+            
+            $type = request('type');
+            if ($type === 'incoming') {
+                $query->where('to_location_id', $locationId)
+                      ->whereIn('status', ['dispatched', 'partially_received']);
+            } elseif ($type === 'outgoing') {
+                $query->where('from_location_id', $locationId);
+            } else {
+                $query->where(function($q) use ($locationId) {
+                    $q->where('from_location_id', $locationId)
+                      ->orWhere('to_location_id', $locationId);
+                });
+            }
         }
         
         $query->latest();
+        
+        // Fetch pending internal requests for this location to show them on the STO page
+        $pendingRequestsQuery = \App\Models\InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy'])
+            ->whereIn('status', ['pending_fulfillment', 'partially_fulfilled']);
+            
+        if ($locationId) {
+            $pendingRequestsQuery->where('from_location_id', $locationId);
+        }
             
         return Inertia::render('purchasing/stos/index', [
             'stos' => \App\Helpers\TableHelper::query($query)
@@ -33,6 +51,8 @@ class StockTransferOrderController extends Controller
                 ->transform(fn ($sto): array => $sto->toArray())
                 ->get(),
             'locations' => \App\Models\BusinessLocation::all(),
+            'pendingRequests' => $pendingRequestsQuery->latest()->get(),
+            'type' => request('type'),
         ]);
     }
 
@@ -53,6 +73,7 @@ class StockTransferOrderController extends Controller
             'sto' => $stockTransferOrder,
             'canDispatch' => $canDispatch,
             'canReceive' => $canReceive,
+            'workflow' => request('workflow', 'manage'),
         ]);
     }
 
@@ -71,7 +92,7 @@ class StockTransferOrderController extends Controller
             return redirect()->back()->with('error', 'STO is not in pending_dispatch state.');
         }
 
-        // Validate reserved stock availability before dispatching
+        // Validate actual stock availability before dispatching
         $insufficientItems = [];
         foreach ($stockTransferOrder->items as $item) {
             $storageLocation = \App\Models\StorageLocation::firstOrCreate(
@@ -89,14 +110,14 @@ class StockTransferOrderController extends Controller
                 ->where('ingredient_id', $item->ingredient_id)
                 ->first();
 
-            $reserved = $balance ? $balance->reserved_qty : 0;
-            if ($reserved < $item->approved_quantity) {
-                $insufficientItems[] = "{$item->ingredient->name} (Required: {$item->approved_quantity}, Reserved: {$reserved})";
+            $available = $balance ? $balance->available_qty : 0;
+            if ($available < $item->approved_quantity) {
+                $insufficientItems[] = "{$item->ingredient->name} (Required: {$item->approved_quantity}, Available: {$available})";
             }
         }
 
         if (count($insufficientItems) > 0) {
-            return redirect()->back()->with('error', 'Insufficient reserved stock to dispatch: ' . implode(', ', $insufficientItems));
+            return redirect()->back()->with('error', 'Insufficient stock to dispatch: ' . implode(', ', $insufficientItems));
         }
 
         DB::transaction(function () use ($stockTransferOrder) {
@@ -128,7 +149,7 @@ class StockTransferOrderController extends Controller
                     ]
                 );
 
-                // 1. Deduct from InventoryBalance reserved_qty
+                // 1. Deduct from InventoryBalance available_qty (we didn't reserve it earlier)
                 $balance = InventoryBalance::firstOrCreate(
                     [
                         'storage_location_id' => $storageLocation->id,
@@ -137,7 +158,7 @@ class StockTransferOrderController extends Controller
                     ['available_qty' => 0, 'reserved_qty' => 0]
                 );
                 
-                $balance->decrement('reserved_qty', $item->dispatched_quantity);
+                $balance->decrement('available_qty', $item->dispatched_quantity);
 
                 // 2. Insert into InventoryLedger (transfer_out)
                 InventoryLedger::create([
@@ -177,35 +198,14 @@ class StockTransferOrderController extends Controller
             ]);
             
             if ($stockTransferOrder->internal_request_id) {
-                $stockTransferOrder->internalRequest->update(['status' => 'rejected']);
+                $stockTransferOrder->internalRequest->update([
+                    'status' => 'rejected',
+                    'updated_by' => auth()->id()
+                ]);
             }
 
-            // Release reserved stock back to available stock
-            foreach ($stockTransferOrder->items as $item) {
-                $storageLocation = \App\Models\StorageLocation::firstOrCreate(
-                    [
-                        'business_location_id' => $stockTransferOrder->from_location_id,
-                        'storage_name' => 'Main Store',
-                    ],
-                    [
-                        'storage_type' => 'Store',
-                        'status' => 1,
-                    ]
-                );
-
-                $balance = InventoryBalance::firstOrCreate(
-                    [
-                        'storage_location_id' => $storageLocation->id,
-                        'ingredient_id' => $item->ingredient_id,
-                    ],
-                    ['available_qty' => 0, 'reserved_qty' => 0]
-                );
-                
-                $balance->increment('available_qty', $item->approved_quantity);
-                $balance->decrement('reserved_qty', $item->approved_quantity);
-            }
         });
 
-        return redirect()->back()->with('success', 'STO has been rejected and reserved stock released.');
+        return redirect()->back()->with('success', 'STO has been rejected.');
     }
 }

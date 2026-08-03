@@ -13,8 +13,40 @@ class InternalRequestItem extends Model
         'internal_request_id',
         'ingredient_id',
         'quantity',
+        'dispatched_quantity',
+        'rejected_quantity',
         'uom_id',
     ];
+
+    protected $appends = ['remaining_quantity', 'fulfillment_status'];
+
+    public function getRemainingQuantityAttribute()
+    {
+        return max(0, $this->quantity - $this->dispatched_quantity - $this->rejected_quantity);
+    }
+
+    public function getFulfillmentStatusAttribute()
+    {
+        if ($this->dispatched_quantity == 0 && $this->rejected_quantity == 0) {
+            return 'Pending';
+        }
+        
+        $remaining = $this->remaining_quantity;
+
+        if ($remaining > 0) {
+            return 'Pending Fulfillment';
+        }
+
+        if ($this->dispatched_quantity == 0 && $this->rejected_quantity > 0) {
+            return 'Rejected';
+        }
+
+        if ($this->rejected_quantity > 0) {
+            return 'Partially Sent';
+        }
+
+        return 'Fulfilled';
+    }
 
     public function internalRequest()
     {

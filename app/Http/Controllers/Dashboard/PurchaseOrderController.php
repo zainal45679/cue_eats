@@ -21,6 +21,11 @@ class PurchaseOrderController extends Controller
             $query->where('business_location_id', $locationId);
         }
 
+        $type = request('type');
+        if ($type === 'incoming') {
+            $query->whereIn('status', ['approved', 'partially_received']);
+        }
+
         $query->latest();
 
         return Inertia::render('purchasing/purchase-orders/index', [
@@ -28,6 +33,7 @@ class PurchaseOrderController extends Controller
                 ->searchColumns(['po_number'])
                 ->transform(fn ($po): array => $po->toArray())
                 ->get(),
+            'type' => $type,
         ]);
     }
 
@@ -153,7 +159,8 @@ class PurchaseOrderController extends Controller
         
         return Inertia::render('purchasing/purchase-orders/show', [
             'purchaseOrder' => $purchaseOrder,
-            'canApprove' => auth()->user()->can('approve', $purchaseOrder),
+            'canApprove' => auth()->user()->hasRole('admin') || auth()->user()->hasPermissionTo('approve.purchase-orders'),
+            'workflow' => request('workflow', 'manage'),
         ]);
     }
 

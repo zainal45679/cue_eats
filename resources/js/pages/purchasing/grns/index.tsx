@@ -152,7 +152,21 @@ export default function GoodsReceiptNotesIndex() {
                 const status = row.original.status || "submitted";
                 const colors: Record<string, string> = {
                     draft: "bg-gray-100 text-gray-800",
-                    submitted: "bg-emerald-100 text-emerald-800",
+                    submitted: "bg-blue-100 text-blue-800",
+                    pending_approval: "bg-yellow-100 text-yellow-800",
+                    pending_fulfillment: "bg-yellow-100 text-yellow-800",
+                    pending_dispatch: "bg-yellow-100 text-yellow-800",
+                    approved: "bg-blue-100 text-blue-800",
+                    dispatched: "bg-blue-100 text-blue-800",
+                    partially_received: "bg-amber-100 text-amber-800",
+                    partially_fulfilled: "bg-amber-100 text-amber-800",
+                    received: "bg-emerald-100 text-emerald-800",
+                    fully_received: "bg-emerald-100 text-emerald-800",
+                    fulfilled: "bg-emerald-100 text-emerald-800",
+                    completed: "bg-emerald-100 text-emerald-800",
+                    rejected: "bg-red-100 text-red-800",
+                    cancelled: "bg-red-100 text-red-800",
+                    converted_to_sto: "bg-purple-100 text-purple-800",
                 };
                 return (
                     <Badge variant="outline" className={colors[status] || "bg-gray-100"}>
@@ -182,8 +196,8 @@ export default function GoodsReceiptNotesIndex() {
     ];
 
     return (
-        <XPage title="Received Goods">
-            {/* Dashboard Summary Cards */}
+        <XPage title="Receive Stock" className="p-6 max-w-7xl mx-auto">
+            {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-500" />
@@ -262,7 +276,7 @@ export default function GoodsReceiptNotesIndex() {
             </div>
 
             <XDataTable
-                title="Received Goods"
+                title="Receive Stock"
                 entity={Entity.InternalRequests}
                 data={processedData}
                 columns={columns}

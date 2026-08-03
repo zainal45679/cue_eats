@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/ui
 import { Button } from "@/components/shadcn/ui/button";
 import { Input } from "@/components/shadcn/ui/input";
 import { router } from "@inertiajs/react";
-import { MapPin, Save } from "lucide-react";
-
+import { MapPin, Save, Package, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/shadcn/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/ui/alert";
 export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
     const isPO = !!po;
     const document = isPO ? po : sto;
@@ -17,8 +18,8 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
     const [items, setItems] = useState(
         document.items.map((item: any) => {
             const expectedQty = isPO 
-                ? Math.max(0, Number(item.quantity) - Number(item.received_quantity || 0))
-                : Number(item.dispatched_quantity);
+                ? Math.max(0, Number(item.quantity) - Number(item.received_quantity || 0) - Number(item.rejected_quantity || 0))
+                : Math.max(0, Number(item.dispatched_quantity) - Number(item.received_quantity || 0) - Number(item.rejected_quantity || 0));
                 
             return {
                 ingredient_id: item.ingredient_id,
@@ -28,27 +29,33 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 expected_quantity: expectedQty,
                 received_quantity: expectedQty,
                 rejected_quantity: 0,
+                pending_quantity: 0,
             };
         }).filter((item: any) => item.expected_quantity > 0)
     );
+
+    const [error, setError] = useState<string | null>(null);
 
     const handleQuantityChange = (index: number, field: 'received_quantity' | 'rejected_quantity', value: string) => {
         const val = Number(value) || 0;
         const newItems = [...items];
         newItems[index][field] = val;
         
-        // Auto-balance received vs rejected based on expected
-        if (field === 'received_quantity') {
-            newItems[index].rejected_quantity = Math.max(0, newItems[index].expected_quantity - val);
-        } else if (field === 'rejected_quantity') {
-            newItems[index].received_quantity = Math.max(0, newItems[index].expected_quantity - val);
-        }
+        newItems[index].pending_quantity = Math.max(0, newItems[index].expected_quantity - newItems[index].received_quantity - newItems[index].rejected_quantity);
 
         setItems(newItems);
+        setError(null);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        for (const item of items) {
+            if (item.received_quantity + item.rejected_quantity > item.expected_quantity) {
+                setError(`Received and Rejected quantities for ${item.ingredient_name} cannot exceed Expected Quantity (${item.expected_quantity}).`);
+                return;
+            }
+        }
         
         if (confirm("Submit Received Goods? This will update your location's inventory.")) {
             router.post("/purchasing/grns", {
@@ -68,6 +75,13 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
     return (
         <XPage title="Receive Goods (GRN)" backUrl={isPO ? "/purchasing/purchase-orders" : "/purchasing/stos"}>
             <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Validation Error</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                         <CardHeader className="pb-3">
@@ -94,73 +108,77 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                     </Card>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Verify Receiving Items</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <Card className="overflow-hidden border-2 border-primary/10 shadow-sm p-0 gap-0">
+                    <div className="bg-primary/5 px-6 py-4 flex items-center justify-between border-b border-primary/10">
+                        <CardTitle className="flex items-center gap-2">
+                            <Package className="size-5 text-primary" /> Verify Receiving Items
+                        </CardTitle>
+                    </div>
+                    <div className="bg-card">
                         {items.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                                 All items from this order have already been fully received.
                             </div>
                         ) : (
-                            <div className="rounded-md border overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-muted/50 text-muted-foreground">
-                                        <tr>
-                                            <th className="h-10 px-4 text-left font-medium">Ingredient</th>
-                                            <th className="h-10 px-4 text-right font-medium">Expected Qty</th>
-                                            <th className="h-10 px-4 text-right font-medium">Received Qty</th>
-                                            <th className="h-10 px-4 text-right font-medium">Rejected Qty</th>
-                                            <th className="h-10 px-4 text-left font-medium">UOM</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead>Ingredient</TableHead>
+                                            <TableHead className="text-right">Expected Qty</TableHead>
+                                            <TableHead className="text-center">Received Qty</TableHead>
+                                            <TableHead className="text-center">Rejected Qty</TableHead>
+                                            <TableHead className="text-center">Pending Qty</TableHead>
+                                            <TableHead className="text-right">UOM</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {items.map((item: any, index: number) => (
-                                            <tr key={index} className="border-t">
-                                                <td className="p-4 font-medium">{item.ingredient_name}</td>
-                                                <td className="p-4 text-right text-muted-foreground">{item.expected_quantity.toFixed(2)}</td>
-                                                <td className="p-4">
-                                                    <div className="flex justify-end">
-                                                        <Input 
-                                                            type="number" 
-                                                            step="0.01" 
-                                                            min="0"
-                                                            className="w-24 text-right" 
-                                                            value={item.received_quantity}
-                                                            onChange={(e) => handleQuantityChange(index, 'received_quantity', e.target.value)}
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <div className="flex justify-end">
-                                                        <Input 
-                                                            type="number" 
-                                                            step="0.01" 
-                                                            min="0"
-                                                            className="w-24 text-right text-red-600 font-medium" 
-                                                            value={item.rejected_quantity}
-                                                            onChange={(e) => handleQuantityChange(index, 'rejected_quantity', e.target.value)}
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">{item.uom_name || '-'}</td>
-                                            </tr>
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{item.ingredient_name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className="font-bold text-base text-primary/80">{item.expected_quantity.toFixed(2)}</span>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0"
+                                                        className="w-28 text-center mx-auto focus-visible:ring-emerald-500" 
+                                                        value={item.received_quantity}
+                                                        onChange={(e) => handleQuantityChange(index, 'received_quantity', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0"
+                                                        className="w-28 text-center mx-auto focus-visible:ring-red-500" 
+                                                        value={item.rejected_quantity}
+                                                        onChange={(e) => handleQuantityChange(index, 'rejected_quantity', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="font-bold text-base text-amber-500">{item.pending_quantity.toFixed(2)}</span>
+                                                </TableCell>
+                                                <TableCell className="text-right text-muted-foreground">{item.uom_name || '-'}</TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
-
-                        <div className="mt-6">
-                            <label className="text-sm font-medium mb-2 block">Remarks / Notes</label>
+                        <div className="px-6 py-4 border-t border-primary/10 bg-primary/5">
+                            <label className="text-sm font-semibold mb-2 block text-primary">Remarks / Notes</label>
                             <Input 
                                 placeholder="Enter any notes about the delivery or rejections..." 
                                 value={remarks}
                                 onChange={(e) => setRemarks(e.target.value)}
+                                className="bg-background"
                             />
                         </div>
-                    </CardContent>
+                    </div>
                 </Card>
 
                 <div className="flex justify-end gap-2">

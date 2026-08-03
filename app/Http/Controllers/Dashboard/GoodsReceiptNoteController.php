@@ -125,12 +125,9 @@ class GoodsReceiptNoteController extends Controller
                 'grn_number' => 'GRN-' . time(),
                 'location_id' => $sto->to_location_id,
                 'received_by_id' => auth()->id(),
-                'status' => 'submitted',
+                'status' => 'completed',
                 'remarks' => $data['remarks'] ?? null,
             ]);
-
-            $allReceived = true;
-            $allRejected = true;
 
             foreach ($data['items'] as $itemData) {
                 $grn->items()->create([
@@ -141,9 +138,13 @@ class GoodsReceiptNoteController extends Controller
                     'uom_id' => $itemData['uom_id'],
                 ]);
 
+                $stoItem = $stoLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
+                if ($stoItem) {
+                    $stoItem->increment('received_quantity', $itemData['received_quantity']);
+                    $stoItem->increment('rejected_quantity', $itemData['rejected_quantity']);
+                }
+
                 if ($itemData['received_quantity'] > 0) {
-                    $allRejected = false;
-                    
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
                             'business_location_id' => $grn->location_id,
@@ -175,21 +176,29 @@ class GoodsReceiptNoteController extends Controller
                         'running_balance' => $balance->fresh()->available_qty,
                         'created_by' => auth()->id(),
                     ]);
-                } else {
-                    $allReceived = false;
                 }
             }
 
-            if ($allRejected && !$allReceived) {
-                $stoLocked->update(['status' => 'cancelled']);
-            } elseif (!$allReceived && !$allRejected) {
-                $stoLocked->update(['status' => 'partially_received']);
-            } else {
-                $stoLocked->update(['status' => 'received']);
-            }
+            $allItemsFullyProcessed = true;
+            $totalReceived = 0;
+            $totalRejected = 0;
             
-            if ($stoLocked->internalRequest) {
-                $stoLocked->internalRequest->update(['status' => 'received']);
+            foreach ($stoLocked->items as $stoItem) {
+                if (($stoItem->received_quantity + $stoItem->rejected_quantity) < $stoItem->dispatched_quantity) {
+                    $allItemsFullyProcessed = false;
+                }
+                $totalReceived += $stoItem->received_quantity;
+                $totalRejected += $stoItem->rejected_quantity;
+            }
+
+            if ($allItemsFullyProcessed) {
+                if ($totalReceived == 0 && $totalRejected > 0) {
+                    $stoLocked->update(['status' => 'cancelled']);
+                } else {
+                    $stoLocked->update(['status' => 'received']);
+                }
+            } else {
+                $stoLocked->update(['status' => 'partially_received']);
             }
         });
 
@@ -216,11 +225,9 @@ class GoodsReceiptNoteController extends Controller
                 'grn_number' => 'GRN-' . time(),
                 'location_id' => $po->delivery_location_id,
                 'received_by_id' => auth()->id(),
-                'status' => 'submitted',
+                'status' => 'completed',
                 'remarks' => $data['remarks'] ?? null,
             ]);
-
-            $allItemsFullyReceived = true;
 
             foreach ($data['items'] as $itemData) {
                 $grn->items()->create([
@@ -235,10 +242,7 @@ class GoodsReceiptNoteController extends Controller
                 $poItem = $poLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
                 if ($poItem) {
                     $poItem->increment('received_quantity', $itemData['received_quantity']);
-                    
-                    if ($poItem->fresh()->received_quantity < $poItem->quantity) {
-                        $allItemsFullyReceived = false;
-                    }
+                    $poItem->increment('rejected_quantity', $itemData['rejected_quantity']);
                     
                     // Update supplier price tracking
                     $supplierIngredient = \App\Models\IngredientSupplier::where('ingredient_id', $itemData['ingredient_id'])
@@ -295,7 +299,15 @@ class GoodsReceiptNoteController extends Controller
                 }
             }
 
-            if ($allItemsFullyReceived) {
+            $allItemsFullyProcessed = true;
+            foreach ($poLocked->items as $poItem) {
+                if (($poItem->received_quantity + $poItem->rejected_quantity) < $poItem->quantity) {
+                    $allItemsFullyProcessed = false;
+                    break;
+                }
+            }
+
+            if ($allItemsFullyProcessed) {
                 $poLocked->update(['status' => 'received']);
             } else {
                 $poLocked->update(['status' => 'partially_received']);

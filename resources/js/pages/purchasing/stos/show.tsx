@@ -3,11 +3,20 @@ import { XPage } from "@/components/x/page/XPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/ui/card";
 import { Button } from "@/components/shadcn/ui/button";
 import { Badge } from "@/components/shadcn/ui/badge";
-import { router, Link } from "@inertiajs/react";
+import { router, Link, usePage } from "@inertiajs/react";
 import { MapPin, CheckCircle2, Truck, Printer } from "lucide-react";
 import { toast } from "sonner";
 
-export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any, canDispatch: boolean, canReceive: boolean }) {
+export default function ShowStoPage(props: { sto: any, canDispatch: boolean, canReceive: boolean, workflow: string }) {
+    const { sto, canDispatch, canReceive, workflow } = props;
+
+    const hasRemainingItems = sto.items?.some((item: any) => {
+        const expected = Number(item.dispatched_quantity) || 0;
+        const received = Number(item.received_quantity) || 0;
+        const rejected = Number(item.rejected_quantity) || 0;
+        return expected - received - rejected > 0;
+    });
+
     const handleDispatch = () => {
         toast("Confirm Dispatch", {
             description: "Are you sure you want to dispatch this STO? This will deduct the items from your inventory.",
@@ -122,7 +131,7 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
                             <Printer className="mr-2 size-4" /> Print
                         </Button>
                         
-                        {canReceive && (sto.status === 'dispatched' || sto.status === 'partially_received') && (
+                        {workflow === 'incoming' && canReceive && ['dispatched', 'partially_received'].includes(sto.status) && hasRemainingItems && (
                             <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
                                 <Button className="bg-emerald-600 hover:bg-emerald-700">
                                     <CheckCircle2 className="mr-2 size-4" /> Receive Items (GRN)
@@ -130,7 +139,7 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
                             </Link>
                         )}
 
-                        {canDispatch && sto.status === 'pending_dispatch' && (
+                        {workflow !== 'incoming' && canDispatch && sto.status === 'pending_dispatch' && (
                             <>
                                 <Button variant="destructive" onClick={() => {
                                     toast("Confirm Reject", {
@@ -191,7 +200,11 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
                                     <th className="h-10 px-4 text-left font-medium">Ingredient</th>
                                     <th className="h-10 px-4 text-right font-medium">Approved Qty</th>
                                     {sto.status !== 'pending_dispatch' && (
-                                        <th className="h-10 px-4 text-right font-medium">Dispatched Qty</th>
+                                        <>
+                                            <th className="h-10 px-4 text-right font-medium">Dispatched Qty</th>
+                                            <th className="h-10 px-4 text-right font-medium">Received Qty</th>
+                                            <th className="h-10 px-4 text-right font-medium">Rejected Qty</th>
+                                        </>
                                     )}
                                     <th className="h-10 px-4 text-left font-medium">UOM</th>
                                 </tr>
@@ -202,7 +215,11 @@ export default function ShowStoPage({ sto, canDispatch, canReceive }: { sto: any
                                         <td className="p-4 font-medium">{item.ingredient?.name}</td>
                                         <td className="p-4 text-right font-semibold">{Number(item.approved_quantity).toFixed(2)}</td>
                                         {sto.status !== 'pending_dispatch' && (
-                                            <td className="p-4 text-right font-semibold">{Number(item.dispatched_quantity).toFixed(2)}</td>
+                                            <>
+                                                <td className="p-4 text-right font-semibold">{Number(item.dispatched_quantity).toFixed(2)}</td>
+                                                <td className="p-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                                <td className="p-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
+                                            </>
                                         )}
                                         <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
                                     </tr>

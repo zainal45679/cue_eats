@@ -77,6 +77,7 @@ class InternalRequestPolicy
 
         if (!$user->hasPermissionTo('fulfill.internal-requests')) return false;
 
-        return $user->business_location_id === $internalRequest->from_location_id && $internalRequest->status === 'pending_fulfillment';
+        return $user->business_location_id === $internalRequest->from_location_id && 
+               in_array($internalRequest->status, ['pending_fulfillment', 'partially_fulfilled']);
     }
 }
