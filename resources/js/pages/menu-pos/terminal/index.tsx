@@ -1,74 +1,271 @@
 import { Head } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AppLayout from "@/layouts/app-layout";
 import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
+import { Input } from '@/components/shadcn/ui/input';
+import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
+import { Search, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
+import { CheckoutDialog } from './components/CheckoutDialog';
 
 export default function PosTerminal({ categories }: { categories: any[] }) {
     const [cart, setCart] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
+    
+    const [selectedItemForMod, setSelectedItemForMod] = useState<any | null>(null);
+    const [isModModalOpen, setIsModModalOpen] = useState(false);
+    const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-    const addToCart = (item: any) => {
-        setCart([...cart, { ...item, quantity: 1, cart_id: Date.now() }]);
+    // Flatten all items for search or "All" category view
+    const allItems = useMemo(() => {
+        return categories.flatMap(c => c.items || []);
+    }, [categories]);
+
+    // Filter items based on active category and search
+    const filteredItems = useMemo(() => {
+        let items = activeCategoryId === 'all' 
+            ? allItems 
+            : categories.find(c => c.id === activeCategoryId)?.items || [];
+            
+        if (searchQuery) {
+            items = items.filter((item: any) => 
+                item.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        return items.filter((item: any) => item.is_available); // only show available
+    }, [categories, activeCategoryId, searchQuery, allItems]);
+
+    // Format modifier state into a consistent string key for cart grouping
+    const getModifierHash = (modifiers: Record<number, any[]>) => {
+        if (!modifiers || Object.keys(modifiers).length === 0) return 'no-mods';
+        // sort group IDs and mod IDs for consistent hashing
+        return Object.keys(modifiers).sort().map(gId => {
+            const mods = modifiers[parseInt(gId)].map(m => m.id).sort();
+            return `${gId}:${mods.join(',')}`;
+        }).join('|');
     };
 
-    const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price), 0);
+    const handleItemClick = (item: any) => {
+        if (item.modifier_groups && item.modifier_groups.length > 0) {
+            setSelectedItemForMod(item);
+            setIsModModalOpen(true);
+        } else {
+            addToCart(item, {});
+        }
+    };
+
+    const addToCart = (item: any, selectedModifiers: Record<number, any[]>) => {
+        const hash = getModifierHash(selectedModifiers);
+        const existingItemIndex = cart.findIndex(c => c.id === item.id && c.modHash === hash);
+        
+        // Calculate item base price + modifiers
+        let itemUnitPrice = parseFloat(item.price);
+        Object.values(selectedModifiers).flat().forEach((mod: any) => {
+            itemUnitPrice += parseFloat(mod.price_adjustment);
+        });
+
+        if (existingItemIndex >= 0) {
+            const newCart = [...cart];
+            newCart[existingItemIndex].quantity += 1;
+            setCart(newCart);
+        } else {
+            setCart([...cart, { 
+                ...item, 
+                cart_id: Date.now() + Math.random(), 
+                quantity: 1, 
+                modHash: hash,
+                selectedModifiers,
+                unitPriceWithMods: itemUnitPrice
+            }]);
+        }
+    };
+
+    const updateQuantity = (cartId: number, delta: number) => {
+        setCart(prev => prev.map(item => {
+            if (item.cart_id === cartId) {
+                const newQuantity = Math.max(0, item.quantity + delta);
+                return { ...item, quantity: newQuantity };
+            }
+            return item;
+        }).filter(item => item.quantity > 0));
+    };
+
+    const clearCart = () => setCart([]);
+
+    const subtotal = cart.reduce((sum, item) => sum + (item.unitPriceWithMods * item.quantity), 0);
 
     return (
         <AppLayout>
             <Head title="POS Terminal" />
-            <div className="flex h-[calc(100vh-4rem)]">
-                {/* Left Side: Menu */}
-                <div className="flex-1 p-4 overflow-y-auto">
-                    {categories.map(category => (
-                        <div key={category.id} className="mb-8">
-                            <h2 className="text-2xl font-bold mb-4">{category.name}</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {category.items?.map((item: any) => (
-                                    <Card 
-                                        key={item.id} 
-                                        className="cursor-pointer hover:border-primary transition-colors"
-                                        onClick={() => addToCart(item)}
+            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm">
+                {/* Left Side: Main POS Area */}
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                    {/* Top Bar: Search & Categories */}
+                    <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Search menu items..." 
+                                className="pl-9 h-10 bg-muted/50 border-transparent focus-visible:border-primary"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        
+                        <ScrollArea className="w-full whitespace-nowrap">
+                            <div className="flex space-x-2 pb-1">
+                                <Button 
+                                    variant={activeCategoryId === 'all' ? 'default' : 'secondary'}
+                                    className="rounded-full px-5 h-8 text-xs"
+                                    onClick={() => setActiveCategoryId('all')}
+                                >
+                                    All Items
+                                </Button>
+                                {categories.map(cat => (
+                                    <Button 
+                                        key={cat.id}
+                                        variant={activeCategoryId === cat.id ? 'default' : 'secondary'}
+                                        className="rounded-full px-5 h-8 text-xs"
+                                        onClick={() => setActiveCategoryId(cat.id)}
                                     >
-                                        <CardContent className="p-4 flex flex-col items-center justify-center text-center h-32">
-                                            <p className="font-medium">{item.name}</p>
-                                            <p className="text-muted-foreground mt-2">${item.price}</p>
-                                        </CardContent>
-                                    </Card>
+                                        {cat.name}
+                                    </Button>
                                 ))}
                             </div>
+                            <ScrollBar orientation="horizontal" className="hidden" />
+                        </ScrollArea>
+                    </div>
+
+                    {/* Item Grid */}
+                    <ScrollArea className="flex-1 p-3 min-h-0">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                            {filteredItems.map((item: any) => (
+                                <Card 
+                                    key={item.id} 
+                                    className="p-0 gap-0 cursor-pointer flex flex-col overflow-hidden border-border/40 hover:border-primary/60 hover:shadow-lg transition-all group duration-300 rounded-xl bg-card"
+                                    onClick={() => handleItemClick(item)}
+                                >
+                                    <div className="w-full aspect-[4/3] relative overflow-hidden bg-muted shrink-0">
+                                        {item.image_url ? (
+                                            <img 
+                                                src={item.image_url} 
+                                                alt={item.name}
+                                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs font-medium">
+                                                No Image
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-3 flex flex-col flex-1 bg-card border-t border-border/10">
+                                        <h3 className="font-semibold text-[13px] leading-tight line-clamp-2 text-card-foreground" title={item.name}>{item.name}</h3>
+                                        <p className="text-primary font-bold text-[14px] mt-1">${parseFloat(item.price).toFixed(2)}</p>
+                                    </div>
+                                </Card>
+                            ))}
                         </div>
-                    ))}
+                        {filteredItems.length === 0 && (
+                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground mt-20">
+                                <Search className="w-12 h-12 mb-4 opacity-20" />
+                                <p className="text-xl font-medium">No items found</p>
+                                <p>Try adjusting your search or category filter</p>
+                            </div>
+                        )}
+                    </ScrollArea>
                 </div>
                 
-                {/* Right Side: Cart */}
-                <div className="w-96 border-l bg-muted/20 flex flex-col">
-                    <div className="p-4 border-b">
-                        <h2 className="text-xl font-bold">Current Order</h2>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {cart.length === 0 ? (
-                            <p className="text-muted-foreground text-center mt-10">Cart is empty</p>
-                        ) : (
-                            cart.map(item => (
-                                <div key={item.cart_id} className="flex justify-between items-center bg-background p-3 rounded shadow-sm">
-                                    <div>
-                                        <p className="font-medium">{item.name}</p>
-                                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                                    </div>
-                                    <p className="font-medium">${item.price}</p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="p-4 border-t bg-background">
-                        <div className="flex justify-between mb-4">
-                            <span className="font-medium text-lg">Total</span>
-                            <span className="font-bold text-lg">${subtotal.toFixed(2)}</span>
+                {/* Right Side: Enhanced Cart */}
+                <div className="w-[320px] bg-card border-l shadow-xl flex flex-col z-20">
+                    <div className="p-4 border-b flex justify-between items-center bg-card">
+                        <div className="flex items-center gap-2 font-bold text-lg text-card-foreground">
+                            <ShoppingCart className="w-5 h-5 text-primary" />
+                            <h2>Current Order</h2>
                         </div>
-                        <Button className="w-full h-12 text-lg">Checkout</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2" onClick={clearCart} disabled={cart.length === 0}>
+                            <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear
+                        </Button>
+                    </div>
+                    
+                    <ScrollArea className="flex-1 p-4 bg-muted/20 min-h-0">
+                        <div className="space-y-3">
+                            {cart.length === 0 ? (
+                                <div className="text-center mt-20 opacity-40 flex flex-col items-center">
+                                    <ShoppingCart className="w-12 h-12 mb-4" />
+                                    <p className="text-sm">Cart is empty</p>
+                                </div>
+                            ) : (
+                                cart.map(item => (
+                                    <div key={item.cart_id} className="bg-background p-3 rounded-lg border border-border/40 shadow-sm text-sm">
+                                        <div className="flex justify-between items-start mb-2 gap-2">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium leading-tight truncate">{item.name}</p>
+                                                {Object.values(item.selectedModifiers || {}).flat().map((mod: any, idx) => (
+                                                    <p key={idx} className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
+                                                        <span className="truncate pr-1">+ {mod.name}</span>
+                                                        {parseFloat(mod.price_adjustment) > 0 && <span>${parseFloat(mod.price_adjustment).toFixed(2)}</span>}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                            <p className="font-semibold whitespace-nowrap">${(item.unitPriceWithMods * item.quantity).toFixed(2)}</p>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <span className="text-xs text-muted-foreground">${item.unitPriceWithMods.toFixed(2)} / ea</span>
+                                            <div className="flex items-center bg-muted/50 border rounded-md overflow-hidden h-7">
+                                                <button className="px-2.5 h-full hover:bg-muted transition-colors flex items-center justify-center" onClick={() => updateQuantity(item.cart_id, -1)}>
+                                                    <Minus className="w-3 h-3" />
+                                                </button>
+                                                <span className="px-3 h-full flex items-center justify-center font-medium text-xs min-w-[2.5rem] border-x bg-background">{item.quantity}</span>
+                                                <button className="px-2.5 h-full hover:bg-muted transition-colors text-primary flex items-center justify-center" onClick={() => updateQuantity(item.cart_id, 1)}>
+                                                    <Plus className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </ScrollArea>
+                    
+                    <div className="p-5 border-t bg-card">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-muted-foreground text-sm font-medium">Subtotal</span>
+                            <span className="font-bold text-xl">${subtotal.toFixed(2)}</span>
+                        </div>
+                        <Button 
+                            className="w-full h-12 text-base font-bold rounded-lg shadow-sm" 
+                            size="lg"
+                            disabled={cart.length === 0}
+                            onClick={() => setIsCheckoutOpen(true)}
+                        >
+                            Checkout
+                        </Button>
                     </div>
                 </div>
             </div>
+
+            {selectedItemForMod && (
+                <ModifierSelectionDialog
+                    item={selectedItemForMod}
+                    isOpen={isModModalOpen}
+                    setIsOpen={setIsModModalOpen}
+                    onAddToCart={addToCart}
+                />
+            )}
+
+            <CheckoutDialog 
+                isOpen={isCheckoutOpen}
+                setIsOpen={setIsCheckoutOpen}
+                cart={cart}
+                subtotal={subtotal}
+                onSuccess={() => {
+                    clearCart();
+                    // Optional: show a success toast here
+                }}
+            />
         </AppLayout>
     );
 }
