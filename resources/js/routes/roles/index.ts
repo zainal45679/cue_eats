@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::search
-* @see app/Http/Controllers/Dashboard/RoleController.php:121
+* @see app/Http/Controllers/Dashboard/RoleController.php:132
 * @route '/roles/search'
 */
 export const search = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ search.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::search
-* @see app/Http/Controllers/Dashboard/RoleController.php:121
+* @see app/Http/Controllers/Dashboard/RoleController.php:132
 * @route '/roles/search'
 */
 search.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ search.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::search
-* @see app/Http/Controllers/Dashboard/RoleController.php:121
+* @see app/Http/Controllers/Dashboard/RoleController.php:132
 * @route '/roles/search'
 */
 search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::search
-* @see app/Http/Controllers/Dashboard/RoleController.php:121
+* @see app/Http/Controllers/Dashboard/RoleController.php:132
 * @route '/roles/search'
 */
 search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -89,7 +89,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::create
-* @see app/Http/Controllers/Dashboard/RoleController.php:31
+* @see app/Http/Controllers/Dashboard/RoleController.php:33
 * @route '/roles/create'
 */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -104,7 +104,7 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::create
-* @see app/Http/Controllers/Dashboard/RoleController.php:31
+* @see app/Http/Controllers/Dashboard/RoleController.php:33
 * @route '/roles/create'
 */
 create.url = (options?: RouteQueryOptions) => {
@@ -113,7 +113,7 @@ create.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::create
-* @see app/Http/Controllers/Dashboard/RoleController.php:31
+* @see app/Http/Controllers/Dashboard/RoleController.php:33
 * @route '/roles/create'
 */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -123,7 +123,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::create
-* @see app/Http/Controllers/Dashboard/RoleController.php:31
+* @see app/Http/Controllers/Dashboard/RoleController.php:33
 * @route '/roles/create'
 */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -133,7 +133,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::store
-* @see app/Http/Controllers/Dashboard/RoleController.php:38
+* @see app/Http/Controllers/Dashboard/RoleController.php:42
 * @route '/roles'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -148,7 +148,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::store
-* @see app/Http/Controllers/Dashboard/RoleController.php:38
+* @see app/Http/Controllers/Dashboard/RoleController.php:42
 * @route '/roles'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::store
-* @see app/Http/Controllers/Dashboard/RoleController.php:38
+* @see app/Http/Controllers/Dashboard/RoleController.php:42
 * @route '/roles'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -167,7 +167,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::show
-* @see app/Http/Controllers/Dashboard/RoleController.php:72
+* @see app/Http/Controllers/Dashboard/RoleController.php:78
 * @route '/roles/{role}'
 */
 export const show = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -182,7 +182,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::show
-* @see app/Http/Controllers/Dashboard/RoleController.php:72
+* @see app/Http/Controllers/Dashboard/RoleController.php:78
 * @route '/roles/{role}'
 */
 show.url = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -215,7 +215,7 @@ show.url = (args: { role: number | { id: number } } | [role: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::show
-* @see app/Http/Controllers/Dashboard/RoleController.php:72
+* @see app/Http/Controllers/Dashboard/RoleController.php:78
 * @route '/roles/{role}'
 */
 show.get = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -225,7 +225,7 @@ show.get = (args: { role: number | { id: number } } | [role: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::show
-* @see app/Http/Controllers/Dashboard/RoleController.php:72
+* @see app/Http/Controllers/Dashboard/RoleController.php:78
 * @route '/roles/{role}'
 */
 show.head = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -235,7 +235,7 @@ show.head = (args: { role: number | { id: number } } | [role: number | { id: num
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::edit
-* @see app/Http/Controllers/Dashboard/RoleController.php:80
+* @see app/Http/Controllers/Dashboard/RoleController.php:88
 * @route '/roles/{role}/edit'
 */
 export const edit = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -250,7 +250,7 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::edit
-* @see app/Http/Controllers/Dashboard/RoleController.php:80
+* @see app/Http/Controllers/Dashboard/RoleController.php:88
 * @route '/roles/{role}/edit'
 */
 edit.url = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -283,7 +283,7 @@ edit.url = (args: { role: number | { id: number } } | [role: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::edit
-* @see app/Http/Controllers/Dashboard/RoleController.php:80
+* @see app/Http/Controllers/Dashboard/RoleController.php:88
 * @route '/roles/{role}/edit'
 */
 edit.get = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -293,7 +293,7 @@ edit.get = (args: { role: number | { id: number } } | [role: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::edit
-* @see app/Http/Controllers/Dashboard/RoleController.php:80
+* @see app/Http/Controllers/Dashboard/RoleController.php:88
 * @route '/roles/{role}/edit'
 */
 edit.head = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -303,7 +303,7 @@ edit.head = (args: { role: number | { id: number } } | [role: number | { id: num
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::update
-* @see app/Http/Controllers/Dashboard/RoleController.php:89
+* @see app/Http/Controllers/Dashboard/RoleController.php:98
 * @route '/roles/{role}'
 */
 export const update = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -318,7 +318,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::update
-* @see app/Http/Controllers/Dashboard/RoleController.php:89
+* @see app/Http/Controllers/Dashboard/RoleController.php:98
 * @route '/roles/{role}'
 */
 update.url = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -351,7 +351,7 @@ update.url = (args: { role: number | { id: number } } | [role: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::update
-* @see app/Http/Controllers/Dashboard/RoleController.php:89
+* @see app/Http/Controllers/Dashboard/RoleController.php:98
 * @route '/roles/{role}'
 */
 update.put = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -361,7 +361,7 @@ update.put = (args: { role: number | { id: number } } | [role: number | { id: nu
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::update
-* @see app/Http/Controllers/Dashboard/RoleController.php:89
+* @see app/Http/Controllers/Dashboard/RoleController.php:98
 * @route '/roles/{role}'
 */
 update.patch = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -371,7 +371,7 @@ update.patch = (args: { role: number | { id: number } } | [role: number | { id: 
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::destroy
-* @see app/Http/Controllers/Dashboard/RoleController.php:135
+* @see app/Http/Controllers/Dashboard/RoleController.php:147
 * @route '/roles/{role}'
 */
 export const destroy = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -386,7 +386,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::destroy
-* @see app/Http/Controllers/Dashboard/RoleController.php:135
+* @see app/Http/Controllers/Dashboard/RoleController.php:147
 * @route '/roles/{role}'
 */
 destroy.url = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -419,7 +419,7 @@ destroy.url = (args: { role: number | { id: number } } | [role: number | { id: n
 
 /**
 * @see \App\Http\Controllers\Dashboard\RoleController::destroy
-* @see app/Http/Controllers/Dashboard/RoleController.php:135
+* @see app/Http/Controllers/Dashboard/RoleController.php:147
 * @route '/roles/{role}'
 */
 destroy.delete = (args: { role: number | { id: number } } | [role: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

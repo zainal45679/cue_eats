@@ -281,6 +281,7 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         </table>
                     </div>
                 </div>
+            </div>
 
                 {internalRequest.stos && internalRequest.stos.length > 0 && (
                     <div className="mb-8 mt-8">

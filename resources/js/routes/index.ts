@@ -223,3 +223,34 @@ dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     method: 'head',
 })
 
+/**
+* @see routes/web.php:17
+* @route '/set-active-location'
+*/
+export const setActiveLocation = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: setActiveLocation.url(options),
+    method: 'post',
+})
+
+setActiveLocation.definition = {
+    methods: ["post"],
+    url: '/set-active-location',
+} satisfies RouteDefinition<["post"]>
+
+/**
+* @see routes/web.php:17
+* @route '/set-active-location'
+*/
+setActiveLocation.url = (options?: RouteQueryOptions) => {
+    return setActiveLocation.definition.url + queryParams(options)
+}
+
+/**
+* @see routes/web.php:17
+* @route '/set-active-location'
+*/
+setActiveLocation.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
+    url: setActiveLocation.url(options),
+    method: 'post',
+})
+

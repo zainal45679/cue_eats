@@ -133,7 +133,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::store
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:54
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:56
 * @route '/inventory-setup/business-locations'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -148,7 +148,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::store
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:54
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:56
 * @route '/inventory-setup/business-locations'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::store
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:54
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:56
 * @route '/inventory-setup/business-locations'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -167,7 +167,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::show
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:77
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:80
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 export const show = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -182,7 +182,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::show
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:77
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:80
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 show.url = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -209,7 +209,7 @@ show.url = (args: { business_location: string | number } | [business_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::show
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:77
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:80
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 show.get = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -219,7 +219,7 @@ show.get = (args: { business_location: string | number } | [business_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::show
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:77
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:80
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 show.head = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -229,7 +229,7 @@ show.head = (args: { business_location: string | number } | [business_location: 
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::edit
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:88
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:91
 * @route '/inventory-setup/business-locations/{business_location}/edit'
 */
 export const edit = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -244,7 +244,7 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::edit
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:88
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:91
 * @route '/inventory-setup/business-locations/{business_location}/edit'
 */
 edit.url = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -271,7 +271,7 @@ edit.url = (args: { business_location: string | number } | [business_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::edit
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:88
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:91
 * @route '/inventory-setup/business-locations/{business_location}/edit'
 */
 edit.get = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -281,7 +281,7 @@ edit.get = (args: { business_location: string | number } | [business_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::edit
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:88
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:91
 * @route '/inventory-setup/business-locations/{business_location}/edit'
 */
 edit.head = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -291,7 +291,7 @@ edit.head = (args: { business_location: string | number } | [business_location: 
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::update
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:107
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:113
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 export const update = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -306,7 +306,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::update
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:107
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:113
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 update.url = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -333,7 +333,7 @@ update.url = (args: { business_location: string | number } | [business_location:
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::update
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:107
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:113
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 update.put = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -343,7 +343,7 @@ update.put = (args: { business_location: string | number } | [business_location:
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::update
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:107
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:113
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 update.patch = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -353,7 +353,7 @@ update.patch = (args: { business_location: string | number } | [business_locatio
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::destroy
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:136
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:143
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 export const destroy = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -368,7 +368,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::destroy
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:136
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:143
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 destroy.url = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -395,7 +395,7 @@ destroy.url = (args: { business_location: string | number } | [business_location
 
 /**
 * @see \App\Http\Controllers\Dashboard\BusinessLocationController::destroy
-* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:136
+* @see app/Http/Controllers/Dashboard/BusinessLocationController.php:143
 * @route '/inventory-setup/business-locations/{business_location}'
 */
 destroy.delete = (args: { business_location: string | number } | [business_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

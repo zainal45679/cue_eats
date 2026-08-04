@@ -100,5 +100,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('roles', RoleController::class);
 
+    // Menu Management
+    Route::prefix('menu-pos')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
+        
+        // Resource routes for form actions (except index)
+        Route::resource('categories', \App\Http\Controllers\Dashboard\MenuCategoryController::class)->except('index');
+        Route::resource('items', \App\Http\Controllers\Dashboard\MenuItemController::class)->except('index');
+        Route::resource('modifiers', \App\Http\Controllers\Dashboard\ModifierGroupController::class)->except('index');
+        
+        // POS Terminal
+        Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
+        Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
+    });
+
     Route::resource('users', UserController::class);
 });

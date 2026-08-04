@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::search
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:118
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:123
 * @route '/inventory-setup/storage-locations/search'
 */
 export const search = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ search.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::search
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:118
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:123
 * @route '/inventory-setup/storage-locations/search'
 */
 search.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ search.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::search
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:118
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:123
 * @route '/inventory-setup/storage-locations/search'
 */
 search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,7 +35,7 @@ search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::search
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:118
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:123
 * @route '/inventory-setup/storage-locations/search'
 */
 search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -89,7 +89,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::create
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:32
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:37
 * @route '/inventory-setup/storage-locations/create'
 */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -104,7 +104,7 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::create
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:32
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:37
 * @route '/inventory-setup/storage-locations/create'
 */
 create.url = (options?: RouteQueryOptions) => {
@@ -113,7 +113,7 @@ create.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::create
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:32
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:37
 * @route '/inventory-setup/storage-locations/create'
 */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -123,7 +123,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::create
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:32
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:37
 * @route '/inventory-setup/storage-locations/create'
 */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -133,7 +133,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::store
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:43
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:48
 * @route '/inventory-setup/storage-locations'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -148,7 +148,7 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::store
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:43
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:48
 * @route '/inventory-setup/storage-locations'
 */
 store.url = (options?: RouteQueryOptions) => {
@@ -157,7 +157,7 @@ store.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::store
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:43
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:48
 * @route '/inventory-setup/storage-locations'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
@@ -167,7 +167,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::show
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:62
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:67
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 export const show = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -182,7 +182,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::show
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:62
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:67
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 show.url = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -209,7 +209,7 @@ show.url = (args: { storage_location: string | number } | [storage_location: str
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::show
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:62
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:67
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 show.get = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -219,7 +219,7 @@ show.get = (args: { storage_location: string | number } | [storage_location: str
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::show
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:62
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:67
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 show.head = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -229,7 +229,7 @@ show.head = (args: { storage_location: string | number } | [storage_location: st
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::edit
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:73
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:78
 * @route '/inventory-setup/storage-locations/{storage_location}/edit'
 */
 export const edit = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -244,7 +244,7 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::edit
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:73
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:78
 * @route '/inventory-setup/storage-locations/{storage_location}/edit'
 */
 edit.url = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -271,7 +271,7 @@ edit.url = (args: { storage_location: string | number } | [storage_location: str
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::edit
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:73
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:78
 * @route '/inventory-setup/storage-locations/{storage_location}/edit'
 */
 edit.get = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -281,7 +281,7 @@ edit.get = (args: { storage_location: string | number } | [storage_location: str
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::edit
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:73
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:78
 * @route '/inventory-setup/storage-locations/{storage_location}/edit'
 */
 edit.head = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -291,7 +291,7 @@ edit.head = (args: { storage_location: string | number } | [storage_location: st
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::update
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:86
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:91
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 export const update = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -306,7 +306,7 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::update
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:86
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:91
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 update.url = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -333,7 +333,7 @@ update.url = (args: { storage_location: string | number } | [storage_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::update
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:86
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:91
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 update.put = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
@@ -343,7 +343,7 @@ update.put = (args: { storage_location: string | number } | [storage_location: s
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::update
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:86
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:91
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 update.patch = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
@@ -353,7 +353,7 @@ update.patch = (args: { storage_location: string | number } | [storage_location:
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::destroy
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:107
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:112
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 export const destroy = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
@@ -368,7 +368,7 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::destroy
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:107
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:112
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 destroy.url = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions) => {
@@ -395,7 +395,7 @@ destroy.url = (args: { storage_location: string | number } | [storage_location: 
 
 /**
 * @see \App\Http\Controllers\Dashboard\StorageLocationController::destroy
-* @see app/Http/Controllers/Dashboard/StorageLocationController.php:107
+* @see app/Http/Controllers/Dashboard/StorageLocationController.php:112
 * @route '/inventory-setup/storage-locations/{storage_location}'
 */
 destroy.delete = (args: { storage_location: string | number } | [storage_location: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({

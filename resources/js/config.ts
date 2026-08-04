@@ -16,7 +16,9 @@ import {
   User,
   Lock,
   Palette,
-  Building2
+  Building2,
+  Utensils,
+  MonitorSmartphone
 } from "lucide-react";
 import { dashboard } from "@/generated/routes";
 import brands from "@/generated/routes/brands";
@@ -146,6 +148,16 @@ export const Configs: TConfigs = {
       icon: Network,
       group: "Setup & Config",
       permission: "brands",
+    },
+    {
+      title: "POS Terminal",
+      href: "/menu-pos/terminal",
+      icon: MonitorSmartphone,
+    },
+    {
+      title: "Menu Management",
+      href: "/menu-pos",
+      icon: Utensils,
     },
     {
       title: "Inventory Setup",
