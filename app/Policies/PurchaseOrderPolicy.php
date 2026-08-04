@@ -36,7 +36,7 @@ class PurchaseOrderPolicy
         
         if (!$user->hasPermissionTo('update.purchase-orders')) return false;
 
-        return $user->business_location_id === $purchaseOrder->business_location_id && $purchaseOrder->status === 'draft';
+        return $user->business_location_id === $purchaseOrder->business_location_id && in_array($purchaseOrder->status, ['draft', 'pending_approval']);
     }
 
     public function delete(User $user, PurchaseOrder $purchaseOrder): bool
@@ -45,7 +45,7 @@ class PurchaseOrderPolicy
         
         if (!$user->hasPermissionTo('delete.purchase-orders')) return false;
 
-        return $user->business_location_id === $purchaseOrder->business_location_id && $purchaseOrder->status === 'draft';
+        return $user->business_location_id === $purchaseOrder->business_location_id && in_array($purchaseOrder->status, ['draft', 'pending_approval']);
     }
 
     public function approve(User $user, PurchaseOrder $purchaseOrder): bool
@@ -56,7 +56,7 @@ class PurchaseOrderPolicy
         
         // They can only approve POs for their own location
         return $user->business_location_id === $purchaseOrder->business_location_id &&
-               $purchaseOrder->status === 'draft';
+               in_array($purchaseOrder->status, ['draft', 'pending_approval']);
     }
 
     public function reject(User $user, PurchaseOrder $purchaseOrder): bool

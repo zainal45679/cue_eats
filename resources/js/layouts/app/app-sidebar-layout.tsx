@@ -10,11 +10,11 @@ export default function AppSidebarLayout({ children }: PropsWithChildren) {
     <AppShell variant="sidebar">
       <AppSidebar />
       <ScrollArea
-        className="relative flex h-screen w-full flex-1 flex-col md:peer-data-[variant=inset]:pr-2 print:h-auto print:overflow-visible print:pr-0"
+        className="relative flex h-screen w-full min-w-0 flex-1 flex-col md:peer-data-[variant=inset]:pr-2 print:h-auto print:overflow-visible print:pr-0"
         type="scroll"
       >
         <AppContent
-          className="relative flex min-h-svh w-full flex-1 flex-col peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4))-16px)] md:m-2 md:ml-0 md:min-h-[calc(100svh-16px)] md:rounded-xl md:peer-data-[state=collapsed]:ml-2 print:!m-0 print:!min-h-0 print:!p-0 print:!w-full print:bg-white"
+          className="relative flex min-h-svh w-full max-w-full overflow-x-hidden flex-1 flex-col peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4))-16px)] md:m-2 md:ml-0 md:min-h-[calc(100svh-16px)] md:rounded-xl md:peer-data-[state=collapsed]:ml-2 print:!m-0 print:!min-h-0 print:!p-0 print:!w-full print:bg-white"
           variant="sidebar"
         >
           <AppSidebarHeader />

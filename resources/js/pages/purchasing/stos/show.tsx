@@ -120,112 +120,149 @@ export default function ShowStoPage(props: { sto: any, canDispatch: boolean, can
 
             {/* --- WEB ONLY VIEW --- */}
             <div className="print:hidden">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight">{sto.sto_number}</h1>
-                        {getStatusBadge(sto.status)}
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold tracking-tight truncate">{sto.sto_number}</h1>
+                            <div className="shrink-0">
+                                {getStatusBadge(sto.status)}
+                            </div>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => window.print()}>
+                    <div className="shrink-0 ml-4 hidden sm:flex items-center gap-2">
+                        {/* Desktop only buttons */}
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                             <Printer className="mr-2 size-4" /> Print
                         </Button>
-                        
-                        {workflow === 'incoming' && canReceive && ['dispatched', 'partially_received'].includes(sto.status) && hasRemainingItems && (
-                            <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
-                                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                    <CheckCircle2 className="mr-2 size-4" /> Receive Items (GRN)
-                                </Button>
-                            </Link>
-                        )}
-
-                        {workflow !== 'incoming' && canDispatch && sto.status === 'pending_dispatch' && (
-                            <>
-                                <Button variant="destructive" onClick={() => {
-                                    toast("Confirm Reject", {
-                                        description: "Are you sure you want to reject this STO?",
-                                        action: {
-                                            label: "Reject",
-                                            onClick: () => router.post(`/purchasing/stos/${sto.uuid}/reject`),
-                                        },
-                                        cancel: { label: "Cancel", onClick: () => {} }
-                                    });
-                                }}>
-                                    Reject
-                                </Button>
-                                <Button onClick={handleDispatch} className="bg-blue-600 hover:bg-blue-700">
-                                    <Truck className="mr-2 size-4" /> Dispatch Items
-                                </Button>
-                            </>
-                        )}
+                    </div>
+                    {/* Mobile Print Icon */}
+                    <div className="shrink-0 ml-2 sm:hidden">
+                        <Button variant="ghost" size="icon" onClick={() => window.print()} className="h-9 w-9 rounded-full bg-muted/50">
+                            <Printer className="size-4 text-foreground" />
+                        </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Dispatching Location (From)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{sto.from_location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {sto.from_location?.address && <div>{sto.from_location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                {/* Mobile Floating Action Bar */}
+                <div className="fixed sm:hidden bottom-0 left-0 w-full p-4 bg-background/80 backdrop-blur-md border-t border-border z-50 flex gap-2">
+                    {workflow === 'incoming' && canReceive && ['dispatched', 'partially_received'].includes(sto.status) && hasRemainingItems && (
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg" asChild>
+                            <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
+                                <CheckCircle2 className="mr-2 size-5" /> Receive Items
+                            </Link>
+                        </Button>
+                    )}
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Receiving Location (To)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{sto.to_location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {sto.to_location?.address && <div>{sto.to_location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {workflow !== 'incoming' && canDispatch && sto.status === 'pending_dispatch' && (
+                        <>
+                            <Button variant="destructive" className="flex-1" onClick={() => {
+                                toast("Confirm Reject", {
+                                    description: "Are you sure you want to reject this STO?",
+                                    action: {
+                                        label: "Reject",
+                                        onClick: () => router.post(`/purchasing/stos/${sto.uuid}/reject`),
+                                    },
+                                    cancel: { label: "Cancel", onClick: () => {} }
+                                });
+                            }}>
+                                Reject
+                            </Button>
+                            <Button onClick={handleDispatch} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                Dispatch
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                {/* Desktop Action Bar */}
+                <div className="hidden sm:flex items-center flex-wrap gap-3 mb-8">
+                    {workflow === 'incoming' && canReceive && ['dispatched', 'partially_received'].includes(sto.status) && hasRemainingItems && (
+                        <Link href={`/purchasing/grns/create?sto_id=${sto.id}`}>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <CheckCircle2 className="mr-2 size-4" /> Receive Items (GRN)
+                            </Button>
+                        </Link>
+                    )}
+
+                    {workflow !== 'incoming' && canDispatch && sto.status === 'pending_dispatch' && (
+                        <>
+                            <Button variant="destructive" onClick={() => {
+                                toast("Confirm Reject", {
+                                    description: "Are you sure you want to reject this STO?",
+                                    action: {
+                                        label: "Reject",
+                                        onClick: () => router.post(`/purchasing/stos/${sto.uuid}/reject`),
+                                    },
+                                    cancel: { label: "Cancel", onClick: () => {} }
+                                });
+                            }}>
+                                Reject
+                            </Button>
+                            <Button onClick={handleDispatch} className="bg-blue-600 hover:bg-blue-700">
+                                <Truck className="mr-2 size-4" /> Dispatch Items
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 mb-8 bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-border/50">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Dispatching Location (From)</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{sto.from_location?.location_name}</div>
+                        {sto.from_location?.address && <div className="text-sm text-muted-foreground">{sto.from_location.address}</div>}
+                    </div>
+
+                    <div className="p-4">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Receiving Location (To)</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{sto.to_location?.location_name}</div>
+                        {sto.to_location?.address && <div className="text-sm text-muted-foreground">{sto.to_location.address}</div>}
+                    </div>
                 </div>
 
                 <div className="mb-8 mt-8">
                     <h3 className="text-lg font-semibold mb-4">Transfer Items</h3>
-                    <div className="rounded-md border bg-card">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr>
-                                    <th className="h-10 px-4 text-left font-medium">Ingredient</th>
-                                    <th className="h-10 px-4 text-right font-medium">Approved Qty</th>
-                                    {sto.status !== 'pending_dispatch' && (
-                                        <>
-                                            <th className="h-10 px-4 text-right font-medium">Dispatched Qty</th>
-                                            <th className="h-10 px-4 text-right font-medium">Received Qty</th>
-                                            <th className="h-10 px-4 text-right font-medium">Rejected Qty</th>
-                                        </>
-                                    )}
-                                    <th className="h-10 px-4 text-left font-medium">UOM</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sto.items?.map((item: any) => (
-                                    <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors">
-                                        <td className="p-4 font-medium">{item.ingredient?.name}</td>
-                                        <td className="p-4 text-right font-semibold">{Number(item.approved_quantity).toFixed(2)}</td>
+                    <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto hide-scrollbar">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted/50 text-muted-foreground whitespace-nowrap">
+                                    <tr>
+                                        <th className="h-10 px-4 text-left font-medium">Ingredient</th>
+                                        <th className="h-10 px-4 text-right font-medium">Approved Qty</th>
                                         {sto.status !== 'pending_dispatch' && (
                                             <>
-                                                <td className="p-4 text-right font-semibold">{Number(item.dispatched_quantity).toFixed(2)}</td>
-                                                <td className="p-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
-                                                <td className="p-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
+                                                <th className="h-10 px-4 text-right font-medium">Dispatched Qty</th>
+                                                <th className="h-10 px-4 text-right font-medium">Received Qty</th>
+                                                <th className="h-10 px-4 text-right font-medium">Rejected Qty</th>
                                             </>
                                         )}
-                                        <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
+                                        <th className="h-10 px-4 text-left font-medium">UOM</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {sto.items?.map((item: any) => (
+                                        <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors whitespace-nowrap">
+                                            <td className="p-4 font-medium">{item.ingredient?.name}</td>
+                                            <td className="p-4 text-right font-semibold">{Number(item.approved_quantity).toFixed(2)}</td>
+                                            {sto.status !== 'pending_dispatch' && (
+                                                <>
+                                                    <td className="p-4 text-right font-semibold">{Number(item.dispatched_quantity).toFixed(2)}</td>
+                                                    <td className="p-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
+                                                    <td className="p-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
+                                                </>
+                                            )}
+                                            <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

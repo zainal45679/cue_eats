@@ -185,6 +185,25 @@ export default function StockTransferOrdersIndex() {
             },
         },
         {
+            id: "items",
+            header: "Items",
+            cell: ({ row }: any) => {
+                const items = row.original.items || [];
+                if (items.length === 0) return <span className="text-muted-foreground">-</span>;
+                
+                const dispatched = items.reduce((acc: number, item: any) => acc + Number(item.dispatched_quantity || 0), 0);
+                const approved = items.reduce((acc: number, item: any) => acc + Number(item.approved_quantity || 0), 0);
+                const received = items.reduce((acc: number, item: any) => acc + Number(item.received_quantity || 0), 0);
+                
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-blue-700">{dispatched} Dispatched</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{received > 0 ? `${received} Received / ` : ''}{approved} Approved</span>
+                    </div>
+                );
+            }
+        },
+        {
             id: "requestedBy",
             header: "Requested By",
             accessorFn: (row: any) => row.internal_request?.requested_by?.name || "-",

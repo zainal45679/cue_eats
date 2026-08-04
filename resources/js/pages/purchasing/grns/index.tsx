@@ -121,21 +121,7 @@ export default function GoodsReceiptNotesIndex() {
                 return <span className="font-medium text-gray-600">{type}</span>;
             }
         },
-        {
-            id: "reference",
-            header: "Reference",
-            cell: ({ row }: any) => {
-                const po = row.original.purchase_order;
-                const sto = row.original.stock_transfer_order;
-                if (po) {
-                    return <span className="font-medium">PO: {po.po_number}</span>;
-                }
-                if (sto) {
-                    return <span className="font-medium">STO: {sto.sto_number}</span>;
-                }
-                return "-";
-            }
-        },
+
         {
             id: "status",
             header: "Status",
@@ -174,6 +160,24 @@ export default function GoodsReceiptNotesIndex() {
                     </Badge>
                 );
             },
+        },
+        {
+            id: "items",
+            header: "Items",
+            cell: ({ row }: any) => {
+                const items = row.original.items || [];
+                if (items.length === 0) return <span className="text-muted-foreground">-</span>;
+                
+                const received = items.reduce((acc: number, item: any) => acc + Number(item.received_quantity || 0), 0);
+                const expected = items.reduce((acc: number, item: any) => acc + Number(item.expected_quantity || 0), 0);
+                
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-emerald-700">{received} Received</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{expected} Expected</span>
+                    </div>
+                );
+            }
         },
         {
             id: "requestedBy",

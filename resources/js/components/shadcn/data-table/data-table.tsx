@@ -18,6 +18,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   actionBar?: React.ReactNode;
   isSelectable?: boolean;
   totalCount?: number;
+  renderMobileCard?: (row: TData) => React.ReactNode;
 }
 
 export function DataTable<TData>({
@@ -27,12 +28,13 @@ export function DataTable<TData>({
   children,
   className,
   totalCount,
+  renderMobileCard,
   ...props
 }: DataTableProps<TData>) {
   return (
-    <div className={cn("flex w-full flex-col gap-2.5", className)} {...props}>
+    <div className={cn("flex w-full min-w-0 max-w-full flex-col gap-2.5", className)} {...props}>
       {children}
-      <div className="overflow-hidden rounded-md border">
+      <div className={cn("rounded-md border max-w-full", renderMobileCard ? "hidden sm:block overflow-hidden" : "overflow-hidden")}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -91,6 +93,22 @@ export function DataTable<TData>({
           </TableBody>
         </Table>
       </div>
+      
+      {renderMobileCard && (
+        <div className="sm:hidden flex flex-col gap-4">
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <div key={row.id}>
+                {renderMobileCard(row.original)}
+              </div>
+            ))
+          ) : (
+            <div className="h-24 flex items-center justify-center text-center text-muted-foreground border rounded-md bg-card">
+              No results.
+            </div>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-2.5">
         <DataTablePagination
           isSelectable={isSelectable}

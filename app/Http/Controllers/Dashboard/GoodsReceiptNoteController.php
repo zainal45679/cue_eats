@@ -15,7 +15,7 @@ class GoodsReceiptNoteController extends Controller
 {
     public function index()
     {
-        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder.internalRequest.requestedBy', 'purchaseOrder.createdBy']);
+        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder.internalRequest.requestedBy', 'purchaseOrder.createdBy', 'items']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -299,19 +299,18 @@ class GoodsReceiptNoteController extends Controller
                 }
             }
 
-            $allItemsFullyProcessed = true;
-            foreach ($poLocked->items as $poItem) {
-                if (($poItem->received_quantity + $poItem->rejected_quantity) < $poItem->quantity) {
-                    $allItemsFullyProcessed = false;
+            // Refresh the items relation to get the updated quantities from the database
+            $poLocked->load('items');
+
+            $isFullyReceived = true;
+            foreach ($poLocked->items as $item) {
+                if ($item->received_quantity + $item->rejected_quantity < $item->quantity) {
+                    $isFullyReceived = false;
                     break;
                 }
             }
 
-            if ($allItemsFullyProcessed) {
-                $poLocked->update(['status' => 'received']);
-            } else {
-                $poLocked->update(['status' => 'partially_received']);
-            }
+            $poLocked->update(['status' => $isFullyReceived ? 'received' : 'partially_received']);
         });
 
         return redirect()->route('grns.index')->with('success', 'Purchase Order GRN created successfully.');

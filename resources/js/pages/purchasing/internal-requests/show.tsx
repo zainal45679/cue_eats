@@ -119,85 +119,143 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
 
             {/* --- WEB ONLY VIEW --- */}
             <div className="print:hidden">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight">{internalRequest.request_number}</h1>
-                        {getStatusBadge(internalRequest.status)}
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold tracking-tight truncate">{internalRequest.request_number}</h1>
+                            <div className="shrink-0">
+                                {getStatusBadge(internalRequest.status)}
+                            </div>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => window.print()}>
+                    <div className="shrink-0 ml-4 hidden sm:flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                             <Printer className="mr-2 size-4" /> Print
                         </Button>
-                        
-                        {internalRequest.status === 'draft' && (
-                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/edit`}>
-                                <Button variant="outline">Edit Indent</Button>
-                            </Link>
-                        )}
-
-                        {canApprove && internalRequest.status === 'draft' && (
-                            <Button onClick={() => {
-                                if (confirm("Submit this Indent request?")) {
-                                    router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
-                                }
-                            }} className="bg-emerald-600 hover:bg-emerald-700">
-                                <CheckCircle2 className="mr-2 size-4" /> Submit Indent
-                            </Button>
-                        )}
-
-                        {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
-                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/fulfill`}>
-                                <Button className="bg-emerald-600 hover:bg-emerald-700">
-                                    <CheckCircle2 className="mr-2 size-4" /> Fulfill Request
-                                </Button>
-                            </Link>
-                        )}
-
-                        {canApprove && internalRequest.status === 'draft' && (
-                            <Button variant="destructive" onClick={handleReject}>
-                                <XCircle className="mr-2 size-4" /> Reject Indent
-                            </Button>
-                        )}
-
-                        {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
-                            <Button variant="destructive" onClick={handleReject}>
-                                <XCircle className="mr-2 size-4" /> Reject Remaining Request
-                            </Button>
-                        )}
+                    </div>
+                    {/* Mobile Print Icon */}
+                    <div className="shrink-0 ml-2 sm:hidden">
+                        <Button variant="ghost" size="icon" onClick={() => window.print()} className="h-9 w-9 rounded-full bg-muted/50">
+                            <Printer className="size-4 text-foreground" />
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row justify-start gap-12 text-sm mb-8 bg-muted/20 border p-4 rounded-md">
-                    <div className="space-y-1">
-                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Requesting Location (To)</div>
-                        <div className="font-semibold text-foreground text-base">{internalRequest.to_location?.location_name}</div>
-                        {internalRequest.to_location?.address && <div className="text-muted-foreground">{internalRequest.to_location.address}</div>}
+                {/* Mobile Floating Action Bar */}
+                <div className="fixed sm:hidden bottom-0 left-0 w-full p-4 bg-background/80 backdrop-blur-md border-t border-border z-50 flex gap-2">
+                    {internalRequest.status === 'draft' && (
+                        <Button variant="outline" className="flex-1 bg-background" asChild>
+                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/edit`}>Edit</Link>
+                        </Button>
+                    )}
+
+                    {canApprove && internalRequest.status === 'draft' && (
+                        <Button onClick={() => {
+                            if (confirm("Submit this Indent request?")) {
+                                router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
+                            }
+                        }} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                            Submit
+                        </Button>
+                    )}
+
+                    {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg" asChild>
+                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/fulfill`}>
+                                <CheckCircle2 className="mr-2 size-5" /> Fulfill
+                            </Link>
+                        </Button>
+                    )}
+
+                    {canApprove && internalRequest.status === 'draft' && (
+                        <Button variant="destructive" onClick={handleReject} className="flex-1">
+                            Reject
+                        </Button>
+                    )}
+                    {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                        <Button variant="destructive" onClick={handleReject} className="w-full mt-2">
+                            Reject Remaining
+                        </Button>
+                    )}
+                </div>
+
+                {/* Desktop Action Bar */}
+                <div className="hidden sm:flex items-center flex-wrap gap-3 mb-8">
+                    {internalRequest.status === 'draft' && (
+                        <Button variant="outline" asChild>
+                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/edit`}>Edit Indent</Link>
+                        </Button>
+                    )}
+
+                    {canApprove && internalRequest.status === 'draft' && (
+                        <Button onClick={() => {
+                            if (confirm("Submit this Indent request?")) {
+                                router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
+                            }
+                        }} className="bg-emerald-600 hover:bg-emerald-700">
+                            <CheckCircle2 className="mr-2 size-4" /> Submit Indent
+                        </Button>
+                    )}
+
+                    {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                        <Button className="bg-emerald-600 hover:bg-emerald-700" asChild>
+                            <Link href={`/purchasing/internal-requests/${internalRequest.uuid}/fulfill`}>
+                                <CheckCircle2 className="mr-2 size-4" /> Fulfill Request
+                            </Link>
+                        </Button>
+                    )}
+
+                    {canApprove && internalRequest.status === 'draft' && (
+                        <Button variant="destructive" onClick={handleReject}>
+                            <XCircle className="mr-2 size-4" /> Reject Indent
+                        </Button>
+                    )}
+
+                    {canFulfill && ['pending_fulfillment', 'partially_fulfilled'].includes(internalRequest.status) && (
+                        <Button variant="destructive" onClick={handleReject}>
+                            <XCircle className="mr-2 size-4" /> Reject Remaining Request
+                        </Button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 mb-8 bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-border/50">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Requesting Location (To)</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{internalRequest.to_location?.location_name}</div>
+                        {internalRequest.to_location?.address && <div className="text-sm text-muted-foreground">{internalRequest.to_location.address}</div>}
                     </div>
 
-                    <div className="space-y-1">
-                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Fulfilling Location (From)</div>
-                        <div className="font-semibold text-foreground text-base">{internalRequest.from_location?.location_name}</div>
-                        {internalRequest.from_location?.address && <div className="text-muted-foreground">{internalRequest.from_location.address}</div>}
+                    <div className="p-4">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Fulfilling Location (From)</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{internalRequest.from_location?.location_name}</div>
+                        {internalRequest.from_location?.address && <div className="text-sm text-muted-foreground">{internalRequest.from_location.address}</div>}
                     </div>
                 </div>
 
                 <div className="mb-8 mt-8">
                     <h3 className="text-lg font-semibold mb-4">Requested Items</h3>
-                    <div className="rounded-md border bg-card">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr>
-                                    <th className="h-10 px-4 text-left font-medium">Ingredient</th>
-                                    <th className="h-10 px-4 text-center font-medium">Requested</th>
-                                    <th className="h-10 px-4 text-center font-medium text-emerald-600">Dispatched</th>
-                                    <th className="h-10 px-4 text-center font-medium text-red-600">Rejected</th>
-                                    <th className="h-10 px-4 text-center font-medium text-blue-600">Remaining</th>
-                                    <th className="h-10 px-4 text-left font-medium">UOM</th>
-                                    <th className="h-10 px-4 text-right font-medium">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto hide-scrollbar">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted/50 text-muted-foreground whitespace-nowrap">
+                                    <tr>
+                                        <th className="h-10 px-4 text-left font-medium">Ingredient</th>
+                                        <th className="h-10 px-4 text-center font-medium">Requested</th>
+                                        <th className="h-10 px-4 text-center font-medium text-emerald-600">Dispatched</th>
+                                        <th className="h-10 px-4 text-center font-medium text-red-600">Rejected</th>
+                                        <th className="h-10 px-4 text-center font-medium text-blue-600">Remaining</th>
+                                        <th className="h-10 px-4 text-left font-medium">UOM</th>
+                                        <th className="h-10 px-4 text-right font-medium">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                 {internalRequest.items?.map((item: any) => (
                                     <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors">
                                         <td className="p-4 font-medium">{item.ingredient?.name}</td>

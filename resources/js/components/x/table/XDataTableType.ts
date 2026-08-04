@@ -89,4 +89,6 @@ export type XDataTableProps<T extends { id: string | number }> = {
     onClick?: (row: T) => void;
     show?: (row: T) => boolean;
   }[];
+
+  renderMobileCard?: (row: T) => React.ReactNode;
 };

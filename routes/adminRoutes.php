@@ -88,7 +88,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('grns', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'store'])->name('grns.store');
         Route::get('grns/{goods_receipt_note}', [\App\Http\Controllers\Dashboard\GoodsReceiptNoteController::class, 'show'])->name('grns.show');
         
+        Route::get('purchase-orders/{purchase_order}/approve', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'approvalForm'])->name('purchase-orders.approval-form');
         Route::post('purchase-orders/{purchase_order}/approve', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
+        Route::post('purchase-orders/{purchase_order}/submit', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'submit'])->name('purchase-orders.submit');
         Route::post('purchase-orders/{purchase_order}/reject', [\App\Http\Controllers\Dashboard\PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
         Route::resource('purchase-orders', \App\Http\Controllers\Dashboard\PurchaseOrderController::class);
     });

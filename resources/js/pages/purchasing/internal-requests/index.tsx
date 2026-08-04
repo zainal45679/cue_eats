@@ -173,6 +173,24 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
             },
         },
         {
+            id: "items",
+            header: "Items",
+            cell: ({ row }: any) => {
+                const items = row.original.items || [];
+                if (items.length === 0) return <span className="text-muted-foreground">-</span>;
+                
+                const requested = items.reduce((acc: number, item: any) => acc + Number(item.requested_quantity || 0), 0);
+                const fulfilled = items.reduce((acc: number, item: any) => acc + Number(item.fulfilled_quantity || 0), 0);
+                
+                return (
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-blue-700">{requested} Requested</span>
+                        <span className="text-[11px] font-medium text-muted-foreground">{fulfilled} Fulfilled</span>
+                    </div>
+                );
+            }
+        },
+        {
             id: "requestedBy",
             header: "Requested By",
             accessorFn: (row: any) => row.requested_by?.name || "-",

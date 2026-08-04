@@ -13,7 +13,7 @@ class InternalRequestController extends Controller
     {
         $this->authorize('viewAny', InternalRequest::class);
         
-        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy', 'updatedBy', 'stos.grns.receivedBy']);
+        $query = InternalRequest::with(['fromLocation', 'toLocation', 'requestedBy', 'updatedBy', 'stos.grns.receivedBy', 'items']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -57,7 +57,7 @@ class InternalRequestController extends Controller
             $data['to_location_id'] = $toLocId;
 
             $data['request_number'] = 'REQ-' . time(); // Simple generator
-            $data['status'] = 'draft'; // Always save as draft initially
+            $data['status'] = 'pending_approval'; // Skip draft, go straight to pending approval
 
         $ir = InternalRequest::create($data);
 
@@ -146,7 +146,7 @@ class InternalRequestController extends Controller
     {
         $this->authorize('approve', $internalRequest);
         
-        if ($internalRequest->status !== 'draft') {
+        if (!in_array($internalRequest->status, ['draft', 'pending_approval'])) {
             abort(400, 'This Internal Request cannot be approved in its current state.');
         }
 

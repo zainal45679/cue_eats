@@ -7,19 +7,23 @@ import { Building2, Calendar, MapPin, Truck, CheckCircle2, XCircle, FileText, Pr
 import { toast } from "sonner";
 
 export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purchaseOrder: any, canApprove: boolean, workflow: string }) {
-    const hasRemainingItems = purchaseOrder.items?.some((item: any) => {
-        const expected = Number(item.quantity) || 0;
-        const received = Number(item.received_quantity) || 0;
-        const rejected = Number(item.rejected_quantity) || 0;
-        return expected - received - rejected > 0;
-    });
+    const totalOrdered = purchaseOrder.items?.reduce((acc: number, item: any) => acc + Number(item.quantity || 0), 0) || 0;
+    const totalReceived = purchaseOrder.items?.reduce((acc: number, item: any) => acc + Number(item.received_quantity || 0), 0) || 0;
+    const totalRejected = purchaseOrder.items?.reduce((acc: number, item: any) => acc + Number(item.rejected_quantity || 0), 0) || 0;
+    const totalPending = Math.max(0, totalOrdered - totalReceived - totalRejected);
+
+    const hasRemainingItems = totalPending > 0;
 
     const handleApprove = () => {
-        toast("Confirm Approval", {
-            description: "Are you sure you want to approve this purchase order?",
+        router.get(`/purchasing/purchase-orders/${purchaseOrder.uuid}/approve`);
+    };
+
+    const handleSubmitForApproval = () => {
+        toast("Confirm Submission", {
+            description: "Are you sure you want to submit this purchase order for approval?",
             action: {
-                label: "Approve",
-                onClick: () => router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/approve`),
+                label: "Submit",
+                onClick: () => router.post(`/purchasing/purchase-orders/${purchaseOrder.uuid}/submit`),
             },
             cancel: { label: "Cancel", onClick: () => {} }
         });
@@ -161,73 +165,166 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
 
             {/* --- WEB ONLY VIEW --- */}
             <div className="print:hidden">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-tight">PO-{purchaseOrder.po_number}</h1>
-                        {getStatusBadge(purchaseOrder.status)}
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">{purchaseOrder.po_number}</h1>
+                            <div className="shrink-0">
+                                {getStatusBadge(purchaseOrder.status)}
+                            </div>
+                        </div>
+                        {purchaseOrder.approvals?.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                                {purchaseOrder.status === 'approved' || purchaseOrder.status === 'received' || purchaseOrder.status === 'partially_received' || purchaseOrder.status === 'fully_received' ? 'Approved by ' : 'Reviewed by '}
+                                <span className="font-semibold text-foreground">{purchaseOrder.approvals[purchaseOrder.approvals.length - 1].approver?.name || 'Unknown User'}</span>
+                                {' on '}
+                                {new Date(purchaseOrder.approvals[purchaseOrder.approvals.length - 1].created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                        )}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => window.print()}>
+                    <div className="shrink-0 ml-4 hidden sm:flex items-center gap-2">
+                        {/* Desktop only buttons */}
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                             <Printer className="mr-2 size-4" /> Print
                         </Button>
-                        
-                        {workflow !== 'incoming' && purchaseOrder.status === 'draft' && (
-                            <Link href={`/purchasing/purchase-orders/${purchaseOrder.uuid}/edit`}>
-                                <Button variant="outline">Edit Order</Button>
-                            </Link>
-                        )}
-                        
-                        {workflow === 'incoming' && (purchaseOrder.status === 'approved' || purchaseOrder.status === 'partially_received') && hasRemainingItems && (
-                            <Link href={`/purchasing/grns/create?po_id=${purchaseOrder.id}`}>
-                                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                                    <CheckCircle2 className="mr-2 size-4" /> Receive Items
-                                </Button>
-                            </Link>
-                        )}
-                        
-                        {workflow !== 'incoming' && canApprove && purchaseOrder.status === 'draft' && (
-                            <>
-                                <Button variant="destructive" onClick={handleReject}>
-                                    <XCircle className="mr-2 size-4" /> Reject
-                                </Button>
-                                <Button onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700">
-                                    <CheckCircle2 className="mr-2 size-4" /> Approve
-                                </Button>
-                            </>
-                        )}
+                    </div>
+                    {/* Mobile Print Icon */}
+                    <div className="shrink-0 ml-2 sm:hidden">
+                        <Button variant="ghost" size="icon" onClick={() => window.print()} className="h-9 w-9 rounded-full bg-muted/50">
+                            <Printer className="size-4 text-foreground" />
+                        </Button>
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row justify-between gap-6 text-sm mb-8 bg-muted/20 border p-4 rounded-md">
-                    <div className="space-y-1">
-                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Supplier</div>
-                        <div className="font-semibold text-foreground text-base">{purchaseOrder.supplier?.name}</div>
-                        {purchaseOrder.supplier?.contact_name && <div className="text-muted-foreground">{purchaseOrder.supplier.contact_name}</div>}
-                        {purchaseOrder.supplier?.email && <div className="text-muted-foreground">{purchaseOrder.supplier.email}</div>}
-                        {purchaseOrder.supplier?.phone && <div className="text-muted-foreground">{purchaseOrder.supplier.phone}</div>}
+                {/* Mobile Floating Action Bar */}
+                <div className="fixed sm:hidden bottom-0 left-0 w-full p-4 bg-background/80 backdrop-blur-md border-t border-border z-50 flex gap-2">
+                    {workflow !== 'incoming' && purchaseOrder.status === 'draft' && (
+                        <>
+                            <Button variant="outline" className="flex-1 bg-background" asChild>
+                                <Link href={`/purchasing/purchase-orders/${purchaseOrder.uuid}/edit`}>Edit</Link>
+                            </Button>
+                            <Button onClick={handleSubmitForApproval} className="flex-1 bg-blue-600 hover:bg-blue-700">Submit</Button>
+                        </>
+                    )}
+                    
+                    {workflow === 'incoming' && (purchaseOrder.status === 'approved' || purchaseOrder.status === 'partially_received') && hasRemainingItems && (
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg" asChild>
+                            <Link href={`/purchasing/grns/create?po_id=${purchaseOrder.id}`}>
+                                <CheckCircle2 className="mr-2 size-5" /> Receive Items
+                            </Link>
+                        </Button>
+                    )}
+                    
+                    {workflow !== 'incoming' && canApprove && (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') && (
+                        <>
+                            <Button variant="destructive" onClick={handleReject} className="flex-1">
+                                Reject
+                            </Button>
+                            <Button onClick={handleApprove} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                                Approve
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                {/* Desktop Action Bar */}
+                <div className="hidden sm:flex items-center flex-wrap gap-3 mb-8">
+                    {workflow !== 'incoming' && purchaseOrder.status === 'draft' && (
+                        <Button variant="outline" asChild>
+                            <Link href={`/purchasing/purchase-orders/${purchaseOrder.uuid}/edit`}>Edit Order</Link>
+                        </Button>
+                    )}
+                    
+                    {workflow === 'incoming' && (purchaseOrder.status === 'approved' || purchaseOrder.status === 'partially_received') && hasRemainingItems && (
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" asChild>
+                            <Link href={`/purchasing/grns/create?po_id=${purchaseOrder.id}`}>
+                                <CheckCircle2 className="mr-2 size-4" /> Receive Items
+                            </Link>
+                        </Button>
+                    )}
+                    
+                    {workflow !== 'incoming' && purchaseOrder.status === 'draft' && (
+                        <Button onClick={handleSubmitForApproval} className="bg-blue-600 hover:bg-blue-700">
+                            Submit for Approval
+                        </Button>
+                    )}
+                    
+                    {workflow !== 'incoming' && canApprove && (purchaseOrder.status === 'draft' || purchaseOrder.status === 'pending_approval') && (
+                        <>
+                            <Button variant="destructive" onClick={handleReject}>
+                                <XCircle className="mr-2 size-4" /> Reject
+                            </Button>
+                            <Button onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700">
+                                <CheckCircle2 className="mr-2 size-4" /> Approve
+                            </Button>
+                        </>
+                    )}
+                </div>
+
+                {purchaseOrder.status === 'partially_received' && totalPending > 0 && (
+                    <div className="mb-8 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 rounded-lg p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-purple-100 dark:bg-purple-900/50 p-2.5 rounded-full shrink-0">
+                                <Package className="size-5 text-purple-700 dark:text-purple-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-semibold text-purple-900 dark:text-purple-300">Partially Received</h3>
+                                <p className="text-sm text-purple-700 dark:text-purple-400/80 mt-1">
+                                    You have received some items, but are still waiting for <strong className="font-bold">{totalPending.toFixed(2)} pending items</strong> from this order.
+                                </p>
+                            </div>
+                        </div>
+                        {workflow === 'incoming' && (
+                            <Link href={`/purchasing/grns/create?po_id=${purchaseOrder.id}`}>
+                                <Button className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm shrink-0">
+                                    Receive Pending Items
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-0 mb-8 bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-border/50">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <Building2 className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Supplier</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1">{purchaseOrder.supplier?.name}</div>
+                        <div className="text-sm text-muted-foreground flex flex-col gap-0.5">
+                            {purchaseOrder.supplier?.contact_name && <span>{purchaseOrder.supplier.contact_name}</span>}
+                            {purchaseOrder.supplier?.phone && <span>{purchaseOrder.supplier.phone}</span>}
+                            {purchaseOrder.supplier?.email && <span>{purchaseOrder.supplier.email}</span>}
+                        </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Delivery Location</div>
-                        <div className="font-semibold text-foreground text-base">{purchaseOrder.delivery_location?.location_name}</div>
-                        {purchaseOrder.delivery_location?.address && <div className="text-muted-foreground">{purchaseOrder.delivery_location.address}</div>}
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-border/50">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Delivery</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1">{purchaseOrder.delivery_location?.location_name || 'Main Kitchen'}</div>
+                        {purchaseOrder.delivery_location?.address && <div className="text-sm text-muted-foreground">{purchaseOrder.delivery_location.address}</div>}
                     </div>
 
-                    <div className="space-y-1">
-                        <div className="text-muted-foreground font-semibold mb-1 uppercase text-[10px] tracking-wider">Order Info</div>
-                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                    <div className="p-4">
+                        <div className="flex items-center gap-2 mb-3 text-muted-foreground">
+                            <Calendar className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Order Info</h3>
+                        </div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                             <span className="text-muted-foreground">Date:</span>
-                            <span className="font-medium text-right">{new Date(purchaseOrder.created_at).toLocaleDateString()}</span>
+                            <span className="font-semibold text-right">{new Date(purchaseOrder.created_at).toLocaleDateString()}</span>
                             
                             <span className="text-muted-foreground">Expected:</span>
-                            <span className="font-medium text-right">
+                            <span className="font-semibold text-right">
                                 {purchaseOrder.expected_delivery_date 
                                     ? new Date(purchaseOrder.expected_delivery_date).toLocaleDateString()
                                     : 'TBD'}
                             </span>
 
-                            <span className="text-muted-foreground">Requested By:</span>
-                            <span className="font-medium text-right">{purchaseOrder.created_by?.name || '-'}</span>
+                            <span className="text-muted-foreground">Req. By:</span>
+                            <span className="font-semibold text-right truncate">{purchaseOrder.created_by?.name || '-'}</span>
                         </div>
                     </div>
                 </div>
@@ -247,7 +344,7 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
 
                 <div className="mb-8 mt-8">
                     <h3 className="text-lg font-semibold mb-4">Line Items</h3>
-                    <div className="rounded-md border bg-card">
+                    <div className="rounded-md border bg-card overflow-x-auto w-full">
                         <table className="w-full text-sm">
                             <thead className="bg-muted/50 text-muted-foreground">
                                 <tr>
@@ -255,6 +352,7 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
                                     <th className="h-10 px-4 text-right font-medium">Ordered Qty</th>
                                     <th className="h-10 px-4 text-right font-medium text-emerald-600">Received Qty</th>
                                     <th className="h-10 px-4 text-right font-medium text-red-600">Rejected Qty</th>
+                                    <th className="h-10 px-4 text-right font-medium text-purple-600">Pending Qty</th>
                                     <th className="h-10 px-4 text-left font-medium">UOM</th>
                                     <th className="h-10 px-4 text-right font-medium">Unit Price</th>
                                     <th className="h-10 px-4 text-right font-medium">Subtotal</th>
@@ -267,6 +365,9 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
                                         <td className="p-4 text-right">{Number(item.quantity).toFixed(2)}</td>
                                         <td className="p-4 text-right font-semibold text-emerald-600">{Number(item.received_quantity || 0).toFixed(2)}</td>
                                         <td className="p-4 text-right font-semibold text-red-600">{Number(item.rejected_quantity || 0).toFixed(2)}</td>
+                                        <td className="p-4 text-right font-semibold text-purple-600">
+                                            {Math.max(0, Number(item.quantity) - Number(item.received_quantity || 0) - Number(item.rejected_quantity || 0)).toFixed(2)}
+                                        </td>
                                         <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
                                         <td className="p-4 text-right">${Number(item.unit_price).toFixed(2)}</td>
                                         <td className="p-4 text-right font-medium">
@@ -277,7 +378,7 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
                             </tbody>
                             <tfoot className="bg-muted/50 border-t">
                                 <tr>
-                                    <td colSpan={5} className="p-4 text-right font-bold text-lg">Grand Total</td>
+                                    <td colSpan={7} className="p-4 text-right font-bold text-lg">Grand Total</td>
                                     <td className="p-4 text-right font-bold text-lg text-primary">
                                         ${Number(purchaseOrder.grand_total).toFixed(2)}
                                     </td>
@@ -287,29 +388,6 @@ export default function ShowPage({ purchaseOrder, canApprove, workflow }: { purc
                     </div>
                 </div>
 
-                {purchaseOrder.approvals?.length > 0 && (
-                    <div className="mt-8">
-                        <h3 className="text-lg font-semibold mb-4">Approval History</h3>
-                        <div className="space-y-4">
-                            {purchaseOrder.approvals.map((approval: any) => (
-                                <div key={approval.id} className="flex gap-4 p-4 border rounded-lg bg-card">
-                                    <div>
-                                        <div className="font-medium">{approval.approver?.name || 'Unknown User'}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {new Date(approval.created_at).toLocaleString()}
-                                        </div>
-                                    </div>
-                                    <div className="ml-auto flex flex-col items-end gap-1">
-                                        {getStatusBadge(approval.status)}
-                                        {approval.comments && (
-                                            <div className="text-sm mt-2 italic">"{approval.comments}"</div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
         </XPage>
     );

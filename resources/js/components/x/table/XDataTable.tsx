@@ -52,6 +52,7 @@ export function XDataTable<T extends { id: string | number }>({
   entity,
   title,
   titleButtons = [],
+  renderMobileCard,
 }: XDataTableProps<T>) {
   const isSelectable = actionBarButtons.length > 0;
 
@@ -536,12 +537,12 @@ export function XDataTable<T extends { id: string | number }>({
   }, [table, actionBarButtons, ability]);
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between">
-        <div>
-          {title && <h1 className="mb-3 font-bold text-2xl">{title}</h1>}
+    <div className="w-full min-w-0 max-w-full">
+      <div className="flex flex-row items-center justify-between gap-2 mb-4">
+        <div className="min-w-0 flex-1">
+          {title && <h1 className="font-bold text-xl sm:text-2xl tracking-tight leading-tight truncate">{title}</h1>}
         </div>
-        <div className="mb-3 flex space-x-2">
+        <div className="flex space-x-2 shrink-0">
           {titleButtons.map((button) => {
             if (button.type === "create" && !ability.canCreate) {
               return null;
@@ -597,6 +598,7 @@ export function XDataTable<T extends { id: string | number }>({
         isSelectable={isSelectable}
         table={table}
         totalCount={data.meta.total}
+        renderMobileCard={renderMobileCard}
       >
         <DataTableToolbar activeFilterCount={activeFilterCount} table={table}>
           <DataTableViewOptions table={table} />

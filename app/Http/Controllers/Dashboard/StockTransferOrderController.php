@@ -14,7 +14,7 @@ class StockTransferOrderController extends Controller
 {
     public function index()
     {
-        $query = StockTransferOrder::with(['fromLocation', 'toLocation', 'internalRequest.requestedBy', 'internalRequest.updatedBy', 'grns.receivedBy']);
+        $query = StockTransferOrder::with(['fromLocation', 'toLocation', 'internalRequest.requestedBy', 'internalRequest.updatedBy', 'grns.receivedBy', 'items']);
         
         $activeLocationId = session('active_location_id');
         $locationId = null;

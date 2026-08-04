@@ -37,7 +37,7 @@ class InternalRequestPolicy
         
         if (!$user->hasPermissionTo('update.internal-requests')) return false;
 
-        return $user->business_location_id === $internalRequest->to_location_id && $internalRequest->status === 'draft';
+        return $user->business_location_id === $internalRequest->to_location_id && in_array($internalRequest->status, ['draft', 'pending_approval']);
     }
 
     public function delete(User $user, InternalRequest $internalRequest): bool
@@ -46,7 +46,7 @@ class InternalRequestPolicy
         
         if (!$user->hasPermissionTo('delete.internal-requests')) return false;
 
-        return $user->business_location_id === $internalRequest->to_location_id && $internalRequest->status === 'draft';
+        return $user->business_location_id === $internalRequest->to_location_id && in_array($internalRequest->status, ['draft', 'pending_approval']);
     }
 
     public function approve(User $user, InternalRequest $internalRequest): bool
@@ -57,7 +57,7 @@ class InternalRequestPolicy
         if (!$user->hasPermissionTo('approve.internal-requests')) return false;
         
         return $user->business_location_id === $internalRequest->to_location_id &&
-               $internalRequest->status === 'draft';
+               in_array($internalRequest->status, ['draft', 'pending_approval']);
     }
 
     public function reject(User $user, InternalRequest $internalRequest): bool

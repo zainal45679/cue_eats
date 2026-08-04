@@ -77,7 +77,7 @@ class PurchaseOrderController extends Controller
             $mode = \Illuminate\Support\Arr::pull($data, 'mode');
             
             $data['created_by'] = auth()->id();
-            $data['status'] = 'draft';
+            $data['status'] = 'pending_approval';
             
             // Set business_location_id for multi-tenant scope
             // Assuming the branch ordering is also the delivery location
@@ -185,7 +185,35 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    public function approve(PurchaseOrder $purchaseOrder)
+    public function submit(PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('update', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'draft') {
+            abort(400, 'Only draft Purchase Orders can be submitted for approval.');
+        }
+
+        $purchaseOrder->update(['status' => 'pending_approval']);
+
+        return redirect()->back()->with('success', 'Purchase Order submitted for approval.');
+    }
+
+    public function approvalForm(PurchaseOrder $purchaseOrder)
+    {
+        $this->authorize('approve', $purchaseOrder);
+
+        if ($purchaseOrder->status !== 'draft' && $purchaseOrder->status !== 'pending_approval') {
+            abort(400, 'This Purchase Order cannot be approved in its current state.');
+        }
+
+        $purchaseOrder->load(['items.ingredient' => fn($q) => $q->withTrashed(), 'items.unitOfMeasure', 'supplier' => fn($q) => $q->withTrashed(), 'businessLocation', 'deliveryLocation', 'createdBy']);
+
+        return Inertia::render('purchasing/purchase-orders/approve', [
+            'purchaseOrder' => $purchaseOrder,
+        ]);
+    }
+
+    public function approve(\Illuminate\Http\Request $request, PurchaseOrder $purchaseOrder)
     {
         \Illuminate\Support\Facades\Log::info('Approve method hit for PO: ' . $purchaseOrder->uuid);
         $this->authorize('approve', $purchaseOrder);
@@ -194,21 +222,46 @@ class PurchaseOrderController extends Controller
             abort(400, 'This Purchase Order cannot be approved in its current state.');
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($purchaseOrder) {
-            $purchaseOrder->update(['status' => 'approved']);
+        $data = $request->validate([
+            'notes' => 'nullable|string',
+            'items' => 'required|array',
+            'items.*.id' => 'required|exists:purchase_order_items,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'required|numeric|min:0',
+        ]);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($purchaseOrder, $data) {
+            $grandTotal = 0;
+            
+            // Update items
+            foreach ($data['items'] as $itemData) {
+                $poItem = $purchaseOrder->items()->find($itemData['id']);
+                if ($poItem) {
+                    $poItem->update([
+                        'quantity' => $itemData['quantity'],
+                        'unit_price' => $itemData['unit_price'],
+                    ]);
+                    $grandTotal += ($itemData['quantity'] * $itemData['unit_price']);
+                }
+            }
+
+            $purchaseOrder->update([
+                'status' => 'approved',
+                'grand_total' => $grandTotal,
+            ]);
 
             // Log approval (assuming an approvals table exists)
             if (\Illuminate\Support\Facades\Schema::hasTable('purchase_order_approvals')) {
                 $purchaseOrder->approvals()->create([
                     'approver_id' => auth()->id(),
                     'status' => 'approved',
-                    'comments' => request('notes'),
+                    'comments' => $data['notes'] ?? null,
                     'acted_at' => now(),
                 ]);
             }
 
             // Track items as on-order in the delivery location's inventory
-            foreach ($purchaseOrder->items as $item) {
+            foreach ($purchaseOrder->items()->get() as $item) {
                 $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                     [
                         'business_location_id' => $purchaseOrder->delivery_location_id,
@@ -232,7 +285,7 @@ class PurchaseOrderController extends Controller
             }
         });
 
-        return redirect()->back()->with('success', 'Purchase Order approved successfully.');
+        return redirect()->route('purchase-orders.index')->with('success', 'Purchase Order approved successfully.');
     }
 
     public function reject(PurchaseOrder $purchaseOrder)

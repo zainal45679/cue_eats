@@ -108,93 +108,92 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
 
             {/* --- WEB ONLY VIEW --- */}
             <div className="print:hidden">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-3xl font-bold tracking-tight">{grn.grn_number}</h1>
-                        {getStatusBadge(grn.status)}
+                <div className="flex justify-between items-start mb-6">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-bold tracking-tight truncate">{grn.grn_number}</h1>
+                            <div className="shrink-0">
+                                {getStatusBadge(grn.status)}
+                            </div>
+                        </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => window.print()}>
+                    <div className="shrink-0 ml-4 hidden sm:flex items-center gap-2">
+                        {/* Desktop only buttons */}
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                             <Printer className="mr-2 size-4" /> Print
+                        </Button>
+                    </div>
+                    {/* Mobile Print Icon */}
+                    <div className="shrink-0 ml-2 sm:hidden">
+                        <Button variant="ghost" size="icon" onClick={() => window.print()} className="h-9 w-9 rounded-full bg-muted/50">
+                            <Printer className="size-4 text-foreground" />
                         </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <ClipboardCheck className="size-4" /> Receipt Details
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Source STO:</span>
-                                    <span className="font-medium">{grn.stock_transfer_order?.sto_number || '-'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Received By:</span>
-                                    <span className="font-medium">{grn.received_by?.name || '-'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Date:</span>
-                                    <span className="font-medium">{new Date(grn.created_at).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0 mb-8 bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                    <div className="p-4 border-b md:border-b-0 md:border-r border-border/50">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <ClipboardCheck className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Receipt Details</h3>
+                        </div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-3">
+                            <span className="text-muted-foreground">Source STO:</span>
+                            <span className="font-semibold text-right">{grn.stock_transfer_order?.sto_number || '-'}</span>
+                            
+                            <span className="text-muted-foreground">Received By:</span>
+                            <span className="font-semibold text-right">{grn.received_by?.name || '-'}</span>
+                            
+                            <span className="text-muted-foreground">Date:</span>
+                            <span className="font-semibold text-right">{new Date(grn.created_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
 
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                                <MapPin className="size-4" /> Receiving Location
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="font-semibold text-lg">{grn.location?.location_name}</div>
-                            <div className="text-sm text-muted-foreground mt-1">
-                                {grn.location?.address && <div>{grn.location.address}</div>}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="p-4">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Receiving Location</h3>
+                        </div>
+                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{grn.location?.location_name}</div>
+                        {grn.location?.address && <div className="text-sm text-muted-foreground">{grn.location.address}</div>}
+                    </div>
                 </div>
 
                 {grn.remarks && (
-                    <Card className="mb-6 bg-muted/20">
-                        <CardContent className="pt-6">
-                            <h4 className="text-sm font-medium mb-1">Remarks:</h4>
-                            <p className="text-sm text-muted-foreground">{grn.remarks}</p>
-                        </CardContent>
-                    </Card>
+                    <div className="mb-6 bg-muted/20 border border-border/50 rounded-xl p-4">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Remarks</h4>
+                        <p className="text-sm text-foreground">{grn.remarks}</p>
+                    </div>
                 )}
 
                 <div className="mb-8 mt-8">
                     <h3 className="text-lg font-semibold mb-4">Received Items</h3>
-                    <div className="rounded-md border bg-card">
-                        <table className="w-full text-sm">
-                            <thead className="bg-muted/50 text-muted-foreground">
-                                <tr>
-                                    <th className="h-10 px-4 text-left font-medium">Ingredient</th>
-                                    <th className="h-10 px-4 text-right font-medium">Expected Qty</th>
-                                    <th className="h-10 px-4 text-right font-medium text-emerald-700">Received Qty</th>
-                                    <th className="h-10 px-4 text-right font-medium text-red-700">Rejected Qty</th>
-                                    <th className="h-10 px-4 text-left font-medium">UOM</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {grn.items?.map((item: any) => (
-                                    <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors">
-                                        <td className="p-4 font-medium">{item.ingredient?.name}</td>
-                                        <td className="p-4 text-right font-semibold text-muted-foreground">{Number(item.expected_quantity).toFixed(2)}</td>
-                                        <td className="p-4 text-right font-bold text-emerald-600">{Number(item.received_quantity).toFixed(2)}</td>
-                                        <td className="p-4 text-right font-bold text-red-600">{Number(item.rejected_quantity).toFixed(2)}</td>
-                                        <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
+                    <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto hide-scrollbar">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted/50 text-muted-foreground whitespace-nowrap">
+                                    <tr>
+                                        <th className="h-10 px-4 text-left font-medium">Ingredient</th>
+                                        <th className="h-10 px-4 text-right font-medium">Expected Qty</th>
+                                        <th className="h-10 px-4 text-right font-medium text-emerald-700">Received Qty</th>
+                                        <th className="h-10 px-4 text-right font-medium text-red-700">Rejected Qty</th>
+                                        <th className="h-10 px-4 text-left font-medium">UOM</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {grn.items?.map((item: any) => (
+                                        <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors whitespace-nowrap">
+                                            <td className="p-4 font-medium">{item.ingredient?.name}</td>
+                                            <td className="p-4 text-right font-semibold text-muted-foreground">{Number(item.expected_quantity).toFixed(2)}</td>
+                                            <td className="p-4 text-right font-bold text-emerald-600">{Number(item.received_quantity).toFixed(2)}</td>
+                                            <td className="p-4 text-right font-bold text-red-600">{Number(item.rejected_quantity).toFixed(2)}</td>
+                                            <td className="p-4">{item.unit_of_measure?.name || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

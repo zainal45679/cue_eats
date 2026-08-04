@@ -99,7 +99,7 @@ class DummyInventorySeeder extends Seeder
                 'received_by_id' => $user->id ?? 1,
             ]);
 
-            $po->update(['status' => 'fully_received']);
+            $po->update(['status' => 'received']);
 
             $storageLocation = StorageLocation::firstOrCreate(
                 [

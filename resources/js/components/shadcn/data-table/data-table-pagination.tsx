@@ -35,28 +35,29 @@ export function DataTablePagination<TData>({
   return (
     <div
       className={cn(
-        "flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8",
+        "flex w-full flex-col sm:flex-row items-center justify-between gap-4 px-2 py-1",
         className
       )}
       {...props}
     >
-      <div className="flex flex-1 items-center gap-2 whitespace-nowrap text-muted-foreground text-sm">
+      <div className="order-2 sm:order-1 flex flex-1 items-center justify-center sm:justify-start gap-2 whitespace-nowrap text-muted-foreground text-xs sm:text-sm">
         <span>Total {totalCount} item(s)</span>
         {isSelectable &&
           table.getFilteredSelectedRowModel().rows.length > 0 && (
             <>
-              <Separator className="!h-5" orientation="vertical" />
+              <Separator className="!h-4" orientation="vertical" />
               <span>
-                {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected.
+                {table.getFilteredSelectedRowModel().rows.length} /{" "}
+                {table.getFilteredRowModel().rows.length} selected
               </span>
             </>
           )}
       </div>
-      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row lg:gap-6">
+      
+      <div className="order-1 sm:order-2 flex flex-row items-center justify-between w-full sm:w-auto sm:justify-end gap-2 sm:gap-6">
         <div className="flex items-center space-x-2">
-          <p className="whitespace-nowrap font-medium text-sm">
-            Items per page
+          <p className="hidden sm:block whitespace-nowrap font-medium text-sm text-muted-foreground">
+            Rows
           </p>
           <Select
             onValueChange={(value) => {
@@ -64,7 +65,7 @@ export function DataTablePagination<TData>({
             }}
             value={`${table.getState().pagination.pageSize}`}
           >
-            <SelectTrigger className="h-8 w-[4.5rem] [&[data-size]]:h-8">
+            <SelectTrigger className="h-8 w-[4.5rem] [&[data-size]]:h-8 text-xs sm:text-sm">
               <SelectValue placeholder={table.getState().pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -76,12 +77,12 @@ export function DataTablePagination<TData>({
             </SelectContent>
           </Select>
         </div>
-        <Separator className="!h-5 hidden sm:block" orientation="vertical" />
-        <div className="flex items-center justify-center font-medium text-sm">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount()}
+
+        <div className="flex items-center justify-center font-medium text-xs sm:text-sm">
+          Pg {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
         </div>
-        <div className="flex items-center space-x-2">
+
+        <div className="flex items-center space-x-1">
           <Button
             aria-label="Go to first page"
             className="hidden size-8 lg:flex"

@@ -122,7 +122,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                             <CardHeader>
                                 <CardTitle>Order Details</CardTitle>
                             </CardHeader>
-                            <CardContent className="grid grid-cols-2 gap-4">
+                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {mode === "supplier" ? (
                                     <XFormSelect
                                         name="supplier_id"
@@ -162,7 +162,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                             </div>
                             <div>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-12 gap-4 items-center border border-transparent p-3 text-sm font-medium text-muted-foreground">
+                                    <div className="hidden sm:grid grid-cols-12 gap-4 items-center border border-transparent p-3 text-sm font-medium text-muted-foreground">
                                         <div className={mode === "category" ? "col-span-3" : "col-span-5"}>Ingredient</div>
                                         {mode === "category" && <div className="col-span-3">Supplier</div>}
                                         <div className="col-span-2">Quantity</div>
@@ -189,24 +189,28 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                 const uomSuffix = selectedIngredient?.base_uom?.name || "";
 
                                                 return (
-                                                    <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
-                                                        <div className="col-span-5">
+                                                    <div key={field.id} className="flex flex-col sm:grid sm:grid-cols-12 gap-4 items-start sm:items-center bg-card border rounded-lg p-4 sm:p-3 shadow-sm transition-all hover:shadow-md relative pt-10 sm:pt-3">
+                                                        <div className="w-full sm:col-span-5">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Ingredient</div>
                                                             <XFormSelect
                                                                 name={`items.${index}.ingredient_id`}
                                                                 options={availableIngredients}
                                                                 onSelect={(opt) => form.setValue(`items.${index}.unit_price`, opt.price as number)}
                                                             />
                                                         </div>
-                                                        <div className="col-span-2">
+                                                        <div className="w-full sm:col-span-2">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Quantity</div>
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} suffix={uomSuffix} />
                                                         </div>
-                                                        <div className="col-span-2">
+                                                        <div className="w-full sm:col-span-2">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Unit Price</div>
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.unit_price`} />
                                                         </div>
-                                                        <div className="col-span-2 flex justify-end font-medium">
-                                                            ${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}
+                                                        <div className="w-full sm:col-span-2 flex justify-between sm:justify-end items-center font-medium bg-muted/50 sm:bg-transparent p-2 sm:p-0 rounded">
+                                                            <span className="sm:hidden text-xs font-semibold text-muted-foreground">Subtotal:</span>
+                                                            <span>${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}</span>
                                                         </div>
-                                                        <div className="col-span-1 flex justify-end">
+                                                        <div className="absolute top-2 right-2 sm:static sm:col-span-1 flex justify-end">
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="hover:bg-red-50 hover:text-red-500 transition-colors">
                                                                 <Trash2 className="size-4" />
                                                             </Button>
@@ -239,30 +243,35 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                 const uomSuffix = selectedIngredient?.base_uom?.name || "";
 
                                                 return (
-                                                    <div key={field.id} className="grid grid-cols-12 gap-4 items-center bg-card border rounded-lg p-3 shadow-sm transition-all hover:shadow-md">
-                                                        <div className="col-span-3">
+                                                    <div key={field.id} className="flex flex-col sm:grid sm:grid-cols-12 gap-4 items-start sm:items-center bg-card border rounded-lg p-4 sm:p-3 shadow-sm transition-all hover:shadow-md relative pt-10 sm:pt-3">
+                                                        <div className="w-full sm:col-span-3">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Ingredient</div>
                                                             <XFormSelect
                                                                 name={`items.${index}.ingredient_id`}
                                                                 options={availableIngredients.map((i: any) => ({ label: i.name, value: String(i.id) }))}
                                                             />
                                                         </div>
-                                                        <div className="col-span-3">
+                                                        <div className="w-full sm:col-span-3">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Supplier</div>
                                                             <XFormSelect
                                                                 name={`items.${index}.supplier_id`}
                                                                 options={availableSuppliers}
                                                                 onSelect={(opt) => form.setValue(`items.${index}.unit_price`, opt.price as number)}
                                                             />
                                                         </div>
-                                                        <div className="col-span-2">
+                                                        <div className="w-full sm:col-span-2">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Quantity</div>
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.quantity`} suffix={uomSuffix} />
                                                         </div>
-                                                        <div className="col-span-2">
+                                                        <div className="w-full sm:col-span-2">
+                                                            <div className="sm:hidden text-xs font-semibold text-muted-foreground mb-1">Unit Price</div>
                                                             <XFormInput type="number" step="0.01" name={`items.${index}.unit_price`} />
                                                         </div>
-                                                        <div className="col-span-1 flex justify-end font-medium">
-                                                            ${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}
+                                                        <div className="w-full sm:col-span-1 flex justify-between sm:justify-end items-center font-medium bg-muted/50 sm:bg-transparent p-2 sm:p-0 rounded">
+                                                            <span className="sm:hidden text-xs font-semibold text-muted-foreground">Subtotal:</span>
+                                                            <span>${(Number(items[index]?.quantity || 0) * Number(items[index]?.unit_price || 0)).toFixed(2)}</span>
                                                         </div>
-                                                        <div className="col-span-1 flex justify-end">
+                                                        <div className="absolute top-2 right-2 sm:static sm:col-span-1 flex justify-end">
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length === 1} className="hover:bg-red-50 hover:text-red-500 transition-colors">
                                                                 <Trash2 className="size-4" />
                                                             </Button>

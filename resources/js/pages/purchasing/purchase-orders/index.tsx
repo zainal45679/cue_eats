@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
 import { Clock, FileText, CheckCircle, Package } from "lucide-react";
+import { Button } from "@/components/shadcn/ui/button";
+import { cn } from "@/lib/utils";
 
 export default function PurchaseOrdersIndex({ purchaseOrders, type }: { purchaseOrders: any, type?: string }) {
     const [activeTab, setActiveTab] = useState("all");
@@ -30,6 +32,10 @@ export default function PurchaseOrdersIndex({ purchaseOrders, type }: { purchase
             filteredRows = filteredRows.filter((po: any) => po.status === 'pending_approval');
         } else if (activeTab === "received") {
             filteredRows = filteredRows.filter((po: any) => po.status === 'received' || po.status === 'partially_received');
+        } else if (activeTab === "approved") {
+            filteredRows = filteredRows.filter((po: any) => po.status === 'approved');
+        } else if (activeTab === "partially_received") {
+            filteredRows = filteredRows.filter((po: any) => po.status === 'partially_received');
         }
         return { ...purchaseOrders, rows: filteredRows };
     }, [purchaseOrders, activeTab]);
@@ -173,88 +179,97 @@ export default function PurchaseOrdersIndex({ purchaseOrders, type }: { purchase
     return (
         <XPage title={type === 'incoming' ? 'Receive External Stock' : 'Purchase Orders'} className="p-6 max-w-7xl mx-auto">
             {/* Dashboard Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-500" />
-                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
-                        <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total POs</p>
-                            <h3 className="text-2xl font-bold leading-none">{stats.total}</h3>
-                        </div>
-                        <div className="p-2 bg-slate-500/10 text-slate-500 rounded-lg">
-                            <FileText className="size-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
-                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
-                        <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Draft / Pending</p>
-                            <h3 className="text-2xl font-bold leading-none">{stats.pendingApproval}</h3>
-                        </div>
-                        <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
-                            <Clock className="size-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
-                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
-                        <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Approved</p>
-                            <h3 className="text-2xl font-bold leading-none">{stats.approved}</h3>
-                        </div>
-                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                            <CheckCircle className="size-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500" />
-                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
-                        <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Partially Received</p>
-                            <h3 className="text-2xl font-bold leading-none">{stats.partiallyReceived}</h3>
-                        </div>
-                        <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
-                            <Package className="size-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
-                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
-                        <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Fully Received</p>
-                            <h3 className="text-2xl font-bold leading-none">{stats.fullyReceived}</h3>
-                        </div>
-                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-                            <CheckCircle className="size-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            {!type && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                        <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-slate-500" />
+                        <CardContent className="p-3 pl-3.5 sm:pl-5 flex flex-col justify-between h-full gap-2">
+                            <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight">Total POs</p>
+                                <div className="p-1 sm:p-2 bg-slate-500/10 text-slate-500 rounded-md sm:rounded-lg shrink-0">
+                                    <FileText className="size-3.5 sm:size-5" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-bold leading-none">{stats.total}</h3>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                        <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-amber-500" />
+                        <CardContent className="p-3 pl-3.5 sm:pl-5 flex flex-col justify-between h-full gap-2">
+                            <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight">Draft / Pending</p>
+                                <div className="p-1 sm:p-2 bg-amber-500/10 text-amber-500 rounded-md sm:rounded-lg shrink-0">
+                                    <Clock className="size-3.5 sm:size-5" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-bold leading-none">{stats.pendingApproval}</h3>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                        <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-blue-500" />
+                        <CardContent className="p-3 pl-3.5 sm:pl-5 flex flex-col justify-between h-full gap-2">
+                            <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight">Approved</p>
+                                <div className="p-1 sm:p-2 bg-blue-500/10 text-blue-500 rounded-md sm:rounded-lg shrink-0">
+                                    <CheckCircle className="size-3.5 sm:size-5" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-bold leading-none">{stats.approved}</h3>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                        <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-indigo-500" />
+                        <CardContent className="p-3 pl-3.5 sm:pl-5 flex flex-col justify-between h-full gap-2">
+                            <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight">Partially Received</p>
+                                <div className="p-1 sm:p-2 bg-indigo-500/10 text-indigo-500 rounded-md sm:rounded-lg shrink-0">
+                                    <Package className="size-3.5 sm:size-5" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-bold leading-none">{stats.partiallyReceived}</h3>
+                        </CardContent>
+                    </Card>
+                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                        <div className="absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-emerald-500" />
+                        <CardContent className="p-3 pl-3.5 sm:pl-5 flex flex-col justify-between h-full gap-2">
+                            <div className="flex justify-between items-start gap-1">
+                                <p className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider leading-tight">Fully Received</p>
+                                <div className="p-1 sm:p-2 bg-emerald-500/10 text-emerald-500 rounded-md sm:rounded-lg shrink-0">
+                                    <CheckCircle className="size-3.5 sm:size-5" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl sm:text-2xl font-bold leading-none">{stats.fullyReceived}</h3>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Quick Filter Tabs & Date Range */}
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                {!type && (
+                {!type ? (
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-                        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
-                            <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Orders</TabsTrigger>
-                            <TabsTrigger value="pending" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Pending Approval</TabsTrigger>
-                            <TabsTrigger value="received" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Received</TabsTrigger>
+                        <TabsList className="flex w-full sm:w-[500px] bg-muted/60 p-1.5 rounded-xl h-auto gap-1">
+                            <TabsTrigger value="all" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">All Orders</TabsTrigger>
+                            <TabsTrigger value="pending" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">Pending Approval</TabsTrigger>
+                            <TabsTrigger value="received" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">Received</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                ) : (
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                        <TabsList className="flex w-full sm:w-[500px] bg-muted/60 p-1.5 rounded-xl h-auto gap-1">
+                            <TabsTrigger value="all" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">All Incoming</TabsTrigger>
+                            <TabsTrigger value="approved" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">New (Approved)</TabsTrigger>
+                            <TabsTrigger value="partially_received" className="flex-1 rounded-lg font-medium text-xs sm:text-sm py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center leading-tight">Partially Received</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 )}
-                {type && <div className="w-full sm:w-auto" />}
                 <div className="shrink-0 w-full sm:w-auto flex justify-end">
                     <XDateRangePicker value={dateFilterValue} onChange={handleDateSelect} />
                 </div>
             </div>
 
             <XDataTable
-                title={type === 'incoming' ? 'Receive External Stock' : 'Purchase Orders'}
+                title={type === 'incoming' ? 'Receive Stock' : 'Purchase Orders'}
                 entity={Entity.PurchaseOrders}
                 data={processedData}
                 columns={columns}
@@ -280,13 +295,40 @@ export default function PurchaseOrdersIndex({ purchaseOrders, type }: { purchase
                         show: (row) => row.status === 'draft',
                     }
                 ]}
-                titleButtons={[
+                titleButtons={type !== 'incoming' ? [
                     {
                         type: "create",
                         label: "Create PO",
                         link: "/purchasing/purchase-orders/create",
                     },
-                ]}
+                ] : []}
+                renderMobileCard={(row: any) => (
+                    <Link href={`/purchasing/purchase-orders/${row.uuid}?workflow=${type || 'manage'}`} className="block bg-card rounded-xl border border-border/50 p-4 active:bg-muted/30 transition-colors shadow-sm mb-3">
+                        <div className="flex justify-between items-start gap-4">
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-base text-foreground leading-tight mb-1.5 line-clamp-1">{row.supplier?.name || 'Unknown Supplier'}</h3>
+                                <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground font-medium">
+                                    <span>{row.po_number}</span>
+                                    <span>•</span>
+                                    <span>{new Date(row.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                </div>
+                            </div>
+                            <div className="text-right flex flex-col items-end gap-2 shrink-0">
+                                <span className="font-bold text-base text-foreground">${Number(row.grand_total).toFixed(2)}</span>
+                                <Badge variant="outline" className={cn(
+                                    "capitalize text-[10px] font-bold px-1.5 py-0 h-5",
+                                    row.status === 'fully_received' || row.status === 'received' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" :
+                                    row.status === 'partially_received' ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" :
+                                    row.status === 'approved' ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" :
+                                    row.status === 'draft' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" :
+                                    "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
+                                )}>
+                                    {row.status.replace('_', ' ')}
+                                </Badge>
+                            </div>
+                        </div>
+                    </Link>
+                )}
             />
         </XPage>
     );
