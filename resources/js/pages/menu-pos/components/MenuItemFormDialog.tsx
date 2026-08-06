@@ -15,6 +15,8 @@ import { Switch } from '@/components/shadcn/ui/switch';
 import { Textarea } from '@/components/shadcn/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { Checkbox } from '@/components/shadcn/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { RecipeBuilder } from './RecipeBuilder';
 
 export function MenuItemFormDialog({
   isOpen,
@@ -23,6 +25,7 @@ export function MenuItemFormDialog({
   initialCategoryId = null,
   categories,
   modifierGroups,
+  ingredients = [],
 }: {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -30,10 +33,11 @@ export function MenuItemFormDialog({
   initialCategoryId?: number | null;
   categories: any[];
   modifierGroups: any[];
+  ingredients?: any[];
 }) {
   const isEditing = !!item;
 
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, processing, errors, reset, transform } = useForm({
     menu_category_id: '',
     name: '',
     description: '',
@@ -42,8 +46,15 @@ export function MenuItemFormDialog({
     is_active: true,
     is_available: true,
     modifier_group_ids: [] as number[],
+    recipe_items: [] as any[],
     _method: 'post',
   });
+
+  // Automatically clean up empty/invalid recipe items before submitting
+  transform((data) => ({
+    ...data,
+    recipe_items: data.recipe_items.filter(ri => ri.ingredient_id && ri.quantity && parseFloat(ri.quantity) > 0)
+  }));
 
   useEffect(() => {
     if (item && isOpen) {
@@ -56,6 +67,10 @@ export function MenuItemFormDialog({
         is_active: item.is_active ?? true,
         is_available: item.is_available ?? true,
         modifier_group_ids: item.modifier_groups?.map((g: any) => g.id) || [],
+        recipe_items: item.recipe_items?.map((ri: any) => ({
+            ingredient_id: ri.ingredient_id?.toString() || '',
+            quantity: ri.quantity?.toString() || ''
+        })) || [],
         _method: 'put',
       });
     } else if (isOpen) {
@@ -207,8 +222,19 @@ export function MenuItemFormDialog({
                 </div>
             </div>
 
+            <RecipeBuilder 
+                ingredients={ingredients} 
+                recipeItems={data.recipe_items} 
+                onChange={(newItems) => setData('recipe_items', newItems)} 
+            />
+
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {Object.keys(errors).some(key => key.startsWith('recipe_items')) && (
+                <p className="text-xs text-destructive text-left w-full sm:w-auto sm:mr-auto my-auto">
+                    Invalid recipe items detected.
+                </p>
+            )}
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>

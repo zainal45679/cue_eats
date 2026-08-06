@@ -16,22 +16,16 @@ interface CheckoutDialogProps {
 }
 
 export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }: CheckoutDialogProps) {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, transform } = useForm({
         customer_name: '',
         order_type: 'Dine-in',
         payment_method: 'Cash',
         cart: [],
     });
 
-    // Quick cash logic
-    const handleQuickCash = (amount: number) => {
-        setData('payment_method', 'Cash');
-        // If there was a tendered amount field we would fill it here
-    };
-
-    const handleCheckout = () => {
-        // Prepare cart payload
-        const payloadCart = cart.map(item => ({
+    transform((currentData) => ({
+        ...currentData,
+        cart: cart.map(item => ({
             menu_item_id: item.id,
             quantity: item.quantity,
             price: item.price,
@@ -40,10 +34,17 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }:
                 modifier_id: mod.id,
                 price_adjustment: mod.price_adjustment
             })) : []
-        }));
+        }))
+    }));
 
-        post(route('pos.checkout'), {
-            data: { ...data, cart: payloadCart },
+    // Quick cash logic
+    const handleQuickCash = (amount: number) => {
+        setData('payment_method', 'Cash');
+        // If there was a tendered amount field we would fill it here
+    };
+
+    const handleCheckout = () => {
+        post('/menu-pos/terminal/checkout', {
             onSuccess: () => {
                 setIsOpen(false);
                 reset();
@@ -60,8 +61,17 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }:
                         <ShoppingBag className="w-6 h-6" /> Checkout
                     </DialogTitle>
                 </DialogHeader>
-                
                 <div className="grid gap-6 py-4">
+                    {errors && Object.keys(errors).length > 0 && (
+                        <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm mb-4">
+                            <strong>Validation Error:</strong> 
+                            <ul className="list-disc pl-5 mt-1">
+                                {Object.values(errors).map((err, idx) => (
+                                    <li key={idx}>{err as string}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label>Customer Name (Optional)</Label>
                         <Input 

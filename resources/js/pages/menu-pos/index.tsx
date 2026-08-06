@@ -14,8 +14,36 @@ import { Input } from '@/components/shadcn/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { Switch } from '@/components/shadcn/ui/switch';
 import { Label } from '@/components/shadcn/ui/label';
+import React from 'react';
 
-export default function MenuManagement({ items, categories, modifierGroups }: any) {
+class ErrorBoundary extends React.Component<{children: any}, {hasError: boolean, error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div className="p-10 bg-red-100 text-red-900 h-screen w-screen overflow-auto">
+        <h1 className="text-2xl font-bold mb-4">React Render Error</h1>
+        <pre>{this.state.error?.toString()}</pre>
+        <pre className="mt-4 text-sm opacity-80">{this.state.error?.stack}</pre>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
+interface MenuPosProps {
+    categories: any[];
+    items: any[];
+    modifierGroups: any[];
+    ingredients: any[];
+}
+
+export default function MenuManagement({ items, categories, modifierGroups, ingredients }: MenuPosProps) {
     const [activeCategoryId, setActiveCategoryId] = useState<number | null>(categories.length > 0 ? categories[0].id : null);
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -77,6 +105,7 @@ export default function MenuManagement({ items, categories, modifierGroups }: an
     };
 
     return (
+        <ErrorBoundary>
         <XPage 
             title="Menu Management" 
             breadcrumbs={[
@@ -329,9 +358,10 @@ export default function MenuManagement({ items, categories, modifierGroups }: an
                 </Tabs>
                 
                 <CategoryFormDialog isOpen={isCategoryModalOpen} setIsOpen={setIsCategoryModalOpen} category={selectedCategory} />
-                <MenuItemFormDialog isOpen={isItemModalOpen} setIsOpen={setIsItemModalOpen} item={selectedItem} initialCategoryId={activeCategoryId} categories={categories} modifierGroups={modifierGroups} />
-                <ModifierGroupFormDialog isOpen={isGroupModalOpen} setIsOpen={setIsGroupModalOpen} group={selectedGroup} />
+                <MenuItemFormDialog isOpen={isItemModalOpen} setIsOpen={setIsItemModalOpen} item={selectedItem} initialCategoryId={activeCategoryId} categories={categories} modifierGroups={modifierGroups} ingredients={ingredients} />
+                <ModifierGroupFormDialog isOpen={isGroupModalOpen} setIsOpen={setIsGroupModalOpen} group={selectedGroup} ingredients={ingredients} />
             </div>
         </XPage>
+        </ErrorBoundary>
     );
 }

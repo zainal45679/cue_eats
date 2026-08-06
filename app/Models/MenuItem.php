@@ -17,4 +17,5 @@ class MenuItem extends Model
     public function category() { return $this->belongsTo(MenuCategory::class, 'menu_category_id'); }
     public function modifierGroups() { return $this->belongsToMany(ModifierGroup::class, 'menu_item_modifier_group'); }
 
+    public function recipeItems() { return $this->hasMany(RecipeItem::class); }
 }

@@ -28,12 +28,29 @@ class ModifierGroupController extends Controller
             'modifiers' => 'nullable|array',
             'modifiers.*.name' => 'required|string|max:255',
             'modifiers.*.price_adjustment' => 'required|numeric',
+            'modifiers.*.recipe_items' => 'nullable|array',
+            'modifiers.*.recipe_items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'modifiers.*.recipe_items.*.quantity' => 'required|numeric|min:0',
         ]);
         
-        $group = ModifierGroup::create($validated);
+        $group = ModifierGroup::create(collect($validated)->except('modifiers')->toArray());
         
         if (!empty($validated['modifiers'])) {
-            $group->modifiers()->createMany($validated['modifiers']);
+            foreach ($validated['modifiers'] as $modData) {
+                $modifier = $group->modifiers()->create([
+                    'name' => $modData['name'],
+                    'price_adjustment' => $modData['price_adjustment'],
+                ]);
+                
+                if (!empty($modData['recipe_items'])) {
+                    foreach ($modData['recipe_items'] as $recipeItem) {
+                        $modifier->recipeItems()->create([
+                            'ingredient_id' => $recipeItem['ingredient_id'],
+                            'quantity' => $recipeItem['quantity'],
+                        ]);
+                    }
+                }
+            }
         }
 
         return back()->with('success', 'Modifier Group created.');
@@ -50,9 +67,12 @@ class ModifierGroupController extends Controller
             'modifiers.*.id' => 'nullable|exists:modifiers,id',
             'modifiers.*.name' => 'required|string|max:255',
             'modifiers.*.price_adjustment' => 'required|numeric',
+            'modifiers.*.recipe_items' => 'nullable|array',
+            'modifiers.*.recipe_items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'modifiers.*.recipe_items.*.quantity' => 'required|numeric|min:0',
         ]);
         
-        $modifier->update($validated);
+        $modifier->update(collect($validated)->except('modifiers')->toArray());
         
         // Update modifiers
         if (isset($validated['modifiers'])) {
@@ -61,15 +81,28 @@ class ModifierGroupController extends Controller
 
             foreach ($validated['modifiers'] as $modData) {
                 if (!empty($modData['id'])) {
-                    $modifier->modifiers()->where('id', $modData['id'])->update([
+                    $mod = $modifier->modifiers()->where('id', $modData['id'])->first();
+                    $mod->update([
                         'name' => $modData['name'],
                         'price_adjustment' => $modData['price_adjustment'],
                     ]);
                 } else {
-                    $modifier->modifiers()->create([
+                    $mod = $modifier->modifiers()->create([
                         'name' => $modData['name'],
                         'price_adjustment' => $modData['price_adjustment'],
                     ]);
+                }
+                
+                if (isset($modData['recipe_items']) && is_array($modData['recipe_items'])) {
+                    $mod->recipeItems()->delete();
+                    foreach ($modData['recipe_items'] as $recipeItem) {
+                        $mod->recipeItems()->create([
+                            'ingredient_id' => $recipeItem['ingredient_id'],
+                            'quantity' => $recipeItem['quantity'],
+                        ]);
+                    }
+                } else if (array_key_exists('recipe_items', $modData)) {
+                    $mod->recipeItems()->delete();
                 }
             }
         }

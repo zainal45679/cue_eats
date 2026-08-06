@@ -10,4 +10,5 @@ class Modifier extends Model
 
     public function group() { return $this->belongsTo(ModifierGroup::class, 'modifier_group_id'); }
 
+    public function recipeItems() { return $this->hasMany(RecipeItem::class); }
 }

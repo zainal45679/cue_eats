@@ -4,7 +4,6 @@ import { Button } from '@/components/shadcn/ui/button';
 import { Checkbox } from '@/components/shadcn/ui/checkbox';
 import { Label } from '@/components/shadcn/ui/label';
 import { Badge } from '@/components/shadcn/ui/badge';
-import { ScrollArea } from '@/components/shadcn/ui/scroll-area';
 
 interface ModifierSelectionDialogProps {
     item: any | null;
@@ -77,7 +76,7 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                     </DialogHeader>
                 </div>
                 
-                <ScrollArea className="flex-1 p-6">
+                <div className="flex-1 overflow-y-auto p-6 min-h-0">
                     <div className="space-y-8">
                         {modifierGroups.map((group: any) => {
                             const isSingleSelect = group.max_selections === 1;
@@ -149,7 +148,7 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                             );
                         })}
                     </div>
-                </ScrollArea>
+                </div>
 
                 <div className="p-6 border-t bg-background">
                     <Button 

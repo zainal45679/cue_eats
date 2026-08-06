@@ -14,13 +14,15 @@ class MenuManagementController extends Controller
     public function index()
     {
         $categories = MenuCategory::orderBy('sort_order')->get();
-        $items = MenuItem::with(['category', 'modifierGroups'])->get();
-        $modifierGroups = ModifierGroup::with('modifiers')->get();
+        $items = MenuItem::with(['category', 'modifierGroups', 'recipeItems.ingredient.baseUom'])->get();
+        $modifierGroups = ModifierGroup::with('modifiers.recipeItems.ingredient.baseUom')->get();
+        $ingredients = \App\Models\Ingredient::with(['baseUom', 'category'])->where('is_recipe_item', true)->where('status', true)->get();
         
         return Inertia::render('menu-pos/index', [
             'categories' => $categories,
             'items' => $items,
-            'modifierGroups' => $modifierGroups
+            'modifierGroups' => $modifierGroups,
+            'ingredients' => $ingredients
         ]);
     }
 }

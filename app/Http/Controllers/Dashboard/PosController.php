@@ -60,9 +60,13 @@ class PosController extends Controller
             $tax_total = 0;
             $grand_total = $subtotal + $tax_total;
 
+            $locationId = session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1);
+            $storageLocation = \App\Models\StorageLocation::where('business_location_id', $locationId)->first();
+            $storageLocationId = $storageLocation ? $storageLocation->id : 1;
+
             $order = Order::create([
                 'order_number' => $orderNumber,
-                'business_location_id' => session('active_location_id', \App\Models\BusinessLocation::first()->id ?? 1),
+                'business_location_id' => $locationId,
                 'user_id' => auth()->id(),
                 'customer_name' => $validated['customer_name'] ?? null,
                 'order_type' => $validated['order_type'],
@@ -76,21 +80,35 @@ class PosController extends Controller
 
             foreach ($validated['cart'] as $item) {
                 $orderItem = OrderItem::create([
-                    'order_id' => $order->id,
+                    'pos_order_id' => $order->id,
                     'menu_item_id' => $item['menu_item_id'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['price'],
-                    'subtotal' => $item['price'] * $item['quantity'], // Does not include modifiers in the item subtotal column, or could include it
+                    'subtotal' => $item['price'] * $item['quantity'],
                     'notes' => $item['notes'] ?? null,
                 ]);
+
+                // Deduct Inventory for Menu Item
+                $menuItemRecipes = \App\Models\RecipeItem::where('menu_item_id', $item['menu_item_id'])->get();
+                foreach ($menuItemRecipes as $recipe) {
+                    $deductQty = $recipe->quantity * $item['quantity'];
+                    $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+                }
 
                 if (!empty($item['modifiers'])) {
                     foreach ($item['modifiers'] as $mod) {
                         OrderItemModifier::create([
-                            'order_item_id' => $orderItem->id,
+                            'pos_order_item_id' => $orderItem->id,
                             'modifier_id' => $mod['modifier_id'],
                             'price_adjustment' => $mod['price_adjustment'],
                         ]);
+
+                        // Deduct Inventory for Modifier
+                        $modifierRecipes = \App\Models\RecipeItem::where('modifier_id', $mod['modifier_id'])->get();
+                        foreach ($modifierRecipes as $recipe) {
+                            $deductQty = $recipe->quantity * $item['quantity'];
+                            $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+                        }
                     }
                 }
             }
@@ -99,7 +117,30 @@ class PosController extends Controller
             return back()->with('success', "Order {$orderNumber} completed successfully.");
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to process order.']);
+            \Log::error('Order Processing Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->withErrors(['error' => 'Failed to process order: ' . $e->getMessage()]);
         }
+    }
+
+    private function deductInventory($ingredientId, $storageLocationId, $businessLocationId, $quantity, $orderId)
+    {
+        $balance = \App\Models\InventoryBalance::firstOrCreate(
+            ['ingredient_id' => $ingredientId, 'storage_location_id' => $storageLocationId],
+            ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
+        );
+
+        $balance->available_qty -= $quantity;
+        $balance->save();
+
+        \App\Models\InventoryLedger::create([
+            'business_location_id' => $businessLocationId,
+            'ingredient_id' => $ingredientId,
+            'transaction_type' => 'SALE',
+            'reference_type' => \App\Models\Order::class,
+            'reference_id' => $orderId,
+            'quantity' => -$quantity,
+            'running_balance' => $balance->available_qty,
+            'created_by' => auth()->id() ?? 1,
+        ]);
     }
 }

@@ -35,7 +35,10 @@ class MenuItemController extends Controller
             'is_active' => 'boolean',
             'is_available' => 'boolean',
             'modifier_group_ids' => 'nullable|array',
-            'modifier_group_ids.*' => 'exists:modifier_groups,id'
+            'modifier_group_ids.*' => 'exists:modifier_groups,id',
+            'recipe_items' => 'nullable|array',
+            'recipe_items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'recipe_items.*.quantity' => 'required|numeric|min:0',
         ]);
 
         if ($request->hasFile('image')) {
@@ -46,6 +49,15 @@ class MenuItemController extends Controller
         
         if (isset($validated['modifier_group_ids'])) {
             $item->modifierGroups()->sync($validated['modifier_group_ids']);
+        }
+
+        if (isset($validated['recipe_items']) && is_array($validated['recipe_items'])) {
+            foreach ($validated['recipe_items'] as $recipeItem) {
+                $item->recipeItems()->create([
+                    'ingredient_id' => $recipeItem['ingredient_id'],
+                    'quantity' => $recipeItem['quantity'],
+                ]);
+            }
         }
 
         return back()->with('success', 'Menu Item created.');
@@ -62,7 +74,10 @@ class MenuItemController extends Controller
             'is_active' => 'boolean',
             'is_available' => 'boolean',
             'modifier_group_ids' => 'nullable|array',
-            'modifier_group_ids.*' => 'exists:modifier_groups,id'
+            'modifier_group_ids.*' => 'exists:modifier_groups,id',
+            'recipe_items' => 'nullable|array',
+            'recipe_items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'recipe_items.*.quantity' => 'required|numeric|min:0',
         ]);
         
         if ($request->hasFile('image')) {
@@ -79,12 +94,25 @@ class MenuItemController extends Controller
             unset($validated['image']);
         }
         
-        $item->update(collect($validated)->except('modifier_group_ids')->toArray());
+        $item->update(collect($validated)->except(['modifier_group_ids', 'recipe_items'])->toArray());
         
         if (isset($validated['modifier_group_ids'])) {
             $item->modifierGroups()->sync($validated['modifier_group_ids']);
         } else {
             $item->modifierGroups()->sync([]);
+        }
+
+        if (isset($validated['recipe_items']) && is_array($validated['recipe_items'])) {
+            $item->recipeItems()->delete();
+            foreach ($validated['recipe_items'] as $recipeItem) {
+                $item->recipeItems()->create([
+                    'ingredient_id' => $recipeItem['ingredient_id'],
+                    'quantity' => $recipeItem['quantity'],
+                ]);
+            }
+        } else if ($request->has('recipe_items')) {
+            // Explicitly sent an empty array
+            $item->recipeItems()->delete();
         }
 
         return back()->with('success', 'Menu Item updated.');

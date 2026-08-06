@@ -12,26 +12,40 @@ import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
 import { Label } from '@/components/shadcn/ui/label';
 import { Switch } from '@/components/shadcn/ui/switch';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, UtensilsCrossed, ChevronDown, ChevronUp } from 'lucide-react';
+import { RecipeBuilder } from './RecipeBuilder';
+import { cn } from '@/lib/utils';
 
 export function ModifierGroupFormDialog({
   isOpen,
   setIsOpen,
   group = null,
+  ingredients = [],
 }: {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   group?: any;
+  ingredients?: any[];
 }) {
   const isEditing = !!group;
+  const [expandedRecipeIndex, setExpandedRecipeIndex] = useState<number | null>(null);
 
-  const { data, setData, post, put, processing, errors, reset } = useForm({
+  const { data, setData, post, put, processing, errors, reset, transform } = useForm({
     name: '',
     is_required: false,
     min_selections: 0,
     max_selections: 1,
-    modifiers: [] as { id?: number; name: string; price_adjustment: number }[],
+    modifiers: [] as { id?: number; name: string; price_adjustment: number; recipe_items: any[] }[],
   });
+
+  // Clean up empty recipes before submitting
+  transform((data) => ({
+    ...data,
+    modifiers: data.modifiers.map(mod => ({
+      ...mod,
+      recipe_items: mod.recipe_items ? mod.recipe_items.filter((ri: any) => ri.ingredient_id && ri.quantity && parseFloat(ri.quantity) > 0) : []
+    }))
+  }));
 
   useEffect(() => {
     if (group && isOpen) {
@@ -43,9 +57,14 @@ export function ModifierGroupFormDialog({
         modifiers: group.modifiers?.map((m: any) => ({
             id: m.id,
             name: m.name,
-            price_adjustment: m.price_adjustment
+            price_adjustment: m.price_adjustment,
+            recipe_items: m.recipe_items?.map((ri: any) => ({
+                ingredient_id: ri.ingredient_id?.toString() || '',
+                quantity: ri.quantity?.toString() || ''
+            })) || []
         })) || [],
       });
+      setExpandedRecipeIndex(null);
     } else if (isOpen) {
       reset();
     }
@@ -68,7 +87,8 @@ export function ModifierGroupFormDialog({
   };
 
   const addModifier = () => {
-    setData('modifiers', [...data.modifiers, { name: '', price_adjustment: 0 }]);
+    setData('modifiers', [...data.modifiers, { name: '', price_adjustment: 0, recipe_items: [] }]);
+    setExpandedRecipeIndex(data.modifiers.length); // Open the new modifier's recipe by default
   };
 
   const removeModifier = (index: number) => {
@@ -155,28 +175,56 @@ export function ModifierGroupFormDialog({
                 )}
 
                 {data.modifiers.map((mod, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-muted/30 p-2 rounded-md">
-                        <div className="flex-1">
-                            <Input
-                                placeholder="Option Name (e.g. Large)"
-                                value={mod.name}
-                                onChange={(e) => updateModifier(index, 'name', e.target.value)}
-                                required
-                            />
+                    <div key={index} className="flex flex-col gap-2 bg-muted/30 p-3 rounded-md border">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                                <Input
+                                    placeholder="Option Name (e.g. Large)"
+                                    value={mod.name}
+                                    onChange={(e) => updateModifier(index, 'name', e.target.value)}
+                                    required
+                                    className="bg-background"
+                                />
+                            </div>
+                            <div className="w-32">
+                                <Input
+                                    type="number"
+                                    step="any"
+                                    placeholder="+ Price"
+                                    value={mod.price_adjustment}
+                                    onChange={(e) => updateModifier(index, 'price_adjustment', e.target.value)}
+                                    required
+                                    className="bg-background"
+                                />
+                            </div>
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                className={cn("px-2", expandedRecipeIndex === index && "bg-accent")}
+                                onClick={() => setExpandedRecipeIndex(expandedRecipeIndex === index ? null : index)}
+                                title="Manage Recipe"
+                            >
+                                <UtensilsCrossed className="h-4 w-4 mr-1 text-muted-foreground" />
+                                <span className="text-xs">Recipe {(mod.recipe_items?.length || 0) > 0 && `(${mod.recipe_items.length})`}</span>
+                                {expandedRecipeIndex === index ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeModifier(index)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
                         </div>
-                        <div className="w-32">
-                            <Input
-                                type="number"
-                                step="0.01"
-                                placeholder="+ Price"
-                                value={mod.price_adjustment}
-                                onChange={(e) => updateModifier(index, 'price_adjustment', e.target.value)}
-                                required
-                            />
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeModifier(index)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
+                        
+                        {expandedRecipeIndex === index && (
+                            <div className="mt-2 p-3 bg-background border rounded-md shadow-sm">
+                                <RecipeBuilder
+                                    ingredients={ingredients}
+                                    recipeItems={mod.recipe_items || []}
+                                    onChange={(newItems) => updateModifier(index, 'recipe_items', newItems)}
+                                    title="Modifier Recipe"
+                                    description={`Specify ingredients that are consumed when '${mod.name || 'this option'}' is selected.`}
+                                />
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
