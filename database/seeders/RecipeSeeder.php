@@ -80,30 +80,34 @@ class RecipeSeeder extends Seeder
             ['available_qty' => 200, 'reserved_qty' => 0, 'on_order_qty' => 0]
         )->update(['available_qty' => 200]);
 
-        // 6. Map to MenuItem "The Classic Smash (Testing)" (ID: 1)
-        $classicSmash = MenuItem::find(1);
-        if ($classicSmash) {
+        // 6. Map dummy recipes to ALL Menu Items
+        $menuItems = MenuItem::all();
+        $ingredientsList = [$beefPatty, $burgerBun, $cheeseSlice];
+        
+        foreach ($menuItems as $item) {
+            // Give each item 1 to 3 random ingredients
+            $numIngredients = rand(1, 3);
+            $randomIngredients = collect($ingredientsList)->random($numIngredients);
+            
+            foreach ($randomIngredients as $ing) {
+                RecipeItem::firstOrCreate([
+                    'menu_item_id' => $item->id,
+                    'ingredient_id' => $ing->id,
+                ], [
+                    'quantity' => rand(1, 2),
+                    'uom_id' => $uomEach->id
+                ]);
+            }
+        }
+        
+        // 7. Map dummy recipes to ALL Modifiers
+        $modifiers = \App\Models\Modifier::all();
+        foreach ($modifiers as $mod) {
             RecipeItem::firstOrCreate([
-                'menu_item_id' => $classicSmash->id,
-                'ingredient_id' => $burgerBun->id,
+                'modifier_id' => $mod->id,
+                'ingredient_id' => $cheeseSlice->id, // Let's use cheese as a dummy modifier ingredient
             ], [
-                'quantity' => 1,
-                'uom_id' => $uomEach->id
-            ]);
-
-            RecipeItem::firstOrCreate([
-                'menu_item_id' => $classicSmash->id,
-                'ingredient_id' => $beefPatty->id,
-            ], [
-                'quantity' => 2, // Double patty
-                'uom_id' => $uomEach->id
-            ]);
-
-            RecipeItem::firstOrCreate([
-                'menu_item_id' => $classicSmash->id,
-                'ingredient_id' => $cheeseSlice->id,
-            ], [
-                'quantity' => 2, // Double cheese
+                'quantity' => rand(1, 2),
                 'uom_id' => $uomEach->id
             ]);
         }
