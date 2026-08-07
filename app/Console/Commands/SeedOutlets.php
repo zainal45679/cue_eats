@@ -8,7 +8,7 @@ use App\Models\StorageLocation;
 use App\Models\User;
 use App\Models\Ingredient;
 use App\Models\InventoryBalance;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 

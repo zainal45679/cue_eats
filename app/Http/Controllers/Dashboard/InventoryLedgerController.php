@@ -11,7 +11,7 @@ class InventoryLedgerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = InventoryLedger::with(['location', 'ingredient.baseUom', 'createdBy']);
+        $query = InventoryLedger::with(['location', 'ingredient.baseUom', 'createdBy', 'reference']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -21,6 +21,10 @@ class InventoryLedgerController extends Controller
         
         if ($request->has('ingredient_id')) {
             $query->where('ingredient_id', $request->ingredient_id);
+        }
+        
+        if ($request->boolean('hide_sales')) {
+            $query->where('transaction_type', '!=', 'sale');
         }
         
         $query->latest();

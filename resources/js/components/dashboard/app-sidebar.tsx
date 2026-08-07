@@ -22,10 +22,12 @@ export function AppSidebar() {
   };
 
   const filteredMenu = Configs.mainNavItems.filter((item) => {
+    if (roles?.includes("admin")) {
+      return true;
+    }
+
     if (item.adminOnly) {
-      if (!roles?.includes("admin")) {
-        return false;
-      }
+      return false;
     }
 
     if (item.permission) {

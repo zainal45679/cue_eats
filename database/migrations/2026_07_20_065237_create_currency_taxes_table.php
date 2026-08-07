@@ -14,9 +14,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('currency_taxes', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
-            $table->foreignId('country_id')->unique()->constrained()->cascadeOnDelete();
+            $table->foreignUuid('country_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('currency');
             $table->string('tax_type');
             $table->decimal('tax_percentage', 5, 2)->nullable();

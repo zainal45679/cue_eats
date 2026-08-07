@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('approval_configurations', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
             $table->string('org_size_tier');
             $table->integer('num_approvers_required')->default(1);
             $table->string('approver_sequence_rule')->default('Sequential');
             $table->boolean('status')->default(true);
-            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->softDeletes();
             $table->timestamps();
         });

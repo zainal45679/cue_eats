@@ -8,6 +8,8 @@ import { Entity } from "@/lib/permissions";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
+import { Switch } from "@/components/shadcn/ui/switch";
+import { Label } from "@/components/shadcn/ui/label";
 import { ArrowDownRight, ArrowUpRight, ArrowLeftRight, Settings, Flame } from "lucide-react";
 
 export default function InventoryLedgerIndex() {
@@ -18,6 +20,25 @@ export default function InventoryLedgerIndex() {
 
     const isPositive = (type: string) => ['purchase', 'transfer_in', 'po_receipt', 'adjustment_up'].includes(type.toLowerCase());
     const isNegative = (type: string) => ['transfer_out', 'consumption', 'adjustment_down', 'sale'].includes(type.toLowerCase());
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const [hideSales, setHideSales] = useState(searchParams.get("hide_sales") === "1");
+
+    const handleHideSalesToggle = (checked: boolean) => {
+        setHideSales(checked);
+        const queryParams = { ...Object.fromEntries(new URLSearchParams(window.location.search)) };
+        if (checked) {
+            queryParams.hide_sales = "1";
+        } else {
+            delete queryParams.hide_sales;
+        }
+        queryParams.page = "1";
+        
+        router.get(window.location.pathname, queryParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     const stats = useMemo(() => {
         const rows = ledgers.rows || [];
@@ -37,6 +58,7 @@ export default function InventoryLedgerIndex() {
         } else if (activeTab === "outwards") {
             filteredRows = filteredRows.filter((l: any) => isNegative(l.transaction_type));
         }
+
         return { ...ledgers, rows: filteredRows };
     }, [ledgers, activeTab]);
 
@@ -94,16 +116,19 @@ export default function InventoryLedgerIndex() {
             id: "created_at",
             header: "Date/Time",
             accessorFn: (row: any) => new Date(row.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            cell: ({ getValue }: any) => getValue()
         },
         {
             id: "location",
             header: "Location",
             accessorFn: (row: any) => row.location?.location_name || "-",
+            cell: ({ getValue }: any) => getValue()
         },
         {
             id: "ingredient",
             header: "Ingredient",
             accessorFn: (row: any) => row.ingredient?.name || "-",
+            cell: ({ getValue }: any) => getValue()
         },
         {
             id: "transaction_type",
@@ -145,7 +170,30 @@ export default function InventoryLedgerIndex() {
             cell: ({ row }: any) => {
                 if (!row.original.reference_type) return "-";
                 const typeName = row.original.reference_type.split("\\").pop();
-                return <span className="text-muted-foreground text-xs font-mono">{typeName} #{row.original.reference_id}</span>;
+                
+                let refDisplay = row.original.reference_id;
+                const ref = row.original.reference;
+                
+                if (ref) {
+                    if (ref.order_number) refDisplay = ref.order_number;
+                    else if (ref.grn_number) refDisplay = ref.grn_number;
+                    else if (ref.po_number) refDisplay = ref.po_number;
+                    else if (ref.transfer_number) refDisplay = ref.transfer_number;
+                    else if (ref.reference_number) refDisplay = ref.reference_number;
+                }
+
+                if (typeof refDisplay === 'string') {
+                    // Strip UUIDs to keep the UI clean
+                    refDisplay = refDisplay.replace(/-?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/, '');
+                    
+                    if (!refDisplay || refDisplay === '-' || refDisplay.endsWith('-')) {
+                        refDisplay = typeof row.original.reference_id === 'string' 
+                            ? row.original.reference_id.substring(0, 8) 
+                            : row.original.reference_id;
+                    }
+                }
+
+                return <span className="text-muted-foreground text-xs font-mono">{typeName} #{refDisplay}</span>;
             },
         },
         {
@@ -168,6 +216,8 @@ export default function InventoryLedgerIndex() {
             id: "running_balance",
             header: "Balance",
             cell: ({ row }: any) => {
+                if (row.original.running_balance === null) return "-";
+                
                 const uom = row.original.ingredient?.base_uom?.code || '';
                 return (
                     <span className="font-semibold text-blue-600 dark:text-blue-400">
@@ -180,6 +230,7 @@ export default function InventoryLedgerIndex() {
             id: "createdBy",
             header: "User",
             accessorFn: (row: any) => row.created_by?.name || "-",
+            cell: ({ getValue }: any) => getValue()
         },
     ];
 
@@ -257,7 +308,11 @@ export default function InventoryLedgerIndex() {
                         <TabsTrigger value="outwards" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Outwards (-)</TabsTrigger>
                     </TabsList>
                 </Tabs>
-                <div className="shrink-0 w-full sm:w-auto flex justify-end">
+                <div className="shrink-0 w-full sm:w-auto flex flex-col sm:flex-row items-end sm:items-center gap-4 justify-end">
+                    <div className="flex items-center space-x-2 bg-muted/30 px-3 py-2 rounded-md border border-border/50 h-10">
+                        <Switch id="hide-sales" checked={hideSales} onCheckedChange={handleHideSalesToggle} />
+                        <Label htmlFor="hide-sales" className="text-sm font-medium cursor-pointer text-muted-foreground">Hide POS Sales</Label>
+                    </div>
                     <XDateRangePicker value={dateFilterValue} onChange={handleDateSelect} />
                 </div>
             </div>

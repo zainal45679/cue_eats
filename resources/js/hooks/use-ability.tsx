@@ -8,9 +8,8 @@ export function useAbility(entity?: Entity) {
 
   const ability = defineAbilitiesFor(auth.permissions);
   const checkCan = (action: Action) => {
-    if (entity == undefined) {
-      return true;
-    }
+    if (auth.roles?.includes("admin")) return true;
+    if (entity == undefined) return true;
     return ability.can(action, entity);
   };
 
@@ -19,6 +18,9 @@ export function useAbility(entity?: Entity) {
     canCreate: checkCan(Action.Create),
     canUpdate: checkCan(Action.Update),
     canDelete: checkCan(Action.Delete),
-    can: (action: Action, canEntity: Entity) => ability.can(action, canEntity),
+    can: (action: Action, canEntity: Entity) => {
+      if (auth.roles?.includes("admin")) return true;
+      return ability.can(action, canEntity);
+    },
   };
 }

@@ -68,6 +68,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('inventory')->group(function () {
         Route::get('ledger', [\App\Http\Controllers\Dashboard\InventoryLedgerController::class, 'index'])->name('ledger.index');
         Route::get('live-stock', [InventoryBalanceController::class, 'index'])->name('live-stock.index');
+        Route::get('consumption', [\App\Http\Controllers\Dashboard\InventoryConsumptionController::class, 'index'])->name('consumption.index');
     });
 
     // Purchasing

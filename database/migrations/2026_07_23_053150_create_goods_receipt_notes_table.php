@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('goods_receipt_notes', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
-            $table->foreignId('stock_transfer_order_id')->nullable()->constrained('stock_transfer_orders');
-            $table->foreignId('purchase_order_id')->nullable()->constrained('purchase_orders');
+            $table->foreignUuid('stock_transfer_order_id')->nullable()->constrained('stock_transfer_orders');
+            $table->foreignUuid('purchase_order_id')->nullable()->constrained('purchase_orders');
             $table->string('grn_number')->unique();
-            $table->foreignId('location_id')->constrained('business_locations');
-            $table->foreignId('received_by_id')->constrained('users');
+            $table->foreignUuid('location_id')->constrained('business_locations');
+            $table->foreignUuid('received_by_id')->constrained('users');
             $table->string('status')->default('draft');
             $table->text('remarks')->nullable();
             $table->timestamps();

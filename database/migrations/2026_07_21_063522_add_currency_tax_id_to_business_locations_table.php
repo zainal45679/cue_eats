@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('business_locations', function (Blueprint $table) {
-            $table->foreignId('currency_tax_id')->nullable()->constrained('currency_taxes')->nullOnDelete();
+            $table->foreignUuid('currency_tax_id')->nullable()->constrained('currency_taxes')->nullOnDelete();
         });
     }
 

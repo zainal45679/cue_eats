@@ -14,10 +14,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('business_locations', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
-            $table->foreignId('country_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('parent_location_id')->nullable()->constrained('business_locations')->nullOnDelete();
+            $table->foreignUuid('country_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('parent_location_id')->nullable()->constrained('business_locations')->nullOnDelete();
             $table->string('location_name');
             $table->string('location_code')->nullable();
             $table->string('location_type');

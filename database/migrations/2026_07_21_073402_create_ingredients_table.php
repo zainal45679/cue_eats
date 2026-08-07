@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ingredients', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('code')->nullable();
-            $table->foreignId('ingredient_category_id')->nullable()->constrained('ingredient_categories')->nullOnDelete();
-            $table->foreignId('base_uom_id')->nullable()->constrained('units_of_measure')->nullOnDelete();
-            $table->foreignId('brand_id')->nullable()->constrained('brands')->nullOnDelete();
+            $table->foreignUuid('ingredient_category_id')->nullable()->constrained('ingredient_categories')->nullOnDelete();
+            $table->foreignUuid('base_uom_id')->nullable()->constrained('units_of_measure')->nullOnDelete();
+            $table->foreignUuid('brand_id')->nullable()->constrained('brands')->nullOnDelete();
             $table->boolean('is_inventory_item')->default(true);
             $table->boolean('is_purchasable')->default(true);
             $table->boolean('is_recipe_item')->default(false);

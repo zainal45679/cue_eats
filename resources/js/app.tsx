@@ -36,6 +36,10 @@ createInertiaApp({
             <SupplyChainLayout>{page}</SupplyChainLayout>
           </AppLayout>
         ));
+    } else if (!name.startsWith("auth/")) {
+      page.default.layout =
+        page.default.layout ||
+        ((page: any) => <AppLayout>{page}</AppLayout>);
     }
     
     return page;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
 use App\Traits\HasStatus;
 use App\Traits\HasUuid;
 use App\Traits\TrackUser;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class People extends Model
 {
+    use HasUuids;
     use HasStatus, HasUuid, SoftDeletes, TrackUser;
 
     protected $fillable = [

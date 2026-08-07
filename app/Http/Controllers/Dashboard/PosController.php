@@ -17,7 +17,7 @@ class PosController extends Controller
     public function index()
     {
         // Eager load recipe items to check inventory
-        $categories = MenuCategory::with(['items.modifierGroups.modifiers', 'items.recipeItems'])->where('is_active', true)->get();
+        $categories = MenuCategory::with(['items.modifierGroups.modifiers.recipeItems', 'items.recipeItems'])->where('is_active', true)->get();
         
         // Gather all required ingredient IDs
         $ingredientIds = [];
@@ -26,15 +26,25 @@ class PosController extends Controller
                 foreach ($item->recipeItems as $recipe) {
                     $ingredientIds[] = $recipe->ingredient_id;
                 }
+                foreach ($item->modifierGroups as $group) {
+                    foreach ($group->modifiers as $mod) {
+                        foreach ($mod->recipeItems as $recipe) {
+                            $ingredientIds[] = $recipe->ingredient_id;
+                        }
+                    }
+                }
             }
         }
         
+        $balances = [];
         // Check real-time inventory balances
         if (!empty($ingredientIds)) {
-            $balances = \App\Models\InventoryBalance::whereIn('ingredient_id', array_unique($ingredientIds))
+            $balancesList = \App\Models\InventoryBalance::whereIn('ingredient_id', array_unique($ingredientIds))
                 ->selectRaw('ingredient_id, SUM(available_qty) as total_qty')
                 ->groupBy('ingredient_id')
                 ->pluck('total_qty', 'ingredient_id');
+            
+            $balances = $balancesList->toArray();
                 
             // Dynamically mark items as out of stock if any required ingredient is insufficient
             foreach ($categories as $cat) {
@@ -53,7 +63,8 @@ class PosController extends Controller
         }
 
         return Inertia::render('menu-pos/terminal/index', [
-            'categories' => $categories
+            'categories' => $categories,
+            'inventoryBalances' => $balances
         ]);
     }
 
@@ -75,8 +86,12 @@ class PosController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate order number
-            $orderNumber = 'ORD-' . strtoupper(uniqid());
+            // Generate sequential order number
+            $nextId = \App\Models\Order::count() + 1;
+            while (\App\Models\Order::where('order_number', 'ORD-' . $nextId)->exists()) {
+                $nextId++;
+            }
+            $orderNumber = 'ORD-' . $nextId;
             
             // Calculate totals
             $subtotal = 0;
@@ -165,6 +180,11 @@ class PosController extends Controller
             ['ingredient_id' => $ingredientId, 'storage_location_id' => $storageLocationId],
             ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
         );
+
+        if ($balance->available_qty < $quantity) {
+            $ingredient = \App\Models\Ingredient::find($ingredientId);
+            throw new \Exception("Insufficient stock for ingredient: " . ($ingredient ? $ingredient->name : 'Unknown'));
+        }
 
         $balance->available_qty -= $quantity;
         $balance->save();

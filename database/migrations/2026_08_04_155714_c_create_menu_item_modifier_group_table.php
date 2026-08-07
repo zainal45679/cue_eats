@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('menu_item_modifier_group', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId("menu_item_id")->constrained()->cascadeOnDelete();
-            $table->foreignId("modifier_group_id")->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid("menu_item_id")->constrained()->cascadeOnDelete();
+            $table->foreignUuid("modifier_group_id")->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }

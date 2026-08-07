@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ingredient_categories', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
             $table->string('name');
-            $table->foreignId('parent_category_id')->nullable()->constrained('ingredient_categories')->nullOnDelete();
+            $table->foreignUuid('parent_category_id')->nullable()->constrained('ingredient_categories')->nullOnDelete();
             $table->boolean('status')->default(true);
             $table->timestamps();
             $table->softDeletes();

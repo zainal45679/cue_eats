@@ -120,9 +120,14 @@ class GoodsReceiptNoteController extends Controller
                 abort(403, 'STO must be dispatched before receiving.');
             }
 
+            $nextId = \App\Models\GoodsReceiptNote::count() + 1;
+            while (\App\Models\GoodsReceiptNote::where('grn_number', 'GRN-' . $nextId)->exists()) {
+                $nextId++;
+            }
+
             $grn = GoodsReceiptNote::create([
                 'stock_transfer_order_id' => $stoLocked->id,
-                'grn_number' => 'GRN-' . time(),
+                'grn_number' => 'GRN-' . $nextId,
                 'location_id' => $sto->to_location_id,
                 'received_by_id' => auth()->id(),
                 'status' => 'completed',
@@ -225,9 +230,14 @@ class GoodsReceiptNoteController extends Controller
                 abort(403, 'PO must be approved before receiving.');
             }
 
+            $nextId = \App\Models\GoodsReceiptNote::count() + 1;
+            while (\App\Models\GoodsReceiptNote::where('grn_number', 'GRN-' . $nextId)->exists()) {
+                $nextId++;
+            }
+
             $grn = GoodsReceiptNote::create([
                 'purchase_order_id' => $poLocked->id,
-                'grn_number' => 'GRN-' . time(),
+                'grn_number' => 'GRN-' . $nextId,
                 'location_id' => $po->delivery_location_id,
                 'received_by_id' => auth()->id(),
                 'status' => 'completed',

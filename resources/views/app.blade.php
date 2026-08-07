@@ -43,17 +43,16 @@
         }
     </style>
 
-    <title inertia>{{ \App\Models\Organization::current()->name ?? config('app.name', 'Laravel') }}</title>
+    @php
+        $org = \App\Models\Organization::current();
+        $faviconUrl = $org->logo ? '/storage/' . $org->logo . '?v=' . time() : '/favicon.svg?v=1';
+    @endphp
+
+    <title inertia>{{ $org->name ?? config('app.name', 'Laravel') }}</title>
 
     <link
         rel="icon"
-        href="/favicon.ico"
-        sizes="any"
-    >
-    <link
-        rel="icon"
-        href="/favicon.svg"
-        type="image/svg+xml"
+        href="{{ $faviconUrl }}"
     >
     <link
         rel="apple-touch-icon"

@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('people', function (Blueprint $table): void {
             // Primary Fields
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid();
 
             $table->string('name');
@@ -23,8 +23,8 @@ return new class extends Migration
             $table->tinyInteger('status')->default(1)->comment('1: Active, 0: Inactive');
 
             // Audit Fields
-            $table->foreignId('created_by')->nullable()->comment('0: System')->constrained('users')->noActionOnUpdate()->noActionOnDelete();
-            $table->foreignId('updated_by')->nullable()->comment('0: System')->constrained('users')->noActionOnUpdate()->noActionOnDelete();
+            $table->foreignUuid('created_by')->nullable()->comment('0: System')->constrained('users')->noActionOnUpdate()->noActionOnDelete();
+            $table->foreignUuid('updated_by')->nullable()->comment('0: System')->constrained('users')->noActionOnUpdate()->noActionOnDelete();
             $table->timestamps();
             $table->softDeletes();
         });

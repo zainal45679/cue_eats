@@ -12,12 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stock_transfer_order_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('stock_transfer_order_id')->constrained('stock_transfer_orders')->cascadeOnDelete();
-            $table->foreignId('ingredient_id')->constrained('ingredients');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('stock_transfer_order_id')->constrained('stock_transfer_orders')->cascadeOnDelete();
+            $table->foreignUuid('ingredient_id')->constrained('ingredients');
             $table->decimal('approved_quantity', 10, 2);
             $table->decimal('dispatched_quantity', 10, 2)->default(0);
-            $table->foreignId('uom_id')->constrained('units_of_measure');
+            $table->foreignUuid('uom_id')->constrained('units_of_measure');
             $table->timestamps();
         });
     }

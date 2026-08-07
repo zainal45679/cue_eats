@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stock_transfer_orders', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
-            $table->foreignId('internal_request_id')->constrained('internal_requests');
+            $table->foreignUuid('internal_request_id')->constrained('internal_requests');
             $table->string('sto_number')->unique();
-            $table->foreignId('from_location_id')->constrained('business_locations');
-            $table->foreignId('to_location_id')->constrained('business_locations');
+            $table->foreignUuid('from_location_id')->constrained('business_locations');
+            $table->foreignUuid('to_location_id')->constrained('business_locations');
             $table->string('status')->default('pending_dispatch');
             $table->timestamp('dispatched_at')->nullable();
-            $table->foreignId('created_by')->constrained('users');
+            $table->foreignUuid('created_by')->constrained('users');
             $table->timestamps();
             $table->softDeletes();
         });

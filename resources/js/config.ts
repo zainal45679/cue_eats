@@ -18,7 +18,8 @@ import {
   Palette,
   Building2,
   Utensils,
-  MonitorSmartphone
+  MonitorSmartphone,
+  Flame
 } from "lucide-react";
 import { dashboard } from "@/generated/routes";
 import brands from "@/generated/routes/brands";
@@ -96,11 +97,18 @@ export const Configs: TConfigs = {
       href: "/inventory/live-stock",
       icon: Archive,
       group: "Inventory Operations",
+      permission: "inventory-balances",
     },
     {
       title: "Inventory Ledger",
       href: "/inventory/ledger",
       icon: History,
+      group: "Inventory Operations",
+    },
+    {
+      title: "Daily Consumption",
+      href: "/inventory/consumption",
+      icon: Flame,
       group: "Inventory Operations",
     },
     {

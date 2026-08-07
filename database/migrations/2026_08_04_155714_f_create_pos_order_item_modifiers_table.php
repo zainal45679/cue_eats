@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pos_order_item_modifiers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId("pos_order_item_id")->constrained("pos_order_items")->cascadeOnDelete();
-            $table->foreignId("modifier_id")->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid("pos_order_item_id")->constrained("pos_order_items")->cascadeOnDelete();
+            $table->foreignUuid("modifier_id")->constrained()->cascadeOnDelete();
             $table->decimal("price_adjustment", 10, 2)->default(0);
             
             $table->timestamps();

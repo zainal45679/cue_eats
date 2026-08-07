@@ -12,14 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('ingredient_suppliers', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
-            $table->foreignId('ingredient_id')->constrained('ingredients')->cascadeOnDelete();
-            $table->foreignId('supplier_id')->constrained('suppliers')->cascadeOnDelete();
-            $table->foreignId('purchase_uom_id')->constrained('units_of_measure')->cascadeOnDelete();
+            $table->foreignUuid('ingredient_id')->constrained('ingredients')->cascadeOnDelete();
+            $table->foreignUuid('supplier_id')->constrained('suppliers')->cascadeOnDelete();
+            $table->foreignUuid('purchase_uom_id')->constrained('units_of_measure')->cascadeOnDelete();
             $table->decimal('moq', 10, 2)->default(1);
             $table->decimal('price', 15, 4)->default(0);
-            $table->foreignId('currency_tax_id')->nullable()->constrained('currency_taxes')->nullOnDelete();
+            $table->foreignUuid('currency_tax_id')->nullable()->constrained('currency_taxes')->nullOnDelete();
             $table->integer('lead_time_days')->default(1);
             $table->boolean('is_preferred')->default(false);
             $table->boolean('status')->default(true);

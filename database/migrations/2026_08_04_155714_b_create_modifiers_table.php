@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('modifiers', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId("modifier_group_id")->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid("modifier_group_id")->constrained()->cascadeOnDelete();
             $table->string("name");
             $table->decimal("price_adjustment", 10, 2)->default(0);
             $table->boolean("is_active")->default(true);

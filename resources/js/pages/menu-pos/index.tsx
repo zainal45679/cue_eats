@@ -197,7 +197,7 @@ export default function MenuManagement({ items, categories, modifierGroups, ingr
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow className="hover:bg-transparent">
-                                                        <TableHead className="w-[300px] h-10 text-xs font-medium">Item Details</TableHead>
+                                                        <TableHead className="w-[450px] h-10 text-xs font-medium">Item Details</TableHead>
                                                         <TableHead className="h-10 text-xs font-medium">Price</TableHead>
                                                         <TableHead className="h-10 text-xs font-medium">Status</TableHead>
                                                         <TableHead className="h-10 text-xs font-medium">Add-ons</TableHead>
@@ -223,17 +223,17 @@ export default function MenuManagement({ items, categories, modifierGroups, ingr
                                                                                 <ImageIcon className="w-4 h-4 text-muted-foreground opacity-50" />
                                                                             </div>
                                                                         )}
-                                                                        <div>
-                                                                            <div className="font-medium text-sm text-foreground">{item.name}</div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <div className="font-medium text-sm text-foreground truncate">{item.name}</div>
                                                                             {item.description && (
-                                                                                <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{item.description}</div>
+                                                                                <div className="text-xs text-muted-foreground line-clamp-1 mt-0.5 whitespace-normal" title={item.description}>{item.description}</div>
                                                                             )}
                                                                         </div>
                                                                     </div>
                                                                 </TableCell>
                                                                 <TableCell className="py-2.5 text-sm font-medium">${item.price}</TableCell>
                                                                 <TableCell className="py-2.5">
-                                                                    <div className="flex items-center gap-4">
+                                                                    <div className="flex flex-col gap-2">
                                                                         <div className="flex items-center gap-1.5">
                                                                             <Switch 
                                                                                 checked={item.is_active} 
@@ -248,7 +248,7 @@ export default function MenuManagement({ items, categories, modifierGroups, ingr
                                                                                 onCheckedChange={(val) => toggleItemStatus(item, 'is_available', val)}
                                                                                 className="scale-75 origin-left"
                                                                             />
-                                                                            <span className="text-[11px] font-medium text-muted-foreground">{item.is_available ? 'In Stock' : 'Out'}</span>
+                                                                            <span className="text-[11px] font-medium text-muted-foreground">{item.is_available ? 'Available' : 'Unavailable'}</span>
                                                                         </div>
                                                                     </div>
                                                                 </TableCell>

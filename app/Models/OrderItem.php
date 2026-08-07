@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
 use Illuminate\Database\Eloquent\Model;
+
+
 
 class OrderItem extends Model
 {
+    use HasUuids;
     protected $table = 'pos_order_items';
     protected $fillable = ['pos_order_id', 'menu_item_id', 'quantity', 'unit_price', 'subtotal', 'notes'];
 

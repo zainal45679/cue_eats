@@ -12,12 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('units_of_measure', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('code');
             $table->string('type');
-            $table->foreignId('base_unit_id')->nullable()->constrained('units_of_measure')->nullOnDelete();
+            $table->foreignUuid('base_unit_id')->nullable()->constrained('units_of_measure')->nullOnDelete();
             $table->decimal('conversion_factor', 10, 4)->nullable();
             $table->boolean('status')->default(true);
             $table->timestamps();

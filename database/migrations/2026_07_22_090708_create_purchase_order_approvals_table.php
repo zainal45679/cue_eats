@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('purchase_order_approvals', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('purchase_order_id')->constrained('purchase_orders')->cascadeOnDelete();
-            $table->foreignId('approver_id')->constrained('users');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('purchase_order_id')->constrained('purchase_orders')->cascadeOnDelete();
+            $table->foreignUuid('approver_id')->constrained('users');
             $table->string('status')->default('pending'); // pending, approved, rejected
             $table->text('comments')->nullable();
             $table->timestamp('acted_at')->nullable();

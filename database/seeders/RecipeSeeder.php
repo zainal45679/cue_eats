@@ -4,112 +4,140 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Ingredient;
-use App\Models\IngredientCategory;
 use App\Models\UnitOfMeasure;
-use App\Models\StorageLocation;
-use App\Models\BusinessLocation;
-use App\Models\InventoryBalance;
 use App\Models\MenuItem;
 use App\Models\RecipeItem;
-use Illuminate\Support\Str;
+use App\Models\Modifier;
 
 class RecipeSeeder extends Seeder
 {
     public function run()
     {
-        // 1. Storage Location
-        // 1. Storage Location
-        $businessLoc = BusinessLocation::first();
-        if (!$businessLoc) {
-            \Illuminate\Support\Facades\DB::table('countries')->insertOrIgnore([
-                'id' => 1, 'name' => 'United States', 'uuid' => Str::uuid(), 'created_at' => now(), 'updated_at' => now()
-            ]);
-            \Illuminate\Support\Facades\DB::table('currency_taxes')->insertOrIgnore([
-                'id' => 1, 'country_id' => 1, 'currency' => 'USD', 'tax_type' => 'VAT', 'tax_percentage' => 0, 'uuid' => Str::uuid(), 'created_at' => now(), 'updated_at' => now()
-            ]);
-            \Illuminate\Support\Facades\DB::table('business_locations')->insertOrIgnore([
-                'id' => 1, 'country_id' => 1, 'currency_tax_id' => 1, 'location_name' => 'Main Store', 'location_code' => 'MAIN', 'location_type' => 'Store', 'uuid' => Str::uuid(), 'created_at' => now(), 'updated_at' => now()
-            ]);
-            $businessLoc = BusinessLocation::find(1);
+        $uomEA = UnitOfMeasure::where('code', 'EA')->first();
+        $uomKG = UnitOfMeasure::where('code', 'KG')->first();
+        $uomL = UnitOfMeasure::where('code', 'L')->first();
+
+        if (!$uomEA || !$uomKG || !$uomL) {
+            throw new \Exception('UOMs missing, please run DummyInventorySeeder first.');
         }
 
-        $storageLoc = StorageLocation::where('business_location_id', $businessLoc->id)->first();
-        if (!$storageLoc) {
-            \Illuminate\Support\Facades\DB::table('storage_locations')->insertOrIgnore([
-                'id' => 1, 'business_location_id' => $businessLoc->id, 'storage_name' => 'Main Kitchen', 'storage_type' => 'Internal', 'uuid' => Str::uuid(), 'created_at' => now(), 'updated_at' => now()
-            ]);
-            $storageLoc = StorageLocation::find(1);
+        // Get ingredients by code
+        $ing = [];
+        foreach (Ingredient::all() as $ingredient) {
+            $ing[$ingredient->code] = $ingredient;
         }
 
-        // 2. Unit of Measures
-        $uomEach = UnitOfMeasure::firstOrCreate(['code' => 'EA'], ['name' => 'Each', 'type' => 'Unit', 'status' => true]);
-        $uomGram = UnitOfMeasure::firstOrCreate(['code' => 'G'], ['name' => 'Gram', 'type' => 'Weight', 'status' => true]);
+        // Logical mappings (Menu Item Name => Ingredients array)
+        $recipes = [
+            'The Classic Smash' => [
+                ['ingredient' => $ing['BUN-01'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['BEEF-01'], 'qty' => 2, 'uom' => $uomEA],
+                ['ingredient' => $ing['CHS-AM'], 'qty' => 2, 'uom' => $uomEA],
+                ['ingredient' => $ing['PRO-ON'], 'qty' => 0.05, 'uom' => $uomKG],
+                ['ingredient' => $ing['PAN-PKL'], 'qty' => 0.03, 'uom' => $uomKG],
+            ],
+            'Truffle Mushroom Burger' => [
+                ['ingredient' => $ing['BUN-01'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['BEEF-01'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['CHS-SW'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['PRO-MSH'], 'qty' => 0.1, 'uom' => $uomKG],
+                ['ingredient' => $ing['PAN-TAI'], 'qty' => 0.02, 'uom' => $uomL],
+                ['ingredient' => $ing['PRO-ARG'], 'qty' => 0.05, 'uom' => $uomKG],
+            ],
+            'Spicy Inferno Burger' => [
+                ['ingredient' => $ing['BUN-01'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['BEEF-01'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['CHS-PJ'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['PRO-JAL'], 'qty' => 0.05, 'uom' => $uomKG],
+                ['ingredient' => $ing['PAN-HBM'], 'qty' => 0.02, 'uom' => $uomL],
+                ['ingredient' => $ing['FRZ-ONR'], 'qty' => 2, 'uom' => $uomEA],
+            ],
+            'Classic Margherita' => [
+                ['ingredient' => $ing['BKT-PZD'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['PAN-TMS'], 'qty' => 0.15, 'uom' => $uomL],
+                ['ingredient' => $ing['CHS-FMZ'], 'qty' => 0.2, 'uom' => $uomKG],
+                ['ingredient' => $ing['PRO-BSL'], 'qty' => 0.02, 'uom' => $uomKG],
+            ],
+            'Pepperoni Feast' => [
+                ['ingredient' => $ing['BKT-PZD'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['PAN-TMS'], 'qty' => 0.15, 'uom' => $uomL],
+                ['ingredient' => $ing['CHS-SMZ'], 'qty' => 0.25, 'uom' => $uomKG],
+                ['ingredient' => $ing['MET-PEP'], 'qty' => 0.1, 'uom' => $uomKG],
+                ['ingredient' => $ing['PAN-HNY'], 'qty' => 0.02, 'uom' => $uomL],
+            ],
+            'BBQ Chicken Pizza' => [
+                ['ingredient' => $ing['BKT-PZD'], 'qty' => 1, 'uom' => $uomEA],
+                ['ingredient' => $ing['PAN-BBQ'], 'qty' => 0.15, 'uom' => $uomL],
+                ['ingredient' => $ing['CHS-SMZ'], 'qty' => 0.2, 'uom' => $uomKG],
+                ['ingredient' => $ing['MET-CHK'], 'qty' => 0.15, 'uom' => $uomKG],
+                ['ingredient' => $ing['PRO-ON'], 'qty' => 0.05, 'uom' => $uomKG],
+                ['ingredient' => $ing['PRO-CIL'], 'qty' => 0.01, 'uom' => $uomKG],
+            ],
+            'Truffle Parmesan Fries' => [
+                ['ingredient' => $ing['FRZ-FRS'], 'qty' => 0.25, 'uom' => $uomKG],
+                ['ingredient' => $ing['PAN-TRO'], 'qty' => 0.01, 'uom' => $uomL],
+                ['ingredient' => $ing['CHS-PRM'], 'qty' => 0.03, 'uom' => $uomKG],
+                ['ingredient' => $ing['PRO-PAR'], 'qty' => 0.01, 'uom' => $uomKG],
+            ],
+            'Crispy Mozzarella Sticks' => [
+                ['ingredient' => $ing['FRZ-MST'], 'qty' => 6, 'uom' => $uomEA],
+                ['ingredient' => $ing['PAN-MAR'], 'qty' => 0.05, 'uom' => $uomL],
+            ],
+            'Onion Rings' => [
+                ['ingredient' => $ing['FRZ-ONR'], 'qty' => 10, 'uom' => $uomEA],
+            ],
+            'Craft Cola' => [
+                ['ingredient' => $ing['BEV-COL'], 'qty' => 0.05, 'uom' => $uomL],
+                ['ingredient' => $ing['BEV-CRB'], 'qty' => 0.45, 'uom' => $uomL],
+            ],
+            'Fresh Lemonade' => [
+                ['ingredient' => $ing['PRO-LMJ'], 'qty' => 0.05, 'uom' => $uomL],
+                ['ingredient' => $ing['PAN-SGR'], 'qty' => 0.02, 'uom' => $uomKG],
+                ['ingredient' => $ing['BEV-STP'], 'qty' => 0.03, 'uom' => $uomL],
+            ]
+        ];
 
-        // 3. Ingredient Category
-        $catMeat = IngredientCategory::firstOrCreate(['name' => 'Meat'], ['status' => true]);
-        $catBread = IngredientCategory::firstOrCreate(['name' => 'Bakery'], ['status' => true]);
-        $catDairy = IngredientCategory::firstOrCreate(['name' => 'Dairy'], ['status' => true]);
-
-        // 4. Ingredients
-        $beefPatty = Ingredient::firstOrCreate(
-            ['name' => 'Beef Patty 150g'],
-            ['code' => 'BEEF150', 'ingredient_category_id' => $catMeat->id, 'base_uom_id' => $uomEach->id, 'is_inventory_item' => true, 'is_recipe_item' => true, 'status' => true]
-        );
-        $burgerBun = Ingredient::firstOrCreate(
-            ['name' => 'Brioche Bun'],
-            ['code' => 'BUN1', 'ingredient_category_id' => $catBread->id, 'base_uom_id' => $uomEach->id, 'is_inventory_item' => true, 'is_recipe_item' => true, 'status' => true]
-        );
-        $cheeseSlice = Ingredient::firstOrCreate(
-            ['name' => 'Cheddar Cheese Slice'],
-            ['code' => 'CHS1', 'ingredient_category_id' => $catDairy->id, 'base_uom_id' => $uomEach->id, 'is_inventory_item' => true, 'is_recipe_item' => true, 'status' => true]
-        );
-
-        // 5. Initial Inventory Balances
-        InventoryBalance::firstOrCreate(
-            ['ingredient_id' => $beefPatty->id, 'storage_location_id' => $storageLoc->id],
-            ['available_qty' => 100, 'reserved_qty' => 0, 'on_order_qty' => 0]
-        )->update(['available_qty' => 100]); // Reset to 100 for testing
-
-        InventoryBalance::firstOrCreate(
-            ['ingredient_id' => $burgerBun->id, 'storage_location_id' => $storageLoc->id],
-            ['available_qty' => 100, 'reserved_qty' => 0, 'on_order_qty' => 0]
-        )->update(['available_qty' => 100]);
-
-        InventoryBalance::firstOrCreate(
-            ['ingredient_id' => $cheeseSlice->id, 'storage_location_id' => $storageLoc->id],
-            ['available_qty' => 200, 'reserved_qty' => 0, 'on_order_qty' => 0]
-        )->update(['available_qty' => 200]);
-
-        // 6. Map dummy recipes to ALL Menu Items
-        $menuItems = MenuItem::all();
-        $ingredientsList = [$beefPatty, $burgerBun, $cheeseSlice];
-        
-        foreach ($menuItems as $item) {
-            // Give each item 1 to 3 random ingredients
-            $numIngredients = rand(1, 3);
-            $randomIngredients = collect($ingredientsList)->random($numIngredients);
-            
-            foreach ($randomIngredients as $ing) {
-                RecipeItem::firstOrCreate([
-                    'menu_item_id' => $item->id,
-                    'ingredient_id' => $ing->id,
-                ], [
-                    'quantity' => rand(1, 2),
-                    'uom_id' => $uomEach->id
-                ]);
+        foreach (MenuItem::all() as $menuItem) {
+            if (isset($recipes[$menuItem->name])) {
+                foreach ($recipes[$menuItem->name] as $itemRecipe) {
+                    RecipeItem::updateOrCreate([
+                        'menu_item_id' => $menuItem->id,
+                        'ingredient_id' => $itemRecipe['ingredient']->id,
+                    ], [
+                        'quantity' => $itemRecipe['qty'],
+                        'uom_id' => $itemRecipe['uom']->id
+                    ]);
+                }
             }
         }
-        
-        // 7. Map dummy recipes to ALL Modifiers
-        $modifiers = \App\Models\Modifier::all();
-        foreach ($modifiers as $mod) {
-            RecipeItem::firstOrCreate([
-                'modifier_id' => $mod->id,
-                'ingredient_id' => $cheeseSlice->id, // Let's use cheese as a dummy modifier ingredient
-            ], [
-                'quantity' => rand(1, 2),
-                'uom_id' => $uomEach->id
-            ]);
+
+        // Modifiers mappings
+        $modifierRecipes = [
+            'Extra Cheese' => [['ingredient' => $ing['CHS-AM'], 'qty' => 1, 'uom' => $uomEA]],
+            'Crispy Bacon' => [['ingredient' => $ing['MET-PEP'], 'qty' => 0.05, 'uom' => $uomKG]], // dummy bacon
+            'Avocado' => [['ingredient' => $ing['PRO-ARG'], 'qty' => 0.05, 'uom' => $uomKG]], // dummy
+            'Cheese Stuffed Crust' => [['ingredient' => $ing['CHS-SMZ'], 'qty' => 0.1, 'uom' => $uomKG]],
+            'Large 14"' => [['ingredient' => $ing['BKT-PZD'], 'qty' => 0.5, 'uom' => $uomEA]],
+            'Family 18"' => [['ingredient' => $ing['BKT-PZD'], 'qty' => 1, 'uom' => $uomEA]],
+            'Large (24oz)' => [['ingredient' => $ing['BEV-CRB'], 'qty' => 0.25, 'uom' => $uomL]],
+            'Ranch' => [['ingredient' => $ing['PAN-HBM'], 'qty' => 0.05, 'uom' => $uomL]], // dummy
+            'Spicy Mayo' => [['ingredient' => $ing['PAN-HBM'], 'qty' => 0.05, 'uom' => $uomL]],
+            'Truffle Aioli' => [['ingredient' => $ing['PAN-TAI'], 'qty' => 0.05, 'uom' => $uomL]],
+        ];
+
+        foreach (Modifier::all() as $modifier) {
+            if (isset($modifierRecipes[$modifier->name])) {
+                foreach ($modifierRecipes[$modifier->name] as $modRecipe) {
+                    RecipeItem::updateOrCreate([
+                        'modifier_id' => $modifier->id,
+                        'ingredient_id' => $modRecipe['ingredient']->id,
+                    ], [
+                        'quantity' => $modRecipe['qty'],
+                        'uom_id' => $modRecipe['uom']->id
+                    ]);
+                }
+            }
         }
     }
 }
+

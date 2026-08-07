@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
-import AppLayout from "@/layouts/app-layout";
+
 import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
 
-export default function PosTerminal({ categories }: { categories: any[] }) {
+export default function PosTerminal({ categories, inventoryBalances }: { categories: any[], inventoryBalances: Record<string, number> }) {
     const [cart, setCart] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
@@ -47,13 +47,48 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
     }, [categories, activeCategoryId, searchQuery, allItems]);
 
     // Format modifier state into a consistent string key for cart grouping
-    const getModifierHash = (modifiers: Record<number, any[]>) => {
+    const getModifierHash = (modifiers: Record<string, any[]>) => {
         if (!modifiers || Object.keys(modifiers).length === 0) return 'no-mods';
         // sort group IDs and mod IDs for consistent hashing
         return Object.keys(modifiers).sort().map(gId => {
-            const mods = modifiers[parseInt(gId)].map(m => m.id).sort();
+            const mods = modifiers[gId as any].map((m: any) => m.id).sort();
             return `${gId}:${mods.join(',')}`;
         }).join('|');
+    };
+
+    const checkInventory = (item: any, selectedModifiers: Record<string, any[]>, requestedDelta: number = 1): boolean => {
+        const requiredIngredients: Record<string, number> = {};
+        
+        // Add current cart usage
+        cart.forEach(cartItem => {
+            cartItem.recipe_items?.forEach((recipe: any) => {
+                requiredIngredients[recipe.ingredient_id] = (requiredIngredients[recipe.ingredient_id] || 0) + (parseFloat(recipe.quantity) * cartItem.quantity);
+            });
+            Object.values(cartItem.selectedModifiers || {}).flat().forEach((mod: any) => {
+                mod.recipe_items?.forEach((recipe: any) => {
+                    requiredIngredients[recipe.ingredient_id] = (requiredIngredients[recipe.ingredient_id] || 0) + (parseFloat(recipe.quantity) * cartItem.quantity);
+                });
+            });
+        });
+
+        // Add the new delta
+        item.recipe_items?.forEach((recipe: any) => {
+            requiredIngredients[recipe.ingredient_id] = (requiredIngredients[recipe.ingredient_id] || 0) + (parseFloat(recipe.quantity) * requestedDelta);
+        });
+        Object.values(selectedModifiers || {}).flat().forEach((mod: any) => {
+            mod.recipe_items?.forEach((recipe: any) => {
+                requiredIngredients[recipe.ingredient_id] = (requiredIngredients[recipe.ingredient_id] || 0) + (parseFloat(recipe.quantity) * requestedDelta);
+            });
+        });
+
+        // Validate against inventoryBalances
+        for (const [ingredientId, requiredQty] of Object.entries(requiredIngredients)) {
+            const available = inventoryBalances[ingredientId] || 0;
+            if (requiredQty > available) {
+                return false;
+            }
+        }
+        return true;
     };
 
     const handleItemClick = (item: any) => {
@@ -67,7 +102,12 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
         }
     };
 
-    const addToCart = (item: any, selectedModifiers: Record<number, any[]>) => {
+    const addToCart = (item: any, selectedModifiers: Record<string, any[]>) => {
+        if (!checkInventory(item, selectedModifiers, 1)) {
+            alert('Insufficient stock for this item or its modifiers.');
+            return;
+        }
+
         const hash = getModifierHash(selectedModifiers);
         const existingItemIndex = cart.findIndex(c => c.id === item.id && c.modHash === hash);
         
@@ -94,12 +134,18 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
     };
 
     const updateQuantity = (cartId: number, delta: number) => {
-        setCart(prev => prev.map(item => {
-            if (item.cart_id === cartId) {
-                const newQuantity = Math.max(0, item.quantity + delta);
-                return { ...item, quantity: newQuantity };
+        setCart(prev => prev.map(cartItem => {
+            if (cartItem.cart_id === cartId) {
+                if (delta > 0) {
+                    if (!checkInventory(cartItem, cartItem.selectedModifiers, delta)) {
+                        alert('Insufficient stock to increase quantity.');
+                        return cartItem;
+                    }
+                }
+                const newQuantity = Math.max(0, cartItem.quantity + delta);
+                return { ...cartItem, quantity: newQuantity };
             }
-            return item;
+            return cartItem;
         }).filter(item => item.quantity > 0));
     };
 
@@ -108,7 +154,7 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
     const subtotal = cart.reduce((sum, item) => sum + (item.unitPriceWithMods * item.quantity), 0);
 
     return (
-        <AppLayout>
+        <>
             <Head title="POS Terminal" />
             <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm">
                 {/* Left Side: Main POS Area */}
@@ -203,8 +249,10 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                     </ScrollArea>
                 </div>
                 
+                
                 {/* Right Side: Enhanced Cart */}
-                <div className="w-[320px] bg-card border-l shadow-xl flex flex-col z-20">
+                {cart.length > 0 && (
+                    <div className="w-[320px] bg-card border-l shadow-xl flex flex-col z-20">
                     <div className="p-4 border-b flex justify-between items-center bg-card">
                         <div className="flex items-center gap-2 font-bold text-lg text-card-foreground">
                             <ShoppingCart className="w-5 h-5 text-primary" />
@@ -217,13 +265,7 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                     
                     <ScrollArea className="flex-1 p-4 bg-muted/20 min-h-0">
                         <div className="space-y-3">
-                            {cart.length === 0 ? (
-                                <div className="text-center mt-20 opacity-40 flex flex-col items-center">
-                                    <ShoppingCart className="w-12 h-12 mb-4" />
-                                    <p className="text-sm">Cart is empty</p>
-                                </div>
-                            ) : (
-                                cart.map(item => (
+                            {cart.map(item => (
                                     <div key={item.cart_id} className="bg-background p-3 rounded-lg border border-border/40 shadow-sm text-sm">
                                         <div className="flex justify-between items-start mb-2 gap-2">
                                             <div className="flex-1 min-w-0">
@@ -250,8 +292,7 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                                             </div>
                                         </div>
                                     </div>
-                                ))
-                            )}
+                                ))}
                         </div>
                     </ScrollArea>
                     
@@ -269,7 +310,8 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                             Checkout
                         </Button>
                     </div>
-                </div>
+                    </div>
+                )}
             </div>
 
             {selectedItemForMod && (
@@ -291,6 +333,6 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                     // Optional: show a success toast here
                 }}
             />
-        </AppLayout>
+        </>
     );
 }

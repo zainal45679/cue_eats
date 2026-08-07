@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
 use App\Traits\HasStatus;
 use App\Traits\HasUuid;
 use App\Traits\TrackUser;
@@ -19,6 +21,7 @@ use App\Models\Scopes\TenantScope;
  */
 final class User extends Authenticatable
 {
+    use HasUuids;
     use HasFactory, HasRoles, HasStatus, HasUuid, Notifiable, TrackUser, SoftDeletes;
 
     /**

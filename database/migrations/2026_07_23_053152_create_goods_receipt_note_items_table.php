@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('goods_receipt_note_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('goods_receipt_note_id')->constrained('goods_receipt_notes')->cascadeOnDelete();
-            $table->foreignId('ingredient_id')->constrained('ingredients');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('goods_receipt_note_id')->constrained('goods_receipt_notes')->cascadeOnDelete();
+            $table->foreignUuid('ingredient_id')->constrained('ingredients');
             $table->decimal('expected_quantity', 10, 2);
             $table->decimal('received_quantity', 10, 2)->default(0);
             $table->decimal('rejected_quantity', 10, 2)->default(0);
-            $table->foreignId('uom_id')->constrained('units_of_measure');
+            $table->foreignUuid('uom_id')->constrained('units_of_measure');
             $table->timestamps();
         });
     }

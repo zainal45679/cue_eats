@@ -88,13 +88,13 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                         asChild
                         className={cn(
                           "!text-[14px] !font-normal !h-10 px-3",
-                          isActive && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:hover:bg-primary/20 data-[active=true]:font-semibold"
+                          isActive && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
                         )}
                         isActive={isActive}
                         tooltip={{ children: item.title }}
                       >
                         <Link href={item.href as string} prefetch>
-                          {item.icon && <item.icon className={cn("mr-2 h-5 w-5", isActive ? "text-primary" : "text-primary opacity-80")} />}
+                          {item.icon && <item.icon className={cn("mr-2 h-5 w-5 text-primary", isActive ? "" : "opacity-80")} />}
                           <span className="pl-[3px] pr-[6px]">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -135,7 +135,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 isActive={isActive}
                                 tooltip={{ children: item.title }}
                               >
-                                {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                                {item.icon && <item.icon className="mr-2 h-4 w-4 text-primary" />}
                                 <span className="pl-[3px] pr-[6px]">{item.title}</span>
                                 <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90 opacity-50" />
                               </SidebarMenuButton>
@@ -148,13 +148,13 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                       asChild
                                       className={cn(
                                         "text-[14px]",
-                                        isItemActive(child, page.url) && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-semibold data-[active=true]:hover:bg-primary/20"
+                                        isItemActive(child, page.url) && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
                                       )}
                                       isActive={isItemActive(child, page.url)}
                                     >
                                       <Link href={child.href as string} prefetch>
                                         {child.icon && (
-                                          <child.icon className="mr-2 h-4 w-4" />
+                                          <child.icon className="mr-2 h-4 w-4 text-primary" />
                                         )}
                                         <span className="pl-[3px] pr-[6px]">{child.title}</span>
                                       </Link>
@@ -173,13 +173,13 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                           asChild
                           className={cn(
                             !groupName ? "!text-[14px] !font-normal !h-10 px-3" : "group cursor-pointer pl-9 text-[14px]",
-                            isActive && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:hover:bg-primary/20 data-[active=true]:font-semibold"
+                            isActive && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
                           )}
                           isActive={isActive}
                           tooltip={{ children: item.title }}
                         >
                           <Link href={item.href as string} prefetch>
-                            {item.icon && <item.icon className={cn(!groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4", (!groupName || isActive) ? "text-primary" : "")} />}
+                            {item.icon && <item.icon className={cn("text-primary", !groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4")} />}
                             <span className="pl-[3px] pr-[6px]">{item.title}</span>
                           </Link>
                         </SidebarMenuButton>

@@ -17,13 +17,13 @@ class MenuPOSSeeder extends Seeder
      */
     public function run(): void
     {
-        // Clear existing data to avoid duplicates if run multiple times
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('menu_item_modifier_group')->truncate();
         MenuItem::truncate();
         Modifier::truncate();
         ModifierGroup::truncate();
         MenuCategory::truncate();
+        \App\Models\RecipeItem::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // 1. Create Categories
@@ -105,7 +105,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $burger1->modifierGroups()->attach([$modBurgerAddons->id]);
+        $burger1->modifierGroups()->attach([
+            $modBurgerAddons->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $burger2 = MenuItem::create([
             'menu_category_id' => $catBurgers->id,
@@ -116,7 +118,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $burger2->modifierGroups()->attach([$modBurgerAddons->id]);
+        $burger2->modifierGroups()->attach([
+            $modBurgerAddons->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $burger3 = MenuItem::create([
             'menu_category_id' => $catBurgers->id,
@@ -127,7 +131,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $burger3->modifierGroups()->attach([$modBurgerAddons->id]);
+        $burger3->modifierGroups()->attach([
+            $modBurgerAddons->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         // PIZZAS
         $pizza1 = MenuItem::create([
@@ -139,7 +145,11 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $pizza1->modifierGroups()->attach([$modPizzaSize->id, $modCrustType->id, $modDippingSauce->id]);
+        $pizza1->modifierGroups()->attach([
+            $modPizzaSize->id => ['id' => \Illuminate\Support\Str::uuid()],
+            $modCrustType->id => ['id' => \Illuminate\Support\Str::uuid()],
+            $modDippingSauce->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $pizza2 = MenuItem::create([
             'menu_category_id' => $catPizzas->id,
@@ -150,7 +160,11 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $pizza2->modifierGroups()->attach([$modPizzaSize->id, $modCrustType->id, $modDippingSauce->id]);
+        $pizza2->modifierGroups()->attach([
+            $modPizzaSize->id => ['id' => \Illuminate\Support\Str::uuid()],
+            $modCrustType->id => ['id' => \Illuminate\Support\Str::uuid()],
+            $modDippingSauce->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $pizza3 = MenuItem::create([
             'menu_category_id' => $catPizzas->id,
@@ -161,7 +175,10 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => false, // Set to out of stock for demo
         ]);
-        $pizza3->modifierGroups()->attach([$modPizzaSize->id, $modCrustType->id]);
+        $pizza3->modifierGroups()->attach([
+            $modPizzaSize->id => ['id' => \Illuminate\Support\Str::uuid()],
+            $modCrustType->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         // SIDES
         $side1 = MenuItem::create([
@@ -173,7 +190,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $side1->modifierGroups()->attach([$modDippingSauce->id]);
+        $side1->modifierGroups()->attach([
+            $modDippingSauce->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $side2 = MenuItem::create([
             'menu_category_id' => $catSides->id,
@@ -194,7 +213,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => false, // Set to inactive for demo
             'is_available' => true,
         ]);
-        $side3->modifierGroups()->attach([$modDippingSauce->id]);
+        $side3->modifierGroups()->attach([
+            $modDippingSauce->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         // BEVERAGES
         $bev1 = MenuItem::create([
@@ -206,7 +227,9 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $bev1->modifierGroups()->attach([$modDrinkSize->id]);
+        $bev1->modifierGroups()->attach([
+            $modDrinkSize->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
 
         $bev2 = MenuItem::create([
             'menu_category_id' => $catBeverages->id,
@@ -217,6 +240,8 @@ class MenuPOSSeeder extends Seeder
             'is_active' => true,
             'is_available' => true,
         ]);
-        $bev2->modifierGroups()->attach([$modDrinkSize->id]);
+        $bev2->modifierGroups()->attach([
+            $modDrinkSize->id => ['id' => \Illuminate\Support\Str::uuid()]
+        ]);
     }
 }

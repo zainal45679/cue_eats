@@ -14,7 +14,7 @@ interface ModifierSelectionDialogProps {
 
 export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }: ModifierSelectionDialogProps) {
     // Record<groupId, array of selected modifier objects>
-    const [selectedModifiers, setSelectedModifiers] = useState<Record<number, any[]>>({});
+    const [selectedModifiers, setSelectedModifiers] = useState<Record<string, any[]>>({});
     
     // Reset state when a new item is selected
     useEffect(() => {
@@ -27,17 +27,18 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
 
     const modifierGroups = item.modifier_groups || [];
 
-    const handleSingleSelect = (groupId: number, modifier: any) => {
+    const handleSingleSelect = (groupId: string, modifier: any) => {
         setSelectedModifiers(prev => ({
             ...prev,
             [groupId]: [modifier]
         }));
     };
 
-    const handleMultiSelect = (groupId: number, modifier: any, checked: boolean, maxSelections: number) => {
+    const handleMultiSelect = (groupId: string, modifier: any, checked: boolean, maxSelections: number) => {
         setSelectedModifiers(prev => {
             const current = prev[groupId] || [];
             if (checked) {
+                if (current.some(m => m.id === modifier.id)) return prev; // prevent duplicate addition from event bubbling
                 if (current.length >= maxSelections) return prev; // prevent exceeding max
                 return { ...prev, [groupId]: [...current, modifier] };
             } else {

@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('internal_request_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('internal_request_id')->constrained('internal_requests')->cascadeOnDelete();
-            $table->foreignId('ingredient_id')->constrained('ingredients');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('internal_request_id')->constrained('internal_requests')->cascadeOnDelete();
+            $table->foreignUuid('ingredient_id')->constrained('ingredients');
             $table->decimal('quantity', 10, 2);
-            $table->foreignId('uom_id')->constrained('units_of_measure');
+            $table->foreignUuid('uom_id')->constrained('units_of_measure');
             $table->timestamps();
         });
     }
