@@ -50,7 +50,7 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::all(),
             'businessLocations' => $businessLocationsQuery->get(),
             'ingredients' => \App\Models\Ingredient::with(['category', 'baseUom'])->get(),
-            'supplierIngredients' => \App\Models\IngredientSupplier::with('ingredient')->get(),
+            'supplierIngredients' => \App\Models\IngredientSupplier::with(['ingredient', 'purchaseUom'])->get(),
             'categories' => \App\Models\IngredientCategory::all(),
         ]);
     }
@@ -180,7 +180,7 @@ class PurchaseOrderController extends Controller
             'suppliers' => \App\Models\Supplier::all(),
             'businessLocations' => $businessLocationsQuery->get(),
             'ingredients' => \App\Models\Ingredient::with(['category', 'baseUom'])->get(),
-            'supplierIngredients' => \App\Models\IngredientSupplier::with('ingredient')->get(),
+            'supplierIngredients' => \App\Models\IngredientSupplier::with(['ingredient', 'purchaseUom'])->get(),
             'categories' => \App\Models\IngredientCategory::all(),
         ]);
     }

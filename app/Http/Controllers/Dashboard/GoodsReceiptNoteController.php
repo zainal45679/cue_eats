@@ -138,13 +138,18 @@ class GoodsReceiptNoteController extends Controller
                     'uom_id' => $itemData['uom_id'],
                 ]);
 
+                $uom = \App\Models\UnitOfMeasure::find($itemData['uom_id']);
+                $conversionFactor = $uom && $uom->conversion_factor ? (float)$uom->conversion_factor : 1;
+                $convertedReceivedQty = $itemData['received_quantity'] * $conversionFactor;
+                $convertedRejectedQty = $itemData['rejected_quantity'] * $conversionFactor;
+
                 $stoItem = $stoLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
                 if ($stoItem) {
                     $stoItem->increment('received_quantity', $itemData['received_quantity']);
                     $stoItem->increment('rejected_quantity', $itemData['rejected_quantity']);
                 }
 
-                if ($itemData['received_quantity'] > 0) {
+                if ($convertedReceivedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
                             'business_location_id' => $grn->location_id,
@@ -164,7 +169,7 @@ class GoodsReceiptNoteController extends Controller
                         ['available_qty' => 0]
                     );
                     
-                    $balance->increment('available_qty', $itemData['received_quantity']);
+                    $balance->increment('available_qty', $convertedReceivedQty);
 
                     InventoryLedger::create([
                         'business_location_id' => $stoLocked->to_location_id,
@@ -172,7 +177,7 @@ class GoodsReceiptNoteController extends Controller
                         'transaction_type' => 'transfer_in',
                         'reference_type' => GoodsReceiptNote::class,
                         'reference_id' => $grn->id,
-                        'quantity' => $itemData['received_quantity'],
+                        'quantity' => $convertedReceivedQty,
                         'running_balance' => $balance->fresh()->available_qty,
                         'created_by' => auth()->id(),
                     ]);
@@ -238,6 +243,11 @@ class GoodsReceiptNoteController extends Controller
                     'uom_id' => $itemData['uom_id'],
                 ]);
 
+                $uom = \App\Models\UnitOfMeasure::find($itemData['uom_id']);
+                $conversionFactor = $uom && $uom->conversion_factor ? (float)$uom->conversion_factor : 1;
+                $convertedReceivedQty = $itemData['received_quantity'] * $conversionFactor;
+                $convertedRejectedQty = $itemData['rejected_quantity'] * $conversionFactor;
+
                 // Update PO Item received quantity
                 $poItem = $poLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
                 if ($poItem) {
@@ -254,7 +264,7 @@ class GoodsReceiptNoteController extends Controller
                     }
                 }
 
-                if ($itemData['received_quantity'] > 0 || $itemData['rejected_quantity'] > 0) {
+                if ($convertedReceivedQty > 0 || $convertedRejectedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
                             'business_location_id' => $grn->location_id,
@@ -275,15 +285,15 @@ class GoodsReceiptNoteController extends Controller
                     );
                     
                     // Deduct from on-order qty safely
-                    $processedQty = $itemData['received_quantity'] + $itemData['rejected_quantity'];
+                    $processedQty = $convertedReceivedQty + $convertedRejectedQty;
                     $decrementAmount = min($balance->on_order_qty, $processedQty);
                     if ($decrementAmount > 0) {
                         $balance->decrement('on_order_qty', $decrementAmount);
                     }
 
                     // Add to available qty if received
-                    if ($itemData['received_quantity'] > 0) {
-                        $balance->increment('available_qty', $itemData['received_quantity']);
+                    if ($convertedReceivedQty > 0) {
+                        $balance->increment('available_qty', $convertedReceivedQty);
 
                         InventoryLedger::create([
                             'business_location_id' => $poLocked->delivery_location_id,
@@ -291,7 +301,7 @@ class GoodsReceiptNoteController extends Controller
                             'transaction_type' => 'purchase',
                             'reference_type' => GoodsReceiptNote::class,
                             'reference_id' => $grn->id,
-                            'quantity' => $itemData['received_quantity'],
+                            'quantity' => $convertedReceivedQty,
                             'running_balance' => $balance->fresh()->available_qty,
                             'created_by' => auth()->id(),
                         ]);

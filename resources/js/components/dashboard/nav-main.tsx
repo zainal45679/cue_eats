@@ -1,5 +1,6 @@
 import { Link, usePage } from "@inertiajs/react";
 import { ChevronRight, Package, Truck, ShoppingCart, Settings, Shield, ArrowRightLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,6 +34,10 @@ function isItemActive(item: NavItem, currentUrl: string): boolean {
     const href = typeof item.href === "object" ? (item.href as any).url : item.href;
     if (href && typeof href === "string") {
       if (currentUrl === href) return true;
+      
+      // Special case: prevent "/menu-pos" from matching "/menu-pos/terminal"
+      if (href === "/menu-pos" && currentUrl.startsWith("/menu-pos/terminal")) return false;
+      
       if (currentUrl.startsWith(href + '/')) return true;
       if (currentUrl.startsWith(href + '&')) return true;
       
@@ -56,7 +61,7 @@ const getGroupIcon = (groupName: string) => {
     case "Inventory Operations": return <Package className="h-5 w-5 text-primary" />;
     case "Internal Transfers": return <ArrowRightLeft className="h-5 w-5 text-primary" />;
     case "External Purchasing": return <Truck className="h-5 w-5 text-primary" />;
-    case "Setup & Config": return <Settings className="h-5 w-5 text-primary" />;
+    case "Setup & Config": return <Shield className="h-5 w-5 text-primary" />;
     case "Settings": return <Settings className="h-5 w-5 text-primary" />;
     default: return null;
   }
@@ -81,12 +86,15 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
-                        className="!text-[14px] !font-normal !h-10 px-3"
+                        className={cn(
+                          "!text-[14px] !font-normal !h-10 px-3",
+                          isActive && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:hover:bg-primary/20 data-[active=true]:font-semibold"
+                        )}
                         isActive={isActive}
                         tooltip={{ children: item.title }}
                       >
                         <Link href={item.href as string} prefetch>
-                          {item.icon && <item.icon className="mr-2 h-5 w-5" />}
+                          {item.icon && <item.icon className={cn("mr-2 h-5 w-5", isActive ? "text-primary" : "text-primary opacity-80")} />}
                           <span className="pl-[3px] pr-[6px]">{item.title}</span>
                         </Link>
                       </SidebarMenuButton>
@@ -138,7 +146,10 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                   <SidebarMenuSubItem key={child.title}>
                                     <SidebarMenuSubButton
                                       asChild
-                                      className="text-[14px]"
+                                      className={cn(
+                                        "text-[14px]",
+                                        isItemActive(child, page.url) && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-semibold data-[active=true]:hover:bg-primary/20"
+                                      )}
                                       isActive={isItemActive(child, page.url)}
                                     >
                                       <Link href={child.href as string} prefetch>
@@ -160,12 +171,15 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           asChild
-                          className={!groupName ? "!text-[14px] !font-normal !h-10 px-3" : "group cursor-pointer pl-9 text-[14px]"}
+                          className={cn(
+                            !groupName ? "!text-[14px] !font-normal !h-10 px-3" : "group cursor-pointer pl-9 text-[14px]",
+                            isActive && "data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:hover:bg-primary/20 data-[active=true]:font-semibold"
+                          )}
                           isActive={isActive}
                           tooltip={{ children: item.title }}
                         >
                           <Link href={item.href as string} prefetch>
-                            {item.icon && <item.icon className={!groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4"} />}
+                            {item.icon && <item.icon className={cn(!groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4", (!groupName || isActive) ? "text-primary" : "")} />}
                             <span className="pl-[3px] pr-[6px]">{item.title}</span>
                           </Link>
                         </SidebarMenuButton>

@@ -35,7 +35,15 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                 item.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        return items.filter((item: any) => item.is_available); // only show available
+        let result = items.filter((item: any) => item.is_active !== 0 && item.is_active !== false);
+        
+        // Push out-of-stock items to the bottom
+        return result.sort((a: any, b: any) => {
+            const aAvail = a.is_available === 1 || a.is_available === true;
+            const bAvail = b.is_available === 1 || b.is_available === true;
+            if (aAvail === bAvail) return 0;
+            return aAvail ? -1 : 1;
+        });
     }, [categories, activeCategoryId, searchQuery, allItems]);
 
     // Format modifier state into a consistent string key for cart grouping
@@ -49,6 +57,8 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
     };
 
     const handleItemClick = (item: any) => {
+        if (!item.is_available && item.is_available !== 1) return;
+        
         if (item.modifier_groups && item.modifier_groups.length > 0) {
             setSelectedItemForMod(item);
             setIsModModalOpen(true);
@@ -145,7 +155,12 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                             {filteredItems.map((item: any) => (
                                 <Card 
                                     key={item.id} 
-                                    className="p-0 gap-0 cursor-pointer flex flex-col overflow-hidden border-border/40 hover:border-primary/60 hover:shadow-lg transition-all group duration-300 rounded-xl bg-card"
+                                    className={cn(
+                                        "p-0 gap-0 flex flex-col overflow-hidden border-border/40 transition-all group duration-300 rounded-xl bg-card",
+                                        (item.is_available || item.is_available === 1) 
+                                            ? "cursor-pointer hover:border-primary/60 hover:shadow-lg" 
+                                            : "opacity-75 cursor-not-allowed"
+                                    )}
                                     onClick={() => handleItemClick(item)}
                                 >
                                     <div className="w-full aspect-[4/3] relative overflow-hidden bg-muted shrink-0">
@@ -153,11 +168,21 @@ export default function PosTerminal({ categories }: { categories: any[] }) {
                                             <img 
                                                 src={item.image_url} 
                                                 alt={item.name}
-                                                className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                className={cn(
+                                                    "absolute inset-0 w-full h-full object-cover transition-transform duration-500", 
+                                                    (item.is_available || item.is_available === 1) ? "group-hover:scale-110" : "grayscale-[0.5]"
+                                                )}
                                             />
                                         ) : (
                                             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs font-medium">
                                                 No Image
+                                            </div>
+                                        )}
+                                        {(!item.is_available && item.is_available !== 1) && (
+                                            <div className="absolute inset-0 bg-black/10 backdrop-blur-[3px] flex items-center justify-center z-10">
+                                                <div className="bg-white/90 dark:bg-black/90 text-black dark:text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] shadow-sm">
+                                                    Sold Out
+                                                </div>
                                             </div>
                                         )}
                                     </div>

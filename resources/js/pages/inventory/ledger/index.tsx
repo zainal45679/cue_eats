@@ -16,8 +16,8 @@ export default function InventoryLedgerIndex() {
 
     const [activeTab, setActiveTab] = useState("all");
 
-    const isPositive = (type: string) => ['purchase', 'transfer_in', 'po_receipt', 'adjustment_up'].includes(type);
-    const isNegative = (type: string) => ['transfer_out', 'consumption', 'adjustment_down'].includes(type);
+    const isPositive = (type: string) => ['purchase', 'transfer_in', 'po_receipt', 'adjustment_up'].includes(type.toLowerCase());
+    const isNegative = (type: string) => ['transfer_out', 'consumption', 'adjustment_down', 'sale'].includes(type.toLowerCase());
 
     const stats = useMemo(() => {
         const rows = ledgers.rows || [];
@@ -120,6 +120,7 @@ export default function InventoryLedgerIndex() {
                     { label: "Transfer Out", value: "transfer_out" },
                     { label: "Consumption", value: "consumption" },
                     { label: "Adjustment Down", value: "adjustment_down" },
+                    { label: "Sale", value: "sale" },
                 ],
             },
             cell: ({ row }: any) => {
@@ -154,10 +155,11 @@ export default function InventoryLedgerIndex() {
                 const qty = Number(row.original.quantity);
                 const pos = qty > 0;
                 const neg = qty < 0;
+                const uom = row.original.ingredient?.base_uom?.code || '';
                 
                 return (
                     <span className={`font-bold ${pos ? 'text-emerald-600' : neg ? 'text-red-600' : ''}`}>
-                        {pos ? '+' : ''}{qty.toFixed(2)}
+                        {pos ? '+' : ''}{qty.toFixed(2)} <span className="text-[10px] font-normal opacity-70 ml-0.5">{uom}</span>
                     </span>
                 );
             },
@@ -165,11 +167,14 @@ export default function InventoryLedgerIndex() {
         {
             id: "running_balance",
             header: "Balance",
-            cell: ({ row }: any) => (
-                <span className="font-semibold text-blue-600 dark:text-blue-400">
-                    {Number(row.original.running_balance).toFixed(2)}
-                </span>
-            ),
+            cell: ({ row }: any) => {
+                const uom = row.original.ingredient?.base_uom?.code || '';
+                return (
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        {Number(row.original.running_balance).toFixed(2)} <span className="text-[10px] font-normal opacity-70 ml-0.5">{uom}</span>
+                    </span>
+                );
+            }
         },
         {
             id: "createdBy",

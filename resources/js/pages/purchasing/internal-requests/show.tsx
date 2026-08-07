@@ -150,13 +150,13 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         </Button>
                     )}
 
-                    {canApprove && internalRequest.status === 'draft' && (
+                    {canApprove && ['draft', 'pending_approval'].includes(internalRequest.status) && (
                         <Button onClick={() => {
-                            if (confirm("Submit this Indent request?")) {
+                            if (confirm("Approve this Indent request?")) {
                                 router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
                             }
                         }} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                            Submit
+                            Approve
                         </Button>
                     )}
 
@@ -168,7 +168,7 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         </Button>
                     )}
 
-                    {canApprove && internalRequest.status === 'draft' && (
+                    {canApprove && ['draft', 'pending_approval'].includes(internalRequest.status) && (
                         <Button variant="destructive" onClick={handleReject} className="flex-1">
                             Reject
                         </Button>
@@ -188,13 +188,13 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         </Button>
                     )}
 
-                    {canApprove && internalRequest.status === 'draft' && (
+                    {canApprove && ['draft', 'pending_approval'].includes(internalRequest.status) && (
                         <Button onClick={() => {
-                            if (confirm("Submit this Indent request?")) {
+                            if (confirm("Approve this Indent request?")) {
                                 router.post(`/purchasing/internal-requests/${internalRequest.uuid}/approve`);
                             }
                         }} className="bg-emerald-600 hover:bg-emerald-700">
-                            <CheckCircle2 className="mr-2 size-4" /> Submit Indent
+                            <CheckCircle2 className="mr-2 size-4" /> Approve Indent
                         </Button>
                     )}
 
@@ -206,7 +206,7 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
                         </Button>
                     )}
 
-                    {canApprove && internalRequest.status === 'draft' && (
+                    {canApprove && ['draft', 'pending_approval'].includes(internalRequest.status) && (
                         <Button variant="destructive" onClick={handleReject}>
                             <XCircle className="mr-2 size-4" /> Reject Indent
                         </Button>

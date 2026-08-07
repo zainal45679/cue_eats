@@ -16,8 +16,42 @@ class PosController extends Controller
 {
     public function index()
     {
-        $categories = MenuCategory::with(['items.modifierGroups.modifiers'])->where('is_active', true)->get();
+        // Eager load recipe items to check inventory
+        $categories = MenuCategory::with(['items.modifierGroups.modifiers', 'items.recipeItems'])->where('is_active', true)->get();
         
+        // Gather all required ingredient IDs
+        $ingredientIds = [];
+        foreach ($categories as $cat) {
+            foreach ($cat->items as $item) {
+                foreach ($item->recipeItems as $recipe) {
+                    $ingredientIds[] = $recipe->ingredient_id;
+                }
+            }
+        }
+        
+        // Check real-time inventory balances
+        if (!empty($ingredientIds)) {
+            $balances = \App\Models\InventoryBalance::whereIn('ingredient_id', array_unique($ingredientIds))
+                ->selectRaw('ingredient_id, SUM(available_qty) as total_qty')
+                ->groupBy('ingredient_id')
+                ->pluck('total_qty', 'ingredient_id');
+                
+            // Dynamically mark items as out of stock if any required ingredient is insufficient
+            foreach ($categories as $cat) {
+                foreach ($cat->items as $item) {
+                    if ($item->is_available) { // Only override if it wasn't manually disabled
+                        foreach ($item->recipeItems as $recipe) {
+                            $availableQty = $balances[$recipe->ingredient_id] ?? 0;
+                            if ($availableQty < $recipe->quantity) {
+                                $item->is_available = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         return Inertia::render('menu-pos/terminal/index', [
             'categories' => $categories
         ]);
@@ -60,7 +94,10 @@ class PosController extends Controller
             $tax_total = 0;
             $grand_total = $subtotal + $tax_total;
 
-            $locationId = session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1);
+            $locationId = auth()->user()->hasRole('admin') 
+                ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
+                : auth()->user()->business_location_id;
+                
             $storageLocation = \App\Models\StorageLocation::where('business_location_id', $locationId)->first();
             $storageLocationId = $storageLocation ? $storageLocation->id : 1;
 
@@ -135,7 +172,7 @@ class PosController extends Controller
         \App\Models\InventoryLedger::create([
             'business_location_id' => $businessLocationId,
             'ingredient_id' => $ingredientId,
-            'transaction_type' => 'SALE',
+            'transaction_type' => 'sale',
             'reference_type' => \App\Models\Order::class,
             'reference_id' => $orderId,
             'quantity' => -$quantity,

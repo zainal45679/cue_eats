@@ -186,7 +186,9 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
 
                                                 const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
                                                 const selectedIngredient = ingredients.find((i: any) => String(i.id) === String(currentIngredientId));
-                                                const uomSuffix = selectedIngredient?.base_uom?.name || "";
+                                                
+                                                const si = supplierIngredients.find((si: any) => String(si.supplier_id) === String(currentSupplierId) && String(si.ingredient_id) === String(currentIngredientId));
+                                                const uomSuffix = si?.purchase_uom?.name || selectedIngredient?.base_uom?.name || "";
 
                                                 return (
                                                     <div key={field.id} className="flex flex-col sm:grid sm:grid-cols-12 gap-4 items-start sm:items-center bg-card border rounded-lg p-4 sm:p-3 shadow-sm transition-all hover:shadow-md relative pt-10 sm:pt-3">
@@ -240,7 +242,8 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                     : [];
 
                                                 const selectedIngredient = ingredients.find((i: any) => String(i.id) === String(currentIngredientId));
-                                                const uomSuffix = selectedIngredient?.base_uom?.name || "";
+                                                const si = supplierIngredients.find((si: any) => String(si.supplier_id) === String(currentSupplierId) && String(si.ingredient_id) === String(currentIngredientId));
+                                                const uomSuffix = si?.purchase_uom?.name || selectedIngredient?.base_uom?.name || "";
 
                                                 return (
                                                     <div key={field.id} className="flex flex-col sm:grid sm:grid-cols-12 gap-4 items-start sm:items-center bg-card border rounded-lg p-4 sm:p-3 shadow-sm transition-all hover:shadow-md relative pt-10 sm:pt-3">
