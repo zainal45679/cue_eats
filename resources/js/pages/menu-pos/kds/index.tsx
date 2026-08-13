@@ -22,35 +22,36 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
             if (!AudioContextClass) return;
             const audioCtx = new AudioContextClass();
             
-            const playBuzzer = (startTime: number) => {
+            const playBeepAlert = (startTime: number) => {
                 const oscillator = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
                 
-                // Sawtooth is rich in harmonics and extremely loud/piercing
-                oscillator.type = 'sawtooth';
+                // Square wave for a classic electronic beep
+                oscillator.type = 'square';
                 
-                // 2500Hz is right in the peak sensitivity range of human hearing
-                oscillator.frequency.setValueAtTime(2500, startTime);
+                // 1200Hz is a standard alert beep frequency
+                oscillator.frequency.setValueAtTime(1200, startTime);
                 
-                // Sustained loud blast, very fast attack and release
+                // Sharp distinct beep envelope
                 gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.linearRampToValueAtTime(0.5, startTime + 0.02);
-                gainNode.gain.setValueAtTime(0.5, startTime + 0.3);
-                gainNode.gain.linearRampToValueAtTime(0, startTime + 0.35);
+                gainNode.gain.setValueAtTime(0.2, startTime + 0.01);
+                gainNode.gain.setValueAtTime(0.2, startTime + 0.15);
+                gainNode.gain.setValueAtTime(0, startTime + 0.16);
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 
                 oscillator.start(startTime);
-                oscillator.stop(startTime + 0.35);
+                oscillator.stop(startTime + 0.16);
             };
             
             const t = audioCtx.currentTime;
             
-            // 3 rapid, loud bursts simulating a commercial kitchen printer buzzer
-            playBuzzer(t);
-            playBuzzer(t + 0.5);
-            playBuzzer(t + 1.0);
+            // 4 distinct, loud beeps like a classic alarm/alert
+            playBeepAlert(t);
+            playBeepAlert(t + 0.25);
+            playBeepAlert(t + 0.5);
+            playBeepAlert(t + 0.75);
         } catch (e) {
             console.warn('Audio playback failed', e);
         }
@@ -146,51 +147,60 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
                     const orderTime = new Date(order.created_at);
                     const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000; // 15 mins
                     
+                    const isPreparing = order.kitchen_status === 'preparing';
+                    const isPending = order.kitchen_status === 'pending';
+
                     return (
-                        <Card key={order.id} className={cn(
-                            "flex flex-col shadow-md border-t-4 transition-all hover:shadow-lg",
-                            order.kitchen_status === 'preparing' ? "border-t-blue-500" : "border-t-yellow-500",
-                            isOverdue && order.kitchen_status === 'pending' && "border-t-red-500 animate-pulse"
+                        <div key={order.id} className={cn(
+                            "flex flex-col bg-card border shadow-sm rounded-sm overflow-hidden min-h-[250px]",
+                            isPreparing ? "border-t-[6px] border-t-blue-600" : "border-t-[6px] border-t-amber-500",
+                            isOverdue && isPending && "border-t-red-600 animate-pulse"
                         )}>
-                            <CardHeader className="pb-3 border-b bg-muted/20">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-xl font-bold">{order.order_number}</span>
-                                        <Badge variant="secondary" className="w-fit mt-1">{order.order_type}</Badge>
-                                    </div>
-                                    <Badge variant="outline" className={cn("px-2 py-0.5 text-xs font-semibold capitalize border", getStatusColor(order.kitchen_status))}>
-                                        {order.kitchen_status}
-                                    </Badge>
-                                </div>
-                                <div className="flex items-center text-xs font-medium mt-1">
-                                    <Clock className={cn("w-3.5 h-3.5 mr-1", isOverdue ? "text-red-500" : "text-muted-foreground")} />
-                                    <span className={cn(isOverdue && "text-red-500 font-bold")}>
+                            <div className="flex flex-col p-2 border-b bg-muted/10">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xl font-bold leading-none tracking-tight">#{order.order_number}</span>
+                                    <span className={cn(
+                                        "text-xs font-bold",
+                                        isOverdue ? "text-red-600" : "text-muted-foreground"
+                                    )}>
                                         {formatDistanceToNow(orderTime, { addSuffix: true })}
                                     </span>
                                 </div>
-                            </CardHeader>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider bg-foreground/10 px-1.5 py-0.5 rounded text-foreground">
+                                        {order.order_type}
+                                    </span>
+                                    <span className={cn(
+                                        "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                                        isPreparing ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                    )}>
+                                        {order.kitchen_status}
+                                    </span>
+                                </div>
+                            </div>
                             
-                            <CardContent className="flex-1 p-0 overflow-y-auto max-h-[300px]">
-                                <ul className="divide-y">
+                            <div className="flex-1 p-0 overflow-y-auto max-h-[300px] custom-scrollbar">
+                                <ul className="py-1">
                                     {order.items?.map((item: any) => (
-                                        <li key={item.id} className="p-3 hover:bg-muted/30 transition-colors">
-                                            <div className="flex gap-3">
-                                                <div className="font-bold text-lg min-w-[1.5rem]">{item.quantity}x</div>
-                                                <div className="flex-1">
-                                                    <div className="font-semibold text-[15px] leading-tight mb-0.5">{item.menu_item?.name}</div>
+                                        <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
+                                            <div className="flex items-start">
+                                                <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-sm leading-tight text-foreground">
+                                                        {item.menu_item?.name}
+                                                    </div>
                                                     {item.modifiers && item.modifiers.length > 0 && (
-                                                        <div className="mt-1 space-y-0.5">
+                                                        <div className="mt-0.5">
                                                             {item.modifiers.map((mod: any) => (
-                                                                <div key={mod.id} className="text-[12px] text-muted-foreground flex items-center">
-                                                                    <span className="text-primary/70 mr-1">+</span> 
-                                                                    {mod.modifier?.name}
+                                                                <div key={mod.id} className="text-xs text-muted-foreground font-medium">
+                                                                    - {mod.modifier?.name}
                                                                 </div>
                                                             ))}
                                                         </div>
                                                     )}
                                                     {item.notes && (
-                                                        <div className="mt-1.5 p-1.5 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 text-[12px] font-medium rounded-md border border-yellow-500/20 italic">
-                                                            Note: {item.notes}
+                                                        <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
+                                                            * {item.notes}
                                                         </div>
                                                     )}
                                                 </div>
@@ -198,35 +208,38 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
                                         </li>
                                     ))}
                                 </ul>
-                            </CardContent>
+                            </div>
                             
-                            <CardFooter className="p-3 pt-0 border-t mt-auto bg-muted/10 grid grid-cols-2 gap-2">
-                                {order.kitchen_status === 'pending' ? (
+                            <div className="p-2 bg-muted/20 border-t mt-auto flex gap-2">
+                                {isPending ? (
                                     <>
                                         <Button 
                                             variant="outline" 
-                                            className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                                            size="sm"
+                                            className="flex-1 text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8 text-xs font-bold px-0"
                                             onClick={() => setRejectOrder(order)}
                                         >
-                                            <XCircle className="w-4 h-4 mr-1.5" /> Reject
+                                            Reject
                                         </Button>
                                         <Button 
-                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                            size="sm"
+                                            className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold px-0"
                                             onClick={() => updateStatus(order.id, 'preparing')}
                                         >
-                                            <ChefHat className="w-4 h-4 mr-1.5" /> Prep
+                                            Start Prep
                                         </Button>
                                     </>
                                 ) : (
                                     <Button 
-                                        className="col-span-2 w-full bg-green-600 hover:bg-green-700 text-white py-6 text-lg"
+                                        size="sm"
+                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm font-bold"
                                         onClick={() => updateStatus(order.id, 'ready')}
                                     >
-                                        <CheckCircle className="w-5 h-5 mr-2" /> Mark Ready
+                                        Mark Ready
                                     </Button>
                                 )}
-                            </CardFooter>
-                        </Card>
+                            </div>
+                        </div>
                     );
                 })}
             </div>

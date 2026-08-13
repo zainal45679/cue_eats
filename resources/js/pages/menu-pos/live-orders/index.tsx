@@ -37,7 +37,7 @@ export default function LiveOrdersScreen({ orders }: { orders: any[] }) {
     };
 
     return (
-        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+        <div className="p-4 md:p-6 w-full">
             <Head title="Live Orders Management" />
             
             <div className="flex justify-between items-center mb-6">

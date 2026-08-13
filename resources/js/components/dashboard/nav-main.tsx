@@ -35,8 +35,8 @@ function isItemActive(item: NavItem, currentUrl: string): boolean {
     if (href && typeof href === "string") {
       if (currentUrl === href) return true;
       
-      // Special case: prevent "/menu-pos" from matching "/menu-pos/terminal"
-      if (href === "/menu-pos" && currentUrl.startsWith("/menu-pos/terminal")) return false;
+      // Special case: prevent "/menu-pos" from matching sub-routes like "/menu-pos/terminal" or "/menu-pos/live-orders"
+      if (href === "/menu-pos" && currentUrl !== "/menu-pos" && currentUrl.startsWith("/menu-pos/")) return false;
       
       if (currentUrl.startsWith(href + '/')) return true;
       if (currentUrl.startsWith(href + '&')) return true;
