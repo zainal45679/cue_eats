@@ -169,6 +169,7 @@ class PosController extends Controller
             DB::commit();
             
             $order->load(['items.menuItem', 'items.modifiers.modifier', 'location', 'cashier']);
+            event(new \App\Events\OrderCreated($order));
             
             return back()->with([
                 'success' => "Order {$orderNumber} completed successfully.",

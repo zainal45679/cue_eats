@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 import { PackageOpen, AlertCircle, ShoppingCart, FileText, Lock, LayoutList } from "lucide-react";
 import { Badge } from "@/components/shadcn/ui/badge";
+import { Button } from "@/components/shadcn/ui/button";
 
 export default function InventoryBalancesIndex({
   inventoryBalances,
@@ -113,68 +114,74 @@ export default function InventoryBalancesIndex({
   }, [inventoryBalances, activeTab]);
 
   return (
-    <XPage title="Live Stock">
-      <Head title="Live Stock" />
-      
+    <XPage 
+      title="Live Stock" 
+      fullWidth={true} 
+      breadcrumbs={[{ label: 'Live Stock', href: '/inventory/live-stock' }]}
+    >
       {/* Dashboard Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-500" />
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5 mb-6">
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                 <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Ingredients</p>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Items</p>
                     <h3 className="text-2xl font-bold leading-none">{stats.total}</h3>
                 </div>
-                <div className="p-2 bg-slate-500/10 text-slate-500 rounded-lg">
-                    <FileText className="size-5" />
+                <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                    <PackageOpen className="size-5" />
                 </div>
             </CardContent>
         </Card>
-        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+        
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                 <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">In Stock</p>
                     <h3 className="text-2xl font-bold leading-none">{stats.inStock}</h3>
                 </div>
-                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg">
-                    <PackageOpen className="size-5" />
+                <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
+                    <ShoppingCart className="size-5" />
                 </div>
             </CardContent>
         </Card>
-        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                 <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Out of Stock</p>
                     <h3 className="text-2xl font-bold leading-none">{stats.outOfStock}</h3>
                 </div>
-                <div className="p-2 bg-red-500/10 text-red-500 rounded-lg">
+                <div className="p-2 bg-red-500/10 text-red-500 rounded-xl shrink-0">
                     <AlertCircle className="size-5" />
                 </div>
             </CardContent>
         </Card>
-        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                 <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Reserved</p>
                     <h3 className="text-2xl font-bold leading-none">{stats.reserved}</h3>
                 </div>
-                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
                     <Lock className="size-5" />
                 </div>
             </CardContent>
         </Card>
-        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground dark:border-sidebar-border shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                 <div>
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">On Order</p>
                     <h3 className="text-2xl font-bold leading-none">{stats.onOrder}</h3>
                 </div>
-                <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-                    <ShoppingCart className="size-5" />
+                <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
+                    <FileText className="size-5" />
                 </div>
             </CardContent>
         </Card>

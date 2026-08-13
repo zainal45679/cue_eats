@@ -28,4 +28,5 @@ export const Entity = {
   InventoryBalances: "inventory-balances",
   InternalRequests: "internal-requests",
   PurchaseOrders: "purchase-orders",
+  Orders: "orders",
 } as const;

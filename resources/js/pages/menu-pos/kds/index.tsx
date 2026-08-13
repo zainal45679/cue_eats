@@ -15,43 +15,12 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
     const [rejectOrder, setRejectOrder] = useState<any | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id.toString())));
+    const [isSoundReady, setIsSoundReady] = useState(false);
 
     const playKdsBeep = () => {
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContextClass) return;
-            const audioCtx = new AudioContextClass();
-            
-            const playBeepAlert = (startTime: number) => {
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                
-                // Square wave for a classic electronic beep
-                oscillator.type = 'square';
-                
-                // 1200Hz is a standard alert beep frequency
-                oscillator.frequency.setValueAtTime(1200, startTime);
-                
-                // Sharp distinct beep envelope
-                gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.setValueAtTime(0.2, startTime + 0.01);
-                gainNode.gain.setValueAtTime(0.2, startTime + 0.15);
-                gainNode.gain.setValueAtTime(0, startTime + 0.16);
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                oscillator.start(startTime);
-                oscillator.stop(startTime + 0.16);
-            };
-            
-            const t = audioCtx.currentTime;
-            
-            // 4 distinct, loud beeps like a classic alarm/alert
-            playBeepAlert(t);
-            playBeepAlert(t + 0.25);
-            playBeepAlert(t + 0.5);
-            playBeepAlert(t + 0.75);
+            const audio = new Audio('/audio/new-order.mp3');
+            audio.play().catch(e => console.warn('Audio playback blocked by browser', e));
         } catch (e) {
             console.warn('Audio playback failed', e);
         }
@@ -75,15 +44,24 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
         setPreviousOrderIds(currentIds);
     }, [orders]);
 
-    // Update timers every minute & refresh data every 3s for instant updates
+    // Update timers every minute
     useEffect(() => {
         const timerInterval = setInterval(() => setNow(new Date()), 60000);
-        const dataInterval = setInterval(() => {
-            router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
-        }, 3000);
+        
+        // Listen for new orders via WebSockets
+        if (window.Echo) {
+            window.Echo.channel('orders')
+                .listen('.App\\Events\\OrderCreated', (e: any) => {
+                    playKdsBeep();
+                    router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+                });
+        }
+        
         return () => {
             clearInterval(timerInterval);
-            clearInterval(dataInterval);
+            if (window.Echo) {
+                window.Echo.leaveChannel('orders');
+            }
         };
     }, []);
 
@@ -123,6 +101,11 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
                     <p className="text-muted-foreground">Manage active orders</p>
                 </div>
                 <div className="flex items-center gap-4">
+                    {!isSoundReady && (
+                        <div className="text-xs text-amber-500 animate-pulse font-medium bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
+                            Tap anywhere to enable sound
+                        </div>
+                    )}
                     <div className="flex gap-2">
                         <Badge variant="outline" className="px-3 py-1 bg-card">
                             {orders.filter(o => o.kitchen_status === 'pending').length} Pending

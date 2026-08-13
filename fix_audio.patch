@@ -1,0 +1,95 @@
+--- resources/js/pages/menu-pos/kds/index.tsx
++++ resources/js/pages/menu-pos/kds/index.tsx
+@@ -11,8 +11,11 @@
+ import { XPage } from '@/components/x/page/XPage';
+ 
++let globalAudioCtx: any = null;
++
+ export default function KdsScreen({ orders }: { orders: any[] }) {
+     const [now, setNow] = useState(new Date());
+     const [rejectOrder, setRejectOrder] = useState<any | null>(null);
+     const [rejectionReason, setRejectionReason] = useState('');
+     const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id.toString())));
++    const [isSoundReady, setIsSoundReady] = useState(false);
+ 
+     const playKdsBeep = () => {
+         try {
+-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+-            if (!AudioContextClass) return;
+-            const audioCtx = new AudioContextClass();
++            if (!globalAudioCtx) {
++                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
++                if (!AudioContextClass) return;
++                globalAudioCtx = new AudioContextClass();
++            }
++            
++            if (globalAudioCtx.state === 'suspended') {
++                globalAudioCtx.resume();
++            }
+             
+             const playBeepAlert = (startTime: number) => {
+-                const oscillator = audioCtx.createOscillator();
+-                const gainNode = audioCtx.createGain();
++                const oscillator = globalAudioCtx.createOscillator();
++                const gainNode = globalAudioCtx.createGain();
+                 
+                 // Square wave for a classic electronic beep
+                 oscillator.type = 'square';
+                 
+                 // 1200Hz is a standard alert beep frequency
+                 oscillator.frequency.setValueAtTime(1200, startTime);
+                 
+                 // Sharp distinct beep envelope
+                 gainNode.gain.setValueAtTime(0, startTime);
+                 gainNode.gain.setValueAtTime(0.2, startTime + 0.01);
+                 gainNode.gain.setValueAtTime(0.2, startTime + 0.15);
+                 gainNode.gain.setValueAtTime(0, startTime + 0.16);
+                 
+                 oscillator.connect(gainNode);
+-                gainNode.connect(audioCtx.destination);
++                gainNode.connect(globalAudioCtx.destination);
+                 
+                 oscillator.start(startTime);
+                 oscillator.stop(startTime + 0.16);
+             };
+             
+-            const t = audioCtx.currentTime;
++            const t = globalAudioCtx.currentTime;
+             
+             // 4 distinct, loud beeps like a classic alarm/alert
+             playBeepAlert(t);
+             playBeepAlert(t + 0.25);
+             playBeepAlert(t + 0.5);
+             playBeepAlert(t + 0.75);
+         } catch (e) {
+             console.warn('Audio playback failed', e);
+         }
+     };
+ 
++    // Unlock audio context on first user interaction
++    useEffect(() => {
++        const unlockAudio = () => {
++            if (!globalAudioCtx) {
++                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
++                if (AudioContextClass) {
++                    globalAudioCtx = new AudioContextClass();
++                }
++            }
++            if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
++                globalAudioCtx.resume();
++            }
++            setIsSoundReady(true);
++        };
++        
++        window.addEventListener('click', unlockAudio, { once: true });
++        window.addEventListener('touchstart', unlockAudio, { once: true });
++        
++        return () => {
++            window.removeEventListener('click', unlockAudio);
++            window.removeEventListener('touchstart', unlockAudio);
++        };
++    }, []);
++
+     useEffect(() => {
+         const currentIds = new Set(orders.map(o => o.id.toString()));
+         let hasNewOrder = false;

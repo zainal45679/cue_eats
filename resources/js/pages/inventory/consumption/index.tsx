@@ -258,7 +258,7 @@ export default function InventoryConsumptionIndex() {
 
             <div className="relative min-h-[calc(100vh-140px)] flex flex-col">
                 {/* Floating Right Nav Anchor (Fixed Position) */}
-                <div className="absolute right-0 top-[48px] z-20 flex flex-col items-end">
+                <div className="absolute right-0 top-0 z-20 flex flex-col items-end">
                     <button
                         onClick={() => setShowCategorySidebar(!showCategorySidebar)}
                         className={`group flex items-center justify-center p-2 bg-card border shadow-sm hover:bg-muted/80 rounded-lg transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden h-9 whitespace-nowrap ${showCategorySidebar ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}

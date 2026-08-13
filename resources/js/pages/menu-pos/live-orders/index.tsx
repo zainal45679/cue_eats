@@ -1,15 +1,21 @@
 import { Head, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/ui/card';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/ui/table';
 import { Button } from '@/components/shadcn/ui/button';
-import { Eye, Clock } from 'lucide-react';
+import { Eye, Clock, ClipboardList, ChefHat, CheckCircle, Hourglass, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/shadcn/ui/dialog';
 import { ScrollArea } from '@/components/shadcn/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger } from '@/components/shadcn/ui/tabs';
+import { XPage } from '@/components/x/page/XPage';
+import { XDataTable } from '@/components/x/table/XDataTable';
+import type { XDataTableColumn } from '@/components/x/table/XDataTableType';
+import { Entity } from '@/lib/permissions';
 
-export default function LiveOrdersScreen({ orders }: { orders: any[] }) {
+export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
     const [viewOrder, setViewOrder] = useState<any | null>(null);
+    const [activeTab, setActiveTab] = useState('all');
 
     // Auto-refresh every 30 seconds
     useEffect(() => {
@@ -36,76 +42,185 @@ export default function LiveOrdersScreen({ orders }: { orders: any[] }) {
         return `${diffInMinutes} min`;
     };
 
-    return (
-        <div className="p-4 md:p-6 w-full">
-            <Head title="Live Orders Management" />
-            
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Live Orders</h1>
-                    <p className="text-muted-foreground mt-1">Monitor all active orders and kitchen status</p>
+    const pendingCount = orders.filter(o => o.kitchen_status === 'pending').length;
+    const preparingCount = orders.filter(o => o.kitchen_status === 'preparing').length;
+    const readyCount = orders.filter(o => o.kitchen_status === 'ready').length;
+    const totalValue = orders.reduce((sum, o) => sum + parseFloat(o.grand_total || '0'), 0);
+
+    const columns: XDataTableColumn<any>[] = [
+        {
+            id: 'order_number',
+            header: 'Order #',
+            accessorKey: 'order_number',
+            cell: ({ row }: any) => <span className="font-medium">{row.original.order_number}</span>
+        },
+        {
+            id: 'order_type',
+            header: 'Type',
+            accessorKey: 'order_type'
+        },
+        {
+            id: 'customer',
+            header: 'Customer',
+            accessorFn: (row: any) => row.customer_name || 'N/A'
+        },
+        {
+            id: 'elapsed',
+            header: 'Time Elapsed',
+            cell: ({ row }: any) => (
+                <div className="flex items-center text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {getElapsedTime(row.original.created_at)}
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.reload({ only: ['orders'] })}>
-                        Refresh
+            )
+        },
+        {
+            id: 'kitchen_status',
+            header: 'Kitchen Status',
+            accessorKey: 'kitchen_status',
+            cell: ({ row }: any) => (
+                <Badge className={`${getStatusColor(row.original.kitchen_status)} uppercase tracking-wider text-[10px]`}>
+                    {row.original.kitchen_status}
+                </Badge>
+            )
+        },
+        {
+            id: 'total',
+            header: 'Total',
+            accessorKey: 'grand_total',
+            cell: ({ row }: any) => `$${parseFloat(row.original.grand_total || '0').toFixed(2)}`
+        },
+        {
+            id: 'actions',
+            header: 'Actions',
+            cell: ({ row }: any) => (
+                <div className="flex justify-end">
+                    <Button variant="ghost" size="sm" className="h-6 py-0 px-2 text-xs" onClick={() => setViewOrder(row.original)}>
+                        <Eye className="w-3.5 h-3.5 mr-1.5" />
+                        View
                     </Button>
                 </div>
+            )
+        }
+    ];
+
+    const filteredOrders = useMemo(() => {
+        if (activeTab === 'all') return orders;
+        return orders.filter(o => o.kitchen_status === activeTab);
+    }, [orders, activeTab]);
+
+    const processedData = {
+        rows: filteredOrders,
+        meta: {
+            currentPage: 1,
+            lastPage: 1,
+            total: filteredOrders.length,
+            perPage: Math.max(filteredOrders.length, 100)
+        },
+        filters: [],
+        sortBy: null,
+        sortDesc: false,
+        search: null
+    };
+
+    return (
+        <XPage 
+          title="Live Orders" 
+          breadcrumbs={[{ label: 'Live Orders', href: '/menu-pos/live-orders' }]}
+        >
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-5 mb-6">
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Active</p>
+                            <h3 className="text-2xl font-bold leading-none">{orders.length}</h3>
+                        </div>
+                        <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                            <ClipboardList className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Pending</p>
+                            <h3 className="text-2xl font-bold leading-none">{pendingCount}</h3>
+                        </div>
+                        <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
+                            <Hourglass className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Preparing</p>
+                            <h3 className="text-2xl font-bold leading-none">{preparingCount}</h3>
+                        </div>
+                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
+                            <ChefHat className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Ready</p>
+                            <h3 className="text-2xl font-bold leading-none">{readyCount}</h3>
+                        </div>
+                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
+                            <CheckCircle className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-purple-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Value</p>
+                            <h3 className="text-2xl font-bold leading-none">${totalValue.toFixed(2)}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl shrink-0">
+                            <DollarSign className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Active Orders ({orders.length})</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Order #</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead>Time Elapsed</TableHead>
-                                <TableHead>Kitchen Status</TableHead>
-                                <TableHead>Total</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {orders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                        No active orders found for today.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                orders.map((order) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell className="font-medium">{order.order_number}</TableCell>
-                                        <TableCell>{order.order_type}</TableCell>
-                                        <TableCell>{order.customer_name || 'N/A'}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center text-muted-foreground">
-                                                <Clock className="w-4 h-4 mr-1" />
-                                                {getElapsedTime(order.created_at)}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge className={getStatusColor(order.kitchen_status)}>
-                                                {order.kitchen_status.toUpperCase()}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>${parseFloat(order.grand_total).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => setViewOrder(order)}>
-                                                <Eye className="w-4 h-4 mr-2" /> View Details
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            {/* Quick Filter Tabs */}
+            <div className="mb-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full sm:w-[600px] grid-cols-4 h-11 bg-muted/50 p-1">
+                    <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Orders</TabsTrigger>
+                    <TabsTrigger value="pending" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Pending</TabsTrigger>
+                    <TabsTrigger value="preparing" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Preparing</TabsTrigger>
+                    <TabsTrigger value="ready" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Ready</TabsTrigger>
+                </TabsList>
+                </Tabs>
+            </div>
+
+            <XDataTable
+                columns={columns}
+                data={processedData}
+                entity={Entity.Orders}
+                title="Live Orders"
+                titleButtons={[
+                    {
+                        type: 'custom',
+                        label: 'Refresh',
+                        variant: 'outline',
+                        onClick: () => router.reload({ only: ['orders'] })
+                    }
+                ]}
+            />
 
             {/* View Order Dialog */}
             <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
@@ -168,6 +283,6 @@ export default function LiveOrdersScreen({ orders }: { orders: any[] }) {
                     )}
                 </DialogContent>
             </Dialog>
-        </div>
+        </XPage>
     );
 }

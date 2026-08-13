@@ -3,7 +3,8 @@ import { useState, useMemo } from 'react';
 import { XPage } from '@/components/x/page/XPage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/ui/table';
 import { Button } from '@/components/shadcn/ui/button';
-import { Plus, Edit, Trash2, Utensils, Settings2, ImageIcon } from 'lucide-react';
+import { Card, CardContent } from '@/components/shadcn/ui/card';
+import { Plus, Edit, Trash2, Utensils, Settings2, ImageIcon, CheckCircle, FolderOpen, Layers } from 'lucide-react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs"
 import { cn } from '@/lib/utils';
@@ -55,6 +56,13 @@ export default function MenuManagement({ items, categories, modifierGroups, ingr
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+
+    const stats = {
+        totalItems: items.length,
+        activeItems: items.filter((i: any) => i.is_active).length,
+        totalCategories: categories.length,
+        totalModifiers: modifierGroups.length,
+    };
 
     const activeCategory = categories.find((c: any) => c.id === activeCategoryId);
     
@@ -108,23 +116,75 @@ export default function MenuManagement({ items, categories, modifierGroups, ingr
         <ErrorBoundary>
         <XPage 
             title="Menu Management" 
+            fullWidth={true}
             breadcrumbs={[
                 { label: 'Menu POS', href: '/menu-pos' },
                 { label: 'Management' },
             ]}
         >
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Items</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.totalItems}</h3>
+                        </div>
+                        <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
+                            <Utensils className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Active Items</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.activeItems}</h3>
+                        </div>
+                        <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
+                            <CheckCircle className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-purple-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Categories</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.totalCategories}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-500/10 text-purple-500 rounded-xl shrink-0">
+                            <FolderOpen className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500" />
+                    <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                        <div>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Modifier Groups</p>
+                            <h3 className="text-2xl font-bold leading-none">{stats.totalModifiers}</h3>
+                        </div>
+                        <div className="p-2 bg-orange-500/10 text-orange-500 rounded-xl shrink-0">
+                            <Layers className="size-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             <div className="space-y-4">
                 <Tabs defaultValue="menu-builder" className="w-full">
-                    <TabsList className="bg-transparent border-b w-full justify-start h-auto p-0 space-x-6 rounded-none mb-4">
+                    <TabsList className="grid w-full sm:w-[400px] grid-cols-2 h-11 bg-muted/50 p-1 mb-6">
                         <TabsTrigger 
                             value="menu-builder" 
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-sm"
+                            className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full"
                         >
                             <Utensils className="h-4 w-4 mr-2" /> Menu Builder
                         </TabsTrigger>
                         <TabsTrigger 
                             value="modifiers" 
-                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-sm"
+                            className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full"
                         >
                             <Settings2 className="h-4 w-4 mr-2" /> Modifiers & Add-ons
                         </TabsTrigger>
