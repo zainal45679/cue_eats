@@ -63,12 +63,19 @@ final class BusinessLocationController extends Controller
             'currency_tax_id' => 'nullable|exists:currency_taxes,id',
             'location_name' => 'required|string|max:255',
             'location_code' => 'nullable|string|max:255',
-            'location_type' => 'required|string|in:Outlet,Warehouse,Kitchen,Central Store',
+            'location_type' => 'required|string',
             'is_parent_location' => 'boolean',
             'is_inventory_location' => 'boolean',
             'is_purchasing_enabled' => 'boolean',
             'is_sales_enabled' => 'boolean',
             'status' => 'boolean',
+            'service_type' => 'nullable|string|in:qsr,dine_in',
+            'kitchen_workflow' => 'nullable|string|in:print_only,screen_only,both',
+            'receipt_header' => 'nullable|string',
+            'receipt_footer' => 'nullable|string',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
         ]);
 
         BusinessLocation::create($validated);
@@ -126,12 +133,19 @@ final class BusinessLocationController extends Controller
             'currency_tax_id' => 'nullable|exists:currency_taxes,id',
             'location_name' => 'required|string|max:255',
             'location_code' => 'nullable|string|max:255',
-            'location_type' => 'required|string|in:Outlet,Warehouse,Kitchen,Central Store',
+            'location_type' => 'required|string',
             'is_parent_location' => 'boolean',
             'is_inventory_location' => 'boolean',
             'is_purchasing_enabled' => 'boolean',
             'is_sales_enabled' => 'boolean',
             'status' => 'boolean',
+            'service_type' => 'nullable|string|in:qsr,dine_in',
+            'kitchen_workflow' => 'nullable|string|in:print_only,screen_only,both',
+            'receipt_header' => 'nullable|string',
+            'receipt_footer' => 'nullable|string',
+            'address' => 'nullable|string',
+            'phone' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
         ]);
 
         $businessLocation->update($validated);

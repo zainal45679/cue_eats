@@ -113,6 +113,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // POS Terminal
         Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
         Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
+
+        // KDS (Kitchen Display System)
+        Route::get('kds', [\App\Http\Controllers\Dashboard\KdsController::class, 'index'])->name('pos.kds');
+        Route::post('kds/{order}/status', [\App\Http\Controllers\Dashboard\KdsController::class, 'updateStatus'])->name('pos.kds.update-status');
+
+        // Live Orders (Manager)
+        Route::get('live-orders', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'index'])->name('live-orders.index');
     });
 
     Route::resource('users', UserController::class);

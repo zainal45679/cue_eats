@@ -10,9 +10,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard/index');
-    })->name('dashboard');
+    Route::get('dashboard', [\App\Http\Controllers\Dashboard\DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('set-active-location', function (\Illuminate\Http\Request $request) {
         $request->validate(['location_id' => 'nullable|exists:business_locations,id']);

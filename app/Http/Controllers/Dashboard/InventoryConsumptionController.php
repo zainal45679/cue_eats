@@ -24,7 +24,7 @@ class InventoryConsumptionController extends Controller
                 DB::raw('ABS(SUM(quantity)) as total_consumed'),
                 DB::raw('COUNT(DISTINCT reference_id) as total_orders')
             )
-            ->with(['ingredient.baseUom'])
+            ->with(['ingredient.baseUom', 'ingredient.category'])
             ->where('transaction_type', 'sale')
             ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
@@ -47,8 +47,29 @@ class InventoryConsumptionController extends Controller
                 ];
             });
 
+        // Compute category counts for the sidebar
+        $balanceCategories = $consumptions->groupBy(function($item) {
+            return $item['ingredient']?->category?->name;
+        })->map->count()->toArray();
+        
+        $allCategories = \App\Models\IngredientCategory::pluck('name')->toArray();
+        
+        $cleanCategories = [];
+        // First, add all registered categories (even if 0)
+        foreach($allCategories as $cat) {
+            $cleanCategories[$cat] = $balanceCategories[$cat] ?? 0;
+        }
+        
+        // Then, add any other categories that might exist (e.g. Uncategorized)
+        foreach($balanceCategories as $cat => $count) {
+            if ($cat && !isset($cleanCategories[$cat])) {
+                $cleanCategories[$cat] = $count;
+            }
+        }
+
         return Inertia::render('inventory/consumption/index', [
             'consumptions' => $consumptions,
+            'serverCategories' => $cleanCategories,
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,

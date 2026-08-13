@@ -123,6 +123,7 @@ class PosController extends Controller
                 'customer_name' => $validated['customer_name'] ?? null,
                 'order_type' => $validated['order_type'],
                 'status' => 'Completed',
+                'kitchen_status' => 'pending',
                 'subtotal' => $subtotal,
                 'tax_total' => $tax_total,
                 'discount_total' => 0,
@@ -166,7 +167,13 @@ class PosController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', "Order {$orderNumber} completed successfully.");
+            
+            $order->load(['items.menuItem', 'items.modifiers.modifier', 'location', 'cashier']);
+            
+            return back()->with([
+                'success' => "Order {$orderNumber} completed successfully.",
+                'recent_order' => $order
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Order Processing Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

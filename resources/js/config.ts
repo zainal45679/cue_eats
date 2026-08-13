@@ -168,6 +168,11 @@ export const Configs: TConfigs = {
       icon: Utensils,
     },
     {
+      title: "Live Orders",
+      href: "/menu-pos/live-orders",
+      icon: ClipboardList,
+    },
+    {
       title: "Inventory Setup",
       href: countries.index().url,
       icon: Settings2,

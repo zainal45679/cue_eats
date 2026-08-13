@@ -28,6 +28,13 @@ final class BusinessLocation extends Model
         'is_inventory_location',
         'is_purchasing_enabled',
         'is_sales_enabled',
+        'service_type',
+        'kitchen_workflow',
+        'receipt_header',
+        'receipt_footer',
+        'address',
+        'phone',
+        'email',
         'status',
     ];
 

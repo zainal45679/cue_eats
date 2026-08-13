@@ -6,6 +6,7 @@ import { XLaravelForm } from "@/components/x/form/XLaravelForm";
 import { XFormInput } from "@/components/x/form/components/XFormInput";
 import { XFormSelect } from "@/components/x/form/components/XFormSelect";
 import { XFormSwitch } from "@/components/x/form/components/XFormSwitch";
+import { XFormTextArea } from "@/components/x/form/components/XFormTextArea";
 import type { PageProps } from "@/types";
 
 const schema = z.object({
@@ -14,12 +15,19 @@ const schema = z.object({
   currency_tax_id: z.string().or(z.number()).nullable().optional(),
   location_name: z.string().min(1, "Location Name is required"),
   location_code: z.string().nullable().optional(),
-  location_type: z.enum(["Outlet", "Warehouse", "Kitchen", "Central Store"], { required_error: "Location Type is required" }),
+  location_type: z.string().min(1, "Location Type is required"),
   is_parent_location: z.boolean(),
   is_inventory_location: z.boolean(),
   is_purchasing_enabled: z.boolean(),
   is_sales_enabled: z.boolean(),
   status: z.boolean(),
+  service_type: z.enum(["qsr", "dine_in"]).optional().nullable(),
+  kitchen_workflow: z.enum(["print_only", "screen_only", "both"]).optional().nullable(),
+  receipt_header: z.string().optional().nullable(),
+  receipt_footer: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  email: z.string().email("Invalid email").or(z.literal("")).optional().nullable(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -44,6 +52,13 @@ export default function BusinessLocationFormPage({
     is_purchasing_enabled: businessLocation?.is_purchasing_enabled ?? true,
     is_sales_enabled: businessLocation?.is_sales_enabled ?? true,
     status: businessLocation?.status ?? true,
+    service_type: businessLocation?.service_type || "qsr",
+    kitchen_workflow: businessLocation?.kitchen_workflow || "print_only",
+    receipt_header: businessLocation?.receipt_header || "",
+    receipt_footer: businessLocation?.receipt_footer || "",
+    address: businessLocation?.address || "",
+    phone: businessLocation?.phone || "",
+    email: businessLocation?.email || "",
   };
 
   return (
@@ -76,6 +91,9 @@ export default function BusinessLocationFormPage({
               { label: "Warehouse", value: "Warehouse" },
               { label: "Kitchen", value: "Kitchen" },
               { label: "Central Store", value: "Central Store" },
+              { label: "Central Kitchen", value: "central_kitchen" },
+              { label: "Store", value: "Store" },
+              { label: "outlet (Legacy)", value: "outlet" },
             ]}
           />
           <XFormSelect<FormValues>
@@ -133,6 +151,60 @@ export default function BusinessLocationFormPage({
             label="Status"
             name="status"
             description="Activate or deactivate this location"
+          />
+
+          <div className="pt-6 pb-2 border-t mt-8">
+            <h3 className="text-lg font-medium text-foreground">POS & Print Settings</h3>
+            <p className="text-sm text-muted-foreground">Configure the kitchen workflow and receipt prints for this location.</p>
+          </div>
+
+          <XFormSelect<FormValues>
+            label="Service Type"
+            name="service_type"
+            options={[
+              { label: "QSR / Self-Service", value: "qsr" },
+              { label: "Fine Dining / Table Service", value: "dine_in" },
+            ]}
+          />
+
+          <XFormSelect<FormValues>
+            label="Kitchen Workflow"
+            name="kitchen_workflow"
+            options={[
+              { label: "Print Only (Paper KOT)", value: "print_only" },
+              { label: "Screen Only (KDS)", value: "screen_only" },
+              { label: "Both (Print & Screen)", value: "both" },
+            ]}
+          />
+
+          <XFormTextArea<FormValues>
+            label="Receipt Header"
+            name="receipt_header"
+            placeholder="e.g. Welcome to Cue Eats! \nGSTIN: 123456789"
+          />
+
+          <XFormTextArea<FormValues>
+            label="Receipt Footer"
+            name="receipt_footer"
+            placeholder="e.g. Thank you for your visit!"
+          />
+
+          <XFormTextArea<FormValues>
+            label="Location Address"
+            name="address"
+            placeholder="Address for the receipt printout"
+          />
+
+          <XFormInput<FormValues>
+            label="Location Phone"
+            name="phone"
+            placeholder="Phone for the receipt printout"
+          />
+
+          <XFormInput<FormValues>
+            label="Location Email"
+            name="email"
+            placeholder="Email for the receipt printout"
           />
         </XLaravelForm>
       </div>

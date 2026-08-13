@@ -1,5 +1,5 @@
-import { Head } from '@inertiajs/react';
-import { useState, useMemo } from 'react';
+import { Head, usePage } from '@inertiajs/react';
+import { useState, useMemo, useEffect } from 'react';
 
 import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
@@ -9,11 +9,23 @@ import { Search, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
+import { PrintReceipt } from './components/PrintReceipt';
 
 export default function PosTerminal({ categories, inventoryBalances }: { categories: any[], inventoryBalances: Record<string, number> }) {
     const [cart, setCart] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
+    
+    // Support auto-print from flash
+    const { flash } = usePage().props as any;
+    const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
+
+    // If a new flash order comes in (e.g. from a fresh checkout), update orderToPrint
+    useEffect(() => {
+        if (flash?.recent_order) {
+            setOrderToPrint(flash.recent_order);
+        }
+    }, [flash?.recent_order]);
     
     const [selectedItemForMod, setSelectedItemForMod] = useState<any | null>(null);
     const [isModModalOpen, setIsModModalOpen] = useState(false);
@@ -156,7 +168,7 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
     return (
         <>
             <Head title="POS Terminal" />
-            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm">
+            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden">
                 {/* Left Side: Main POS Area */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                     {/* Top Bar: Search & Categories */}
@@ -330,9 +342,17 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
                 subtotal={subtotal}
                 onSuccess={() => {
                     clearCart();
-                    // Optional: show a success toast here
+                    // Let the page reload or handle the flash to print
                 }}
             />
+
+            {/* Hidden Print Component */}
+            {orderToPrint && (
+                <PrintReceipt 
+                    order={orderToPrint} 
+                    onPrinted={() => setOrderToPrint(null)} 
+                />
+            )}
         </>
     );
 }

@@ -16,7 +16,7 @@ class InventoryBalanceController extends Controller
     {
         GateHelper::read(EntityEnum::InventoryBalances);
 
-        $query = InventoryBalance::with(['ingredient.baseUom', 'storageLocation.businessLocation']);
+        $query = InventoryBalance::with(['ingredient.baseUom', 'ingredient.category', 'storageLocation.businessLocation']);
 
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -26,11 +26,34 @@ class InventoryBalanceController extends Controller
             });
         }
 
+        // Clone query before TableHelper applies filters so categories remain global
+        $globalQuery = clone $query;
         $data = TableHelper::query($query)->get();
+
+        $allBalances = $globalQuery->with('ingredient.category')->get();
+        $balanceCategories = $allBalances->groupBy(function($item) {
+            return $item->ingredient?->category?->name;
+        })->map->count()->toArray();
+        
+        $allCategories = \App\Models\IngredientCategory::pluck('name')->toArray();
+        
+        $cleanCategories = [];
+        // First, add all registered categories (even if 0)
+        foreach($allCategories as $cat) {
+            $cleanCategories[$cat] = $balanceCategories[$cat] ?? 0;
+        }
+        
+        // Then, add any other categories that might exist (e.g. Uncategorized)
+        foreach($balanceCategories as $cat => $count) {
+            if ($cat && !isset($cleanCategories[$cat])) {
+                $cleanCategories[$cat] = $count;
+            }
+        }
             
         return Inertia::render('inventory/live-stock/index', [
-            'inventoryBalances' => $data
+            'inventoryBalances' => $data,
+            'serverCategories' => $cleanCategories,
+            'totalItemsCount' => $allBalances->count()
         ]);
     }
-
 }
