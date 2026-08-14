@@ -163,6 +163,11 @@ export const Configs: TConfigs = {
       icon: MonitorSmartphone,
     },
     {
+      title: "Dine-In Tables",
+      href: "/menu-pos/tables",
+      icon: LayoutGrid,
+    },
+    {
       title: "Menu Management",
       href: "/menu-pos",
       icon: Utensils,

@@ -7,21 +7,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from '@inertiajs/react';
 import { ShoppingBag, CreditCard, Banknote } from 'lucide-react';
 
+import { useEffect } from 'react';
+
 interface CheckoutDialogProps {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     cart: any[];
     subtotal: number;
+    orderId?: string;
+    tableId?: string;
+    waiterId?: string;
+    pax?: string;
     onSuccess: () => void;
 }
 
-export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }: CheckoutDialogProps) {
+export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tableId, waiterId, pax, onSuccess }: CheckoutDialogProps) {
     const { data, setData, post, processing, errors, reset, transform } = useForm({
+        action: 'settle',
+        order_id: orderId || '',
+        dining_table_id: tableId || '',
+        waiter_id: waiterId || '',
+        pax: pax || '',
         customer_name: '',
-        order_type: 'Dine-in',
+        order_type: tableId ? 'Dine-in' : 'Takeaway',
         payment_method: 'Cash',
         cart: [],
     });
+
+    // Update form data when props change, as useForm only initializes once on mount
+    useEffect(() => {
+        setData(currentData => ({
+            ...currentData,
+            order_id: orderId || '',
+            dining_table_id: tableId || '',
+            waiter_id: waiterId || '',
+            pax: pax || '',
+            order_type: tableId ? 'Dine-in' : 'Takeaway',
+        }));
+    }, [orderId, tableId, waiterId, pax]);
 
     transform((currentData) => ({
         ...currentData,

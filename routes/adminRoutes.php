@@ -103,6 +103,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Menu Management
     Route::prefix('menu-pos')->group(function () {
+        // Tables / Dine-in
+        Route::get('tables', [\App\Http\Controllers\Dashboard\TableController::class, 'index'])->name('pos.tables');
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
         // Resource routes for form actions (except index)

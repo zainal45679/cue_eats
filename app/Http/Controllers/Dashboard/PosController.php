@@ -14,8 +14,21 @@ use Illuminate\Support\Facades\DB;
 
 class PosController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $table = null;
+        $activeOrder = null;
+        
+        if ($request->table_id) {
+            $table = \App\Models\DiningTable::find($request->table_id);
+            if ($table) {
+                $activeOrder = \App\Models\Order::with(['items.modifiers', 'items.menuItem', 'waiter'])
+                    ->where('dining_table_id', $table->id)
+                    ->whereIn('status', ['running', 'billed'])
+                    ->latest()
+                    ->first();
+            }
+        }
         // Eager load recipe items to check inventory
         $categories = MenuCategory::with(['items.modifierGroups.modifiers.recipeItems', 'items.recipeItems'])->where('is_active', true)->get();
         
@@ -62,19 +75,29 @@ class PosController extends Controller
             }
         }
 
+        $waiters = \App\Models\User::role('waiter')->get(['id', 'name']);
+
         return Inertia::render('menu-pos/terminal/index', [
             'categories' => $categories,
-            'inventoryBalances' => $balances
+            'inventoryBalances' => $balances,
+            'waiters' => $waiters,
+            'table' => $table,
+            'activeOrder' => $activeOrder
         ]);
     }
 
     public function checkout(Request $request)
     {
         $validated = $request->validate([
+            'order_id' => 'nullable|exists:pos_orders,id',
+            'action' => 'required|in:save_kot,print_bill,settle',
             'customer_name' => 'nullable|string',
             'order_type' => 'required|string',
-            'payment_method' => 'required|string',
-            'cart' => 'required|array|min:1',
+            'payment_method' => 'nullable|string',
+            'dining_table_id' => 'nullable|exists:dining_tables,id',
+            'waiter_id' => 'nullable|exists:users,id',
+            'pax' => 'nullable|integer|min:1',
+            'cart' => 'nullable|array',
             'cart.*.menu_item_id' => 'required|exists:menu_items,id',
             'cart.*.quantity' => 'required|integer|min:1',
             'cart.*.price' => 'required|numeric|min:0',
@@ -84,31 +107,13 @@ class PosController extends Controller
             'cart.*.modifiers.*.price_adjustment' => 'required|numeric'
         ]);
 
+        // Specific validation for settle
+        if ($validated['action'] === 'settle' && empty($validated['payment_method'])) {
+            return back()->withErrors(['payment_method' => 'Payment method is required to settle the bill.']);
+        }
+
         DB::beginTransaction();
         try {
-            // Generate sequential order number
-            $nextId = \App\Models\Order::count() + 1;
-            while (\App\Models\Order::where('order_number', 'ORD-' . $nextId)->exists()) {
-                $nextId++;
-            }
-            $orderNumber = 'ORD-' . $nextId;
-            
-            // Calculate totals
-            $subtotal = 0;
-            foreach ($validated['cart'] as $item) {
-                $itemTotal = $item['price'];
-                if (!empty($item['modifiers'])) {
-                    foreach ($item['modifiers'] as $mod) {
-                        $itemTotal += $mod['price_adjustment'];
-                    }
-                }
-                $subtotal += ($itemTotal * $item['quantity']);
-            }
-            
-            // For now tax is hardcoded 0
-            $tax_total = 0;
-            $grand_total = $subtotal + $tax_total;
-
             $locationId = auth()->user()->hasRole('admin') 
                 ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
                 : auth()->user()->business_location_id;
@@ -116,63 +121,140 @@ class PosController extends Controller
             $storageLocation = \App\Models\StorageLocation::where('business_location_id', $locationId)->first();
             $storageLocationId = $storageLocation ? $storageLocation->id : 1;
 
-            $order = Order::create([
-                'order_number' => $orderNumber,
-                'business_location_id' => $locationId,
-                'user_id' => auth()->id(),
-                'customer_name' => $validated['customer_name'] ?? null,
-                'order_type' => $validated['order_type'],
-                'status' => 'Completed',
-                'kitchen_status' => 'pending',
-                'subtotal' => $subtotal,
-                'tax_total' => $tax_total,
-                'discount_total' => 0,
-                'grand_total' => $grand_total,
-                'payment_method' => $validated['payment_method'],
-            ]);
-
-            foreach ($validated['cart'] as $item) {
-                $orderItem = OrderItem::create([
-                    'pos_order_id' => $order->id,
-                    'menu_item_id' => $item['menu_item_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['price'],
-                    'subtotal' => $item['price'] * $item['quantity'],
-                    'notes' => $item['notes'] ?? null,
-                ]);
-
-                // Deduct Inventory for Menu Item
-                $menuItemRecipes = \App\Models\RecipeItem::where('menu_item_id', $item['menu_item_id'])->get();
-                foreach ($menuItemRecipes as $recipe) {
-                    $deductQty = $recipe->quantity * $item['quantity'];
-                    $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+            $order = null;
+            if (!empty($validated['order_id'])) {
+                $order = Order::find($validated['order_id']);
+                // Update basic details if changed
+                if (isset($validated['pax'])) $order->pax = $validated['pax'];
+                if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
+                $order->save();
+            } else {
+                // Generate sequential order number
+                $nextId = \App\Models\Order::count() + 1;
+                while (\App\Models\Order::where('order_number', 'ORD-' . $nextId)->exists()) {
+                    $nextId++;
                 }
+                $orderNumber = 'ORD-' . $nextId;
 
-                if (!empty($item['modifiers'])) {
-                    foreach ($item['modifiers'] as $mod) {
-                        OrderItemModifier::create([
-                            'pos_order_item_id' => $orderItem->id,
-                            'modifier_id' => $mod['modifier_id'],
-                            'price_adjustment' => $mod['price_adjustment'],
-                        ]);
+                $order = Order::create([
+                    'order_number' => $orderNumber,
+                    'business_location_id' => $locationId,
+                    'user_id' => auth()->id(),
+                    'customer_name' => $validated['customer_name'] ?? null,
+                    'order_type' => $validated['order_type'],
+                    'dining_table_id' => $validated['dining_table_id'] ?? null,
+                    'waiter_id' => $validated['waiter_id'] ?? null,
+                    'pax' => $validated['pax'] ?? null,
+                    'status' => 'running',
+                    'kitchen_status' => 'pending',
+                    'subtotal' => 0,
+                    'tax_total' => 0,
+                    'discount_total' => 0,
+                    'grand_total' => 0,
+                    'payment_method' => null,
+                ]);
+            }
 
-                        // Deduct Inventory for Modifier
-                        $modifierRecipes = \App\Models\RecipeItem::where('modifier_id', $mod['modifier_id'])->get();
-                        foreach ($modifierRecipes as $recipe) {
-                            $deductQty = $recipe->quantity * $item['quantity'];
-                            $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+            // Append NEW items if any
+            if (!empty($validated['cart'])) {
+                foreach ($validated['cart'] as $item) {
+                    $orderItem = OrderItem::create([
+                        'pos_order_id' => $order->id,
+                        'menu_item_id' => $item['menu_item_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['price'],
+                        'subtotal' => $item['price'] * $item['quantity'],
+                        'notes' => $item['notes'] ?? null,
+                    ]);
+
+                    // Deduct Inventory for Menu Item
+                    $menuItemRecipes = \App\Models\RecipeItem::where('menu_item_id', $item['menu_item_id'])->get();
+                    foreach ($menuItemRecipes as $recipe) {
+                        $deductQty = $recipe->quantity * $item['quantity'];
+                        $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+                    }
+
+                    if (!empty($item['modifiers'])) {
+                        foreach ($item['modifiers'] as $mod) {
+                            OrderItemModifier::create([
+                                'pos_order_item_id' => $orderItem->id,
+                                'modifier_id' => $mod['modifier_id'],
+                                'price_adjustment' => $mod['price_adjustment'],
+                            ]);
+
+                            // Deduct Inventory for Modifier
+                            $modifierRecipes = \App\Models\RecipeItem::where('modifier_id', $mod['modifier_id'])->get();
+                            foreach ($modifierRecipes as $recipe) {
+                                $deductQty = $recipe->quantity * $item['quantity'];
+                                $this->deductInventory($recipe->ingredient_id, $storageLocationId, $locationId, $deductQty, $order->id);
+                            }
                         }
                     }
+                }
+            }
+
+            // Recalculate Totals
+            $order->load('items.modifiers');
+            $subtotal = 0;
+            foreach ($order->items as $item) {
+                $itemTotal = $item->unit_price;
+                foreach ($item->modifiers as $mod) {
+                    $itemTotal += $mod->price_adjustment;
+                }
+                $subtotal += ($itemTotal * $item->quantity);
+            }
+            
+            $tax_total = 0; // Hardcoded 0 for now
+            $order->subtotal = $subtotal;
+            $order->tax_total = $tax_total;
+            $order->grand_total = $subtotal + $tax_total;
+
+            // Update Status based on action
+            if ($validated['action'] === 'settle') {
+                $order->status = 'Completed';
+                $order->payment_method = $validated['payment_method'];
+            } else if ($validated['action'] === 'print_bill') {
+                $order->status = 'billed';
+            } else {
+                $order->status = 'running';
+            }
+            
+            $order->save();
+
+            // Update Dining Table Status if applicable
+            if ($order->dining_table_id) {
+                $table = \App\Models\DiningTable::find($order->dining_table_id);
+                if ($table) {
+                    if ($order->status === 'Completed') {
+                        $table->status = 'available';
+                    } else if ($order->status === 'billed') {
+                        $table->status = 'billed';
+                    } else {
+                        $table->status = 'occupied';
+                    }
+                    $table->save();
                 }
             }
 
             DB::commit();
             
             $order->load(['items.menuItem', 'items.modifiers.modifier', 'location', 'cashier']);
-            event(new \App\Events\OrderCreated($order));
+            
+            // Broadcast KOT only if there were new items
+            if (!empty($validated['cart'])) {
+                event(new \App\Events\OrderCreated($order));
+            }
+            
+            // Redirect based on action
+            if ($order->status === 'Completed' || $order->status === 'billed') {
+                return redirect()->route('pos.tables')->with([
+                    'success' => "Order {$order->order_number} " . ($order->status === 'Completed' ? 'settled' : 'billed') . " successfully.",
+                    'recent_order' => $order
+                ]);
+            }
             
             return back()->with([
-                'success' => "Order {$orderNumber} completed successfully.",
+                'success' => "KOT for {$order->order_number} saved.",
                 'recent_order' => $order
             ]);
         } catch (\Exception $e) {
