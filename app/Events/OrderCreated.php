@@ -22,6 +22,6 @@ class OrderCreated implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        return new Channel('orders');
+        return new Channel('orders.' . $this->order->business_location_id);
     }
 }

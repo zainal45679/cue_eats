@@ -10,15 +10,24 @@ import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
 import { PrintReceipt } from './components/PrintReceipt';
+import { DineInTopBar } from './DineInTopBar';
+import { router } from '@inertiajs/react';
+import { toast } from 'sonner';
 
-export default function PosTerminal({ categories, inventoryBalances }: { categories: any[], inventoryBalances: Record<string, number> }) {
+export default function PosTerminal({ categories, inventoryBalances, waiters, table, activeOrder }: { categories: any[], inventoryBalances: Record<string, number>, waiters?: any[], table?: any, activeOrder?: any }) {
     const [cart, setCart] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
     
     // Support auto-print from flash
-    const { flash } = usePage().props as any;
+    const { flash, auth } = usePage().props as any;
     const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
+    
+    const isWaiter = auth?.roles?.includes('waiter');
+
+    // Dine-in states
+    const [waiterId, setWaiterId] = useState<string>(activeOrder?.waiter_id || (isWaiter ? auth.user.id : ''));
+    const [pax, setPax] = useState<string>(activeOrder?.pax?.toString() || table?.seating_capacity?.toString() || '');
 
     // If a new flash order comes in (e.g. from a fresh checkout), update orderToPrint
     useEffect(() => {
@@ -168,9 +177,11 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
     return (
         <>
             <Head title="POS Terminal" />
-            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden">
+            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden flex-col">
+                <DineInTopBar table={table} waiters={waiters} waiterId={waiterId} setWaiterId={setWaiterId} pax={pax} setPax={setPax} activeOrder={activeOrder} isWaiter={isWaiter} />
+                <div className="flex flex-1 overflow-hidden">
                 {/* Left Side: Main POS Area */}
-                <div className="flex-1 flex flex-col h-full overflow-hidden">
+                <div className="flex-1 flex flex-col h-full overflow-hidden border-t">
                     {/* Top Bar: Search & Categories */}
                     <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
                         <div className="relative">
@@ -263,12 +274,12 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
                 
                 
                 {/* Right Side: Enhanced Cart */}
-                {cart.length > 0 && (
-                    <div className="w-[320px] bg-card border-l shadow-xl flex flex-col z-20">
-                    <div className="p-4 border-b flex justify-between items-center bg-card">
+                {(cart.length > 0 || activeOrder) && (
+                <div className="w-[320px] bg-card border-l border-t shadow-xl flex flex-col z-20">
+                    <div className="p-4 border-b flex justify-between items-center bg-card shrink-0">
                         <div className="flex items-center gap-2 font-bold text-lg text-card-foreground">
                             <ShoppingCart className="w-5 h-5 text-primary" />
-                            <h2>Current Order</h2>
+                            <h2>{activeOrder ? 'Subsequent KOT' : 'Current Order'}</h2>
                         </div>
                         <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2" onClick={clearCart} disabled={cart.length === 0}>
                             <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear
@@ -308,22 +319,89 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
                         </div>
                     </ScrollArea>
                     
-                    <div className="p-5 border-t bg-card">
+                    <div className="p-5 border-t bg-card shrink-0">
+                        {activeOrder && (
+                            <div className="flex justify-between items-center mb-2 pb-2 border-b">
+                                <span className="text-muted-foreground text-sm">Previous Total</span>
+                                <span className="font-semibold">${parseFloat(activeOrder.grand_total).toFixed(2)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between items-center mb-4">
-                            <span className="text-muted-foreground text-sm font-medium">Subtotal</span>
+                            <span className="text-muted-foreground text-sm font-medium">New Subtotal</span>
                             <span className="font-bold text-xl">${subtotal.toFixed(2)}</span>
                         </div>
-                        <Button 
-                            className="w-full h-12 text-base font-bold rounded-lg shadow-sm" 
-                            size="lg"
-                            disabled={cart.length === 0}
-                            onClick={() => setIsCheckoutOpen(true)}
-                        >
-                            Checkout
-                        </Button>
+                        
+                        {table ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {cart.length > 0 ? (
+                                    <Button 
+                                        className="col-span-2 h-12 text-base font-bold bg-orange-600 hover:bg-orange-700" 
+                                        onClick={() => {
+                                            if (table && !waiterId) {
+                                                toast.error('Please assign a waiter before saving KOT');
+                                                return;
+                                            }
+                                            router.post('/menu-pos/terminal/checkout', {
+                                                action: 'save_kot',
+                                                order_id: activeOrder?.id,
+                                                dining_table_id: table.id,
+                                                waiter_id: waiterId,
+                                                pax: pax,
+                                                order_type: 'Dine-in',
+                                                cart: cart.map(item => ({
+                                                    menu_item_id: item.id,
+                                                    quantity: item.quantity,
+                                                    price: item.price,
+                                                    modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
+                                                        modifier_id: mod.id,
+                                                        price_adjustment: mod.price_adjustment
+                                                    })) : []
+                                                }))
+                                            }, { onSuccess: clearCart });
+                                        }}
+                                    >
+                                        Save KOT
+                                    </Button>
+                                ) : (
+                                    activeOrder && (
+                                        <>
+                                            <Button 
+                                                variant="outline" 
+                                                className="h-12 border-blue-600 text-blue-600 hover:bg-blue-50"
+                                                onClick={() => {
+                                                    router.post('/menu-pos/terminal/checkout', {
+                                                        action: 'print_bill',
+                                                        order_id: activeOrder.id,
+                                                        order_type: 'Dine-in'
+                                                    });
+                                                }}
+                                            >
+                                                Print Bill
+                                            </Button>
+                                            <Button 
+                                                className="h-12 bg-green-600 hover:bg-green-700"
+                                                onClick={() => setIsCheckoutOpen(true)}
+                                            >
+                                                Settle
+                                            </Button>
+                                        </>
+                                    )
+                                )}
+                            </div>
+                        ) : (
+                            <Button 
+                                className="w-full h-12 text-base font-bold rounded-lg shadow-sm" 
+                                size="lg"
+                                disabled={cart.length === 0}
+                                onClick={() => setIsCheckoutOpen(true)}
+                            >
+                                Checkout
+                            </Button>
+                        )}
                     </div>
-                    </div>
+                </div>
                 )}
+                </div>
             </div>
 
             {selectedItemForMod && (
@@ -339,7 +417,11 @@ export default function PosTerminal({ categories, inventoryBalances }: { categor
                 isOpen={isCheckoutOpen}
                 setIsOpen={setIsCheckoutOpen}
                 cart={cart}
-                subtotal={subtotal}
+                subtotal={activeOrder ? parseFloat(activeOrder.grand_total) + subtotal : subtotal}
+                orderId={activeOrder?.id}
+                tableId={table?.id}
+                waiterId={waiterId}
+                pax={pax}
                 onSuccess={() => {
                     clearCart();
                     // Let the page reload or handle the flash to print

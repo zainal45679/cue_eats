@@ -22,7 +22,8 @@ class KdsController extends Controller
             ->get();
 
         return Inertia::render('menu-pos/kds/index', [
-            'orders' => $orders
+            'orders' => $orders,
+            'locationId' => $locationId
         ]);
     }
 

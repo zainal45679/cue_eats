@@ -91,6 +91,7 @@ export const Configs: TConfigs = {
       title: "Dashboard",
       href: dashboard().url,
       icon: LayoutGrid,
+      adminOnly: true,
     },
     {
       title: "Live Stock",
@@ -104,18 +105,21 @@ export const Configs: TConfigs = {
       href: "/inventory/ledger",
       icon: History,
       group: "Inventory Operations",
+      permission: "inventory-balances",
     },
     {
       title: "Daily Consumption",
       href: "/inventory/consumption",
       icon: Flame,
       group: "Inventory Operations",
+      permission: "inventory-balances",
     },
     {
       title: "Received Goods",
       href: "/purchasing/grns",
       icon: PackageCheck,
       group: "Inventory Operations",
+      permission: "purchase-orders",
     },
     {
       title: "Request Stock",
@@ -129,12 +133,14 @@ export const Configs: TConfigs = {
       href: "/purchasing/stos?type=incoming",
       icon: PackageCheck,
       group: "Internal Transfers",
+      permission: "internal-requests",
     },
     {
       title: "Dispatch Stock",
       href: "/purchasing/stos?type=outgoing",
       icon: Boxes,
       group: "Internal Transfers",
+      permission: "internal-requests",
     },
     {
       title: "Purchase Orders",
@@ -163,9 +169,15 @@ export const Configs: TConfigs = {
       icon: MonitorSmartphone,
     },
     {
+      title: "Dine-In Tables",
+      href: "/menu-pos/tables",
+      icon: LayoutGrid,
+    },
+    {
       title: "Menu Management",
       href: "/menu-pos",
       icon: Utensils,
+      adminOnly: true,
     },
     {
       title: "Live Orders",
@@ -206,18 +218,21 @@ export const Configs: TConfigs = {
       href: "/settings/profile",
       icon: User,
       group: "Settings",
+      adminOnly: true,
     },
     {
       title: "Password",
       href: "/settings/password",
       icon: Lock,
       group: "Settings",
+      adminOnly: true,
     },
     {
       title: "Appearance",
       href: "/settings/appearance",
       icon: Palette,
       group: "Settings",
+      adminOnly: true,
     },
   ],
 };

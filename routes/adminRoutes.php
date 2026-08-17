@@ -103,6 +103,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Menu Management
     Route::prefix('menu-pos')->group(function () {
+        // Tables / Dine-in
+        Route::get('tables', [\App\Http\Controllers\Dashboard\TableController::class, 'index'])->name('pos.tables');
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
         // Resource routes for form actions (except index)
@@ -112,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // POS Terminal
         Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
+        Route::post('terminal/open-table', [\App\Http\Controllers\Dashboard\PosController::class, 'openTable'])->name('pos.open-table');
         Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
 
         // KDS (Kitchen Display System)
