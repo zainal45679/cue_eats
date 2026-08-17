@@ -12,6 +12,7 @@ import { CheckoutDialog } from './components/CheckoutDialog';
 import { PrintReceipt } from './components/PrintReceipt';
 import { DineInTopBar } from './DineInTopBar';
 import { router } from '@inertiajs/react';
+import { toast } from 'sonner';
 
 export default function PosTerminal({ categories, inventoryBalances, waiters, table, activeOrder }: { categories: any[], inventoryBalances: Record<string, number>, waiters?: any[], table?: any, activeOrder?: any }) {
     const [cart, setCart] = useState<any[]>([]);
@@ -19,11 +20,13 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
     
     // Support auto-print from flash
-    const { flash } = usePage().props as any;
+    const { flash, auth } = usePage().props as any;
     const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
     
+    const isWaiter = auth?.roles?.includes('waiter');
+
     // Dine-in states
-    const [waiterId, setWaiterId] = useState<string>(activeOrder?.waiter_id || '');
+    const [waiterId, setWaiterId] = useState<string>(activeOrder?.waiter_id || (isWaiter ? auth.user.id : ''));
     const [pax, setPax] = useState<string>(activeOrder?.pax?.toString() || table?.seating_capacity?.toString() || '');
 
     // If a new flash order comes in (e.g. from a fresh checkout), update orderToPrint
@@ -175,7 +178,7 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
         <>
             <Head title="POS Terminal" />
             <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden flex-col">
-                <DineInTopBar table={table} waiters={waiters} waiterId={waiterId} setWaiterId={setWaiterId} pax={pax} setPax={setPax} />
+                <DineInTopBar table={table} waiters={waiters} waiterId={waiterId} setWaiterId={setWaiterId} pax={pax} setPax={setPax} activeOrder={activeOrder} isWaiter={isWaiter} />
                 <div className="flex flex-1 overflow-hidden">
                 {/* Left Side: Main POS Area */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden border-t">
@@ -271,6 +274,7 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                 
                 
                 {/* Right Side: Enhanced Cart */}
+                {(cart.length > 0 || activeOrder) && (
                 <div className="w-[320px] bg-card border-l border-t shadow-xl flex flex-col z-20">
                     <div className="p-4 border-b flex justify-between items-center bg-card shrink-0">
                         <div className="flex items-center gap-2 font-bold text-lg text-card-foreground">
@@ -333,6 +337,10 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                                     <Button 
                                         className="col-span-2 h-12 text-base font-bold bg-orange-600 hover:bg-orange-700" 
                                         onClick={() => {
+                                            if (table && !waiterId) {
+                                                toast.error('Please assign a waiter before saving KOT');
+                                                return;
+                                            }
                                             router.post('/menu-pos/terminal/checkout', {
                                                 action: 'save_kot',
                                                 order_id: activeOrder?.id,
@@ -392,6 +400,7 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                         )}
                     </div>
                 </div>
+                )}
                 </div>
             </div>
 

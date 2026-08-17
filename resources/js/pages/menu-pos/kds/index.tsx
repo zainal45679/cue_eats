@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/shadcn/ui/textarea';
 import { XPage } from '@/components/x/page/XPage';
 
-export default function KdsScreen({ orders }: { orders: any[] }) {
+export default function KdsScreen({ orders, locationId }: { orders: any[], locationId: string }) {
     const [now, setNow] = useState(new Date());
     const [rejectOrder, setRejectOrder] = useState<any | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -48,9 +48,9 @@ export default function KdsScreen({ orders }: { orders: any[] }) {
     useEffect(() => {
         const timerInterval = setInterval(() => setNow(new Date()), 60000);
         
-        // Listen for new orders via WebSockets
-        if (window.Echo) {
-            window.Echo.channel('orders')
+        // Listen for new orders via WebSockets for this specific location
+        if (window.Echo && locationId) {
+            window.Echo.channel(`orders.${locationId}`)
                 .listen('.App\\Events\\OrderCreated', (e: any) => {
                     playKdsBeep();
                     router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });

@@ -86,11 +86,48 @@ class PosController extends Controller
         ]);
     }
 
+    public function openTable(Request $request)
+    {
+        $request->validate(['table_id' => 'required|exists:dining_tables,id']);
+        $table = \App\Models\DiningTable::find($request->table_id);
+        
+        $locationId = auth()->user()->hasRole('admin') 
+            ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
+            : auth()->user()->business_location_id;
+
+        $activeOrder = \App\Models\Order::where('dining_table_id', $table->id)
+            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->first();
+
+        if (!$activeOrder) {
+            $nextId = \App\Models\Order::count() + 1;
+            while (\App\Models\Order::where('order_number', 'ORD-' . $nextId)->exists()) {
+                $nextId++;
+            }
+            $orderNumber = 'ORD-' . $nextId;
+
+            \App\Models\Order::create([
+                'order_number' => $orderNumber,
+                'business_location_id' => $locationId,
+                'user_id' => auth()->id(),
+                'order_type' => 'Dine-in',
+                'dining_table_id' => $table->id,
+                'status' => 'draft',
+                'kitchen_status' => 'pending',
+                'subtotal' => 0,
+                'tax_total' => 0,
+                'grand_total' => 0,
+            ]);
+        }
+
+        return redirect()->route('pos.terminal', ['table_id' => $table->id]);
+    }
+
     public function checkout(Request $request)
     {
         $validated = $request->validate([
             'order_id' => 'nullable|exists:pos_orders,id',
-            'action' => 'required|in:save_kot,print_bill,settle',
+            'action' => 'required|in:save_kot,print_bill,settle,cancel_draft',
             'customer_name' => 'nullable|string',
             'order_type' => 'required|string',
             'payment_method' => 'nullable|string',
@@ -114,6 +151,15 @@ class PosController extends Controller
 
         DB::beginTransaction();
         try {
+            if ($validated['action'] === 'cancel_draft' && !empty($validated['order_id'])) {
+                $order = Order::find($validated['order_id']);
+                if ($order && $order->status === 'draft') {
+                    $order->delete();
+                    DB::commit();
+                    return redirect()->route('pos.tables')->with('success', 'Table released.');
+                }
+            }
+
             $locationId = auth()->user()->hasRole('admin') 
                 ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
                 : auth()->user()->business_location_id;
@@ -127,6 +173,7 @@ class PosController extends Controller
                 // Update basic details if changed
                 if (isset($validated['pax'])) $order->pax = $validated['pax'];
                 if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
+                if ($validated['action'] === 'save_kot') $order->status = 'running';
                 $order->save();
             } else {
                 // Generate sequential order number

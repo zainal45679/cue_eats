@@ -162,7 +162,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleCheckout} disabled={processing || cart.length === 0} className="w-full sm:w-auto">
+                    <Button onClick={handleCheckout} disabled={processing || (cart.length === 0 && !orderId)} className="w-full sm:w-auto">
                         <CreditCard className="w-4 h-4 mr-2" /> Pay ${subtotal.toFixed(2)}
                     </Button>
                 </DialogFooter>

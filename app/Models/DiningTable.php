@@ -30,7 +30,7 @@ class DiningTable extends Model
     public function activeOrder()
     {
         return $this->hasOne(Order::class, 'dining_table_id')
-            ->whereIn('status', ['running', 'billed'])
+            ->whereIn('status', ['draft', 'running', 'billed'])
             ->latestOfMany();
     }
 }

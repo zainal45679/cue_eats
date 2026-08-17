@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // POS Terminal
         Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
+        Route::post('terminal/open-table', [\App\Http\Controllers\Dashboard\PosController::class, 'openTable'])->name('pos.open-table');
         Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
 
         // KDS (Kitchen Display System)

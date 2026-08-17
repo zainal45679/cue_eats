@@ -16,7 +16,7 @@ class TableController extends Controller
             : auth()->user()->business_location_id;
 
         $zones = DiningZone::with(['tables' => function ($query) {
-            $query->with('activeOrder.items');
+            $query->with(['activeOrder.items', 'activeOrder.waiter']);
         }])->where('business_location_id', $locationId)->get();
 
         return Inertia::render('menu-pos/tables/index', [
