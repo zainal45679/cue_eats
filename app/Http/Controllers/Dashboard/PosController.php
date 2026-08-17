@@ -24,7 +24,7 @@ class PosController extends Controller
             if ($table) {
                 $activeOrder = \App\Models\Order::with(['items.modifiers', 'items.menuItem', 'waiter'])
                     ->where('dining_table_id', $table->id)
-                    ->whereIn('status', ['running', 'billed'])
+                    ->whereIn('status', ['draft', 'running', 'billed'])
                     ->latest()
                     ->first();
             }
@@ -91,12 +91,28 @@ class PosController extends Controller
         $request->validate(['table_id' => 'required|exists:dining_tables,id']);
         $table = \App\Models\DiningTable::find($request->table_id);
         
+        $activeOrder = \App\Models\Order::where('dining_table_id', $table->id)
+            ->whereNotIn('status', ['paid', 'cancelled', 'Completed'])
+            ->first();
+
+        if ($activeOrder && $activeOrder->user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
+            return redirect()->back()->with('error', 'This table is currently occupied by another waiter.');
+        }
+
+        return redirect()->route('pos.terminal', ['table_id' => $table->id]);
+    }
+
+    public function occupyTable(Request $request)
+    {
+        $request->validate(['table_id' => 'required|exists:dining_tables,id']);
+        $table = \App\Models\DiningTable::find($request->table_id);
+        
         $locationId = auth()->user()->hasRole('admin') 
             ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
             : auth()->user()->business_location_id;
 
         $activeOrder = \App\Models\Order::where('dining_table_id', $table->id)
-            ->whereNotIn('status', ['paid', 'cancelled'])
+            ->whereNotIn('status', ['paid', 'cancelled', 'Completed'])
             ->first();
 
         if (!$activeOrder) {
@@ -118,6 +134,8 @@ class PosController extends Controller
                 'tax_total' => 0,
                 'grand_total' => 0,
             ]);
+            
+            event(new \App\Events\TableStatusUpdated($table->id, $locationId));
         }
 
         return redirect()->route('pos.terminal', ['table_id' => $table->id]);
@@ -154,8 +172,13 @@ class PosController extends Controller
             if ($validated['action'] === 'cancel_draft' && !empty($validated['order_id'])) {
                 $order = Order::find($validated['order_id']);
                 if ($order && $order->status === 'draft') {
+                    $tableId = $order->dining_table_id;
+                    $locationId = $order->business_location_id;
                     $order->delete();
                     DB::commit();
+                    if ($tableId) {
+                        event(new \App\Events\TableStatusUpdated($tableId, $locationId));
+                    }
                     return redirect()->route('pos.tables')->with('success', 'Table released.');
                 }
             }
@@ -238,6 +261,7 @@ class PosController extends Controller
                         }
                     }
                 }
+            }
 
             // Recalculate Totals
             $order->load('items.modifiers');
@@ -279,6 +303,7 @@ class PosController extends Controller
                         $table->status = 'occupied';
                     }
                     $table->save();
+                    event(new \App\Events\TableStatusUpdated($table->id, $order->business_location_id));
                 }
             }
 
@@ -303,8 +328,8 @@ class PosController extends Controller
                 'success' => "KOT for {$order->order_number} saved.",
                 'recent_order' => $order
             ]);
-        } 
         } catch (\Exception $e) {
+            DB::rollBack();
             \Log::error('Order Processing Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return back()->withErrors(['error' => 'Failed to process order: ' . $e->getMessage()]);
         }

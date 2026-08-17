@@ -12,13 +12,22 @@ interface CheckoutDialogProps {
     setIsOpen: (isOpen: boolean) => void;
     cart: any[];
     subtotal: number;
+    orderId?: string;
+    tableId?: string;
+    waiterId?: string;
+    pax?: string;
     onSuccess: () => void;
 }
 
-export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }: CheckoutDialogProps) {
+export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tableId, waiterId, pax, onSuccess }: CheckoutDialogProps) {
     const { data, setData, post, processing, errors, reset, transform } = useForm({
+        action: 'settle',
+        order_id: orderId || '',
+        dining_table_id: tableId || '',
+        waiter_id: waiterId || '',
+        pax: pax || '',
         customer_name: '',
-        order_type: 'Dine-in',
+        order_type: tableId ? 'Dine-in' : 'Takeaway',
         payment_method: 'Cash',
         tendered_amount: '' as string | number,
         cart: [],
@@ -28,10 +37,15 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }:
         if (isOpen) {
             setData(prev => ({
                 ...prev,
+                order_id: orderId || '',
+                dining_table_id: tableId || '',
+                waiter_id: waiterId || '',
+                pax: pax || '',
+                order_type: tableId ? 'Dine-in' : 'Takeaway',
                 tendered_amount: subtotal > 0 ? String(subtotal) : ''
             }));
         }
-    }, [isOpen, subtotal]);
+    }, [isOpen, subtotal, orderId, tableId, waiterId, pax]);
 
     const tenderedVal = parseFloat(String(data.tendered_amount)) || 0;
     const changeVal = Math.max(0, tenderedVal - subtotal);
@@ -199,7 +213,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, onSuccess }:
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                     <Button 
                         onClick={handleCheckout} 
-                        disabled={processing || cart.length === 0 || isInsufficient} 
+                        disabled={processing || (cart.length === 0 && !orderId) || isInsufficient} 
                         className="w-full sm:w-auto"
                     >
                         {data.payment_method === 'Cash' ? (

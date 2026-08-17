@@ -5,66 +5,26 @@ import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-const getMergeSpan = (tableName: string) => {
-    if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
-    const matches = tableName.match(/\d+/g);
-    if (!matches || matches.length < 2) return "col-span-2 sm:col-span-2 md:col-span-2";
-    
-    if (matches.length >= 3) {
-        return "col-span-2 sm:col-span-2 md:col-span-2 row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
-    }
-    
-    const diff = Math.abs(parseInt(matches[0]) - parseInt(matches[1]));
-    return diff === 1 
-        ? "col-span-2 sm:col-span-2 md:col-span-2"
-        : "row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
-}
-
 export default function TablesScreen({ zones }: { zones: any[] }) {
     const { auth } = usePage().props as any;
     const currentUserId = auth.user?.id;
     const [activeZone, setActiveZone] = useState(zones.length > 0 ? zones[0].id : null);
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [mergeMode, setMergeMode] = useState(false);
-    const [selectedTablesToMerge, setSelectedTablesToMerge] = useState<string[]>([]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        if (!auth.user) return;
-        const locId = auth.user.business_location_id || 1; // Fallback or dynamic based on active loc
-        
-        const channel = window.Echo.channel(`tables.${locId}`)
-            .listen('.App\\Events\\TableStatusUpdated', () => {
-                router.reload({ only: ['zones'] });
-            });
-
-        return () => {
-            channel.stopListening('.App\\Events\\TableStatusUpdated');
-            window.Echo.leaveChannel(`tables.${locId}`);
-        };
-    }, [auth.user]);
-
     const activeZoneData = zones.find(z => z.id === activeZone);
 
     const getTableColorClass = (table: any) => {
         if (!table.active_order) return 'bg-card border-border border-l-4 border-l-green-500 hover:border-l-green-600 text-card-foreground shadow-sm'; 
-        if (table.active_order.status === 'billed') return 'bg-card border-border border-l-4 border-l-red-500 hover:border-l-red-600 text-card-foreground shadow-sm'; 
-        return 'bg-card border-border border-l-4 border-l-orange-500 hover:border-l-orange-600 text-card-foreground shadow-sm'; 
+        if (table.active_order.status === 'billed') return 'bg-card border-border border-l-4 border-l-red-500 text-card-foreground shadow-sm'; 
+        return 'bg-card border-border border-l-4 border-l-orange-500 text-card-foreground shadow-sm'; 
     };
 
     const handleTableClick = (table: any) => {
-        if (mergeMode) {
-            if (selectedTablesToMerge.includes(table.id)) {
-                setSelectedTablesToMerge(selectedTablesToMerge.filter(id => id !== table.id));
-            } else {
-                setSelectedTablesToMerge([...selectedTablesToMerge, table.id]);
-            }
-            return;
-        }
         router.post('/menu-pos/terminal/open-table', { table_id: table.id });
     };
 
@@ -114,64 +74,21 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                         </div>
                         
                         {/* Stats Summary */}
-                        <div className="flex items-center gap-4">
-                            <div className="text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                                    <span className="text-muted-foreground">Available: {available}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                                    <span className="text-muted-foreground">Running: {occupied}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                                    <span className="text-muted-foreground">Billed: {billed}</span>
-                                </div>
-                                <div className="pl-2 border-l border-border text-foreground font-bold">
-                                    Total: {totalTables}
-                                </div>
+                        <div className="flex items-center gap-4 text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                                <span className="text-muted-foreground">Available: {available}</span>
                             </div>
-                            
-                            {/* Merge Controls */}
-                            <div className="flex items-center gap-2">
-                                {mergeMode ? (
-                                    <>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm"
-                                            onClick={() => { setMergeMode(false); setSelectedTablesToMerge([]); }}
-                                            className="h-8"
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button 
-                                            variant="default" 
-                                            size="sm"
-                                            disabled={selectedTablesToMerge.length < 2}
-                                            onClick={() => {
-                                                router.post('/menu-pos/tables/merge', { table_ids: selectedTablesToMerge }, {
-                                                    onSuccess: () => {
-                                                        setMergeMode(false);
-                                                        setSelectedTablesToMerge([]);
-                                                    }
-                                                });
-                                            }}
-                                            className="h-8 bg-primary text-primary-foreground font-bold hover:bg-primary/90"
-                                        >
-                                            Confirm Merge ({selectedTablesToMerge.length})
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm"
-                                        onClick={() => setMergeMode(true)}
-                                        className="h-8 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 font-medium"
-                                    >
-                                        Merge Tables
-                                    </Button>
-                                )}
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                                <span className="text-muted-foreground">Running: {occupied}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                                <span className="text-muted-foreground">Billed: {billed}</span>
+                            </div>
+                            <div className="pl-2 ml-2 border-l border-border text-foreground font-bold">
+                                Total: {totalTables}
                             </div>
                         </div>
                     </div>
@@ -197,14 +114,14 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                 </div>
 
                 {/* Main Content Area - Table Grid */}
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollArea className="flex-1 p-4 min-h-0">
                     {zones.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
+                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                             <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>
                             <p className="text-sm mt-1">Please set up your dining zones and tables in the admin panel.</p>
                         </div>
                     ) : activeZoneData ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4 pb-8">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-8">
                             {activeZoneData.tables?.map((table: any) => {
                                 const order = table.active_order;
                                 const isAvailable = !order;
@@ -217,42 +134,22 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                 return (
                                     <div 
                                         key={table.id}
-                                        onClick={() => (!isLockedByOther || mergeMode) && handleTableClick(table)}
+                                        onClick={() => !isLockedByOther && handleTableClick(table)}
                                         className={cn(
                                             "relative flex flex-col p-2.5 border rounded-lg transition-all min-h-[96px] group overflow-hidden",
-                                            table.is_merged ? cn(getMergeSpan(table.name), "bg-gradient-to-br from-card to-muted/30") : "",
                                             colorClass,
-                                            isLockedByOther && !mergeMode ? "opacity-70 cursor-not-allowed hover:scale-[1.02]" : "cursor-pointer hover:shadow-md hover:scale-[1.02]",
-                                            selectedTablesToMerge.includes(table.id) ? "ring-2 ring-primary ring-offset-2 bg-primary/5 scale-[1.02]" : ""
+                                            isLockedByOther ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:shadow-md hover:scale-[1.02]"
                                         )}
                                     >
-                                        {isLockedByOther && !mergeMode && (
+                                        {isLockedByOther && (
                                             <div className="absolute inset-0 bg-black/5 z-10 flex flex-col items-center justify-center backdrop-blur-[1px]">
-                                                <Users className="w-8 h-8 text-foreground/40 mb-1" />
+                                                <Lock className="w-8 h-8 text-foreground/40 mb-1" />
                                                 <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">Occupied</span>
                                             </div>
                                         )}
 
                                         <div className="flex justify-between items-start mb-1 relative z-0">
-                                            <div className="flex flex-col gap-0.5">
-                                                <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
-                                                {table.is_merged && (
-                                                    <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 mt-0.5">
-                                                        <span>🔗 Merged</span>
-                                                        <span 
-                                                            className="text-red-500 hover:text-red-600 cursor-pointer ml-1"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (confirm("Are you sure you want to unmerge these tables?")) {
-                                                                    router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id });
-                                                                }
-                                                            }}
-                                                        >
-                                                            (Unmerge)
-                                                        </span>
-                                                    </span>
-                                                )}
-                                            </div>
+                                            <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
                                             <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
                                                 isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
                                             )}>
