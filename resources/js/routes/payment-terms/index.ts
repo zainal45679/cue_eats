@@ -1,9 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::search
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
-* @route '/supply-chain/payment-terms/search'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
+ * @route '/supply-chain/payment-terms/search'
+ */
 export const search = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: search.url(options),
     method: 'get',
@@ -16,28 +16,27 @@ search.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::search
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
-* @route '/supply-chain/payment-terms/search'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
+ * @route '/supply-chain/payment-terms/search'
+ */
 search.url = (options?: RouteQueryOptions) => {
     return search.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::search
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
-* @route '/supply-chain/payment-terms/search'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
+ * @route '/supply-chain/payment-terms/search'
+ */
 search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: search.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::search
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
-* @route '/supply-chain/payment-terms/search'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:95
+ * @route '/supply-chain/payment-terms/search'
+ */
 search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: search.url(options),
     method: 'head',
@@ -45,9 +44,9 @@ search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::index
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
+ * @route '/supply-chain/payment-terms'
+ */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
@@ -60,28 +59,27 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::index
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
+ * @route '/supply-chain/payment-terms'
+ */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::index
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
+ * @route '/supply-chain/payment-terms'
+ */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::index
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:17
+ * @route '/supply-chain/payment-terms'
+ */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
@@ -89,9 +87,9 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::create
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
-* @route '/supply-chain/payment-terms/create'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
+ * @route '/supply-chain/payment-terms/create'
+ */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
@@ -104,28 +102,27 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::create
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
-* @route '/supply-chain/payment-terms/create'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
+ * @route '/supply-chain/payment-terms/create'
+ */
 create.url = (options?: RouteQueryOptions) => {
     return create.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::create
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
-* @route '/supply-chain/payment-terms/create'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
+ * @route '/supply-chain/payment-terms/create'
+ */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::create
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
-* @route '/supply-chain/payment-terms/create'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:30
+ * @route '/supply-chain/payment-terms/create'
+ */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: create.url(options),
     method: 'head',
@@ -133,9 +130,9 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::store
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
+ * @route '/supply-chain/payment-terms'
+ */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -148,18 +145,18 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::store
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
+ * @route '/supply-chain/payment-terms'
+ */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::store
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
-* @route '/supply-chain/payment-terms'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:37
+ * @route '/supply-chain/payment-terms'
+ */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -167,9 +164,9 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::show
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 export const show = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
@@ -182,25 +179,26 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::show
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 show.url = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { payment_term: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            payment_term: args[0],
-        }
+                    payment_term: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        payment_term: args.payment_term,
-    }
+                        payment_term: args.payment_term,
+                }
 
     return show.definition.url
             .replace('{payment_term}', parsedArgs.payment_term.toString())
@@ -209,19 +207,18 @@ show.url = (args: { payment_term: string | number } | [payment_term: string | nu
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::show
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 show.get = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::show
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:0
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 show.head = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
     method: 'head',
@@ -229,9 +226,9 @@ show.head = (args: { payment_term: string | number } | [payment_term: string | n
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::edit
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
-* @route '/supply-chain/payment-terms/{payment_term}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
+ * @route '/supply-chain/payment-terms/{payment_term}/edit'
+ */
 export const edit = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
@@ -244,25 +241,26 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::edit
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
-* @route '/supply-chain/payment-terms/{payment_term}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
+ * @route '/supply-chain/payment-terms/{payment_term}/edit'
+ */
 edit.url = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { payment_term: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            payment_term: args[0],
-        }
+                    payment_term: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        payment_term: args.payment_term,
-    }
+                        payment_term: args.payment_term,
+                }
 
     return edit.definition.url
             .replace('{payment_term}', parsedArgs.payment_term.toString())
@@ -271,19 +269,18 @@ edit.url = (args: { payment_term: string | number } | [payment_term: string | nu
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::edit
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
-* @route '/supply-chain/payment-terms/{payment_term}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
+ * @route '/supply-chain/payment-terms/{payment_term}/edit'
+ */
 edit.get = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::edit
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
-* @route '/supply-chain/payment-terms/{payment_term}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:54
+ * @route '/supply-chain/payment-terms/{payment_term}/edit'
+ */
 edit.head = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: edit.url(args, options),
     method: 'head',
@@ -291,9 +288,9 @@ edit.head = (args: { payment_term: string | number } | [payment_term: string | n
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::update
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 export const update = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
@@ -306,25 +303,26 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::update
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 update.url = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { payment_term: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            payment_term: args[0],
-        }
+                    payment_term: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        payment_term: args.payment_term,
-    }
+                        payment_term: args.payment_term,
+                }
 
     return update.definition.url
             .replace('{payment_term}', parsedArgs.payment_term.toString())
@@ -333,19 +331,18 @@ update.url = (args: { payment_term: string | number } | [payment_term: string | 
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::update
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 update.put = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::update
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:65
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 update.patch = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
     method: 'patch',
@@ -353,9 +350,9 @@ update.patch = (args: { payment_term: string | number } | [payment_term: string 
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::destroy
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 export const destroy = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
@@ -368,25 +365,26 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::destroy
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 destroy.url = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { payment_term: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            payment_term: args[0],
-        }
+                    payment_term: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        payment_term: args.payment_term,
-    }
+                        payment_term: args.payment_term,
+                }
 
     return destroy.definition.url
             .replace('{payment_term}', parsedArgs.payment_term.toString())
@@ -395,23 +393,22 @@ destroy.url = (args: { payment_term: string | number } | [payment_term: string |
 
 /**
 * @see \App\Http\Controllers\Dashboard\PaymentTermController::destroy
-* @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
-* @route '/supply-chain/payment-terms/{payment_term}'
-*/
+ * @see app/Http/Controllers/Dashboard/PaymentTermController.php:84
+ * @route '/supply-chain/payment-terms/{payment_term}'
+ */
 destroy.delete = (args: { payment_term: string | number } | [payment_term: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
-
 const paymentTerms = {
     search: Object.assign(search, search),
-    index: Object.assign(index, index),
-    create: Object.assign(create, create),
-    store: Object.assign(store, store),
-    show: Object.assign(show, show),
-    edit: Object.assign(edit, edit),
-    update: Object.assign(update, update),
-    destroy: Object.assign(destroy, destroy),
+index: Object.assign(index, index),
+create: Object.assign(create, create),
+store: Object.assign(store, store),
+show: Object.assign(show, show),
+edit: Object.assign(edit, edit),
+update: Object.assign(update, update),
+destroy: Object.assign(destroy, destroy),
 }
 
 export default paymentTerms

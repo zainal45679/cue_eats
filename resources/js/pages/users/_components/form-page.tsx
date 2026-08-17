@@ -26,7 +26,7 @@ export default function UserForm({ mode, user, title, businessLocations = [] }: 
     password: isEdit 
       ? z.string().optional() 
       : z.string().min(6, "Password must be at least 6 characters"),
-    business_location_id: z.number().nullable().optional(),
+    business_location_id: z.string().or(z.number()).nullable().optional(),
     status: z.boolean().default(true),
   });
 

@@ -35,14 +35,16 @@ createInertiaApp({
       import.meta.glob("./pages/**/*.tsx")
     );
 
+    const Component = (page as any).default || page;
+
     if (name.startsWith("inventory-setup/")) {
-      page.default.layout = page.default.layout || getInventorySetupLayout;
+      Component.layout = Component.layout || getInventorySetupLayout;
     } else if (name.startsWith("supply-chain/")) {
-      page.default.layout = page.default.layout || getSupplyChainLayout;
+      Component.layout = Component.layout || getSupplyChainLayout;
     } else if (!name.startsWith("auth/")) {
-      page.default.layout = page.default.layout || getDefaultLayout;
+      Component.layout = Component.layout || getDefaultLayout;
     }
-    
+
     return page;
   },
   setup({ el, App, props }) {

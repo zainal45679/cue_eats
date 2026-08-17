@@ -1,11 +1,10 @@
 import Auth from './Auth'
-import Settings from './Settings'
 import Dashboard from './Dashboard'
-
+import Settings from './Settings'
 const Controllers = {
     Auth: Object.assign(Auth, Auth),
-    Settings: Object.assign(Settings, Settings),
-    Dashboard: Object.assign(Dashboard, Dashboard),
+Dashboard: Object.assign(Dashboard, Dashboard),
+Settings: Object.assign(Settings, Settings),
 }
 
 export default Controllers

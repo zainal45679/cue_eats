@@ -261,10 +261,16 @@ class PurchaseOrderController extends Controller
             }
 
             // Track items as on-order in the delivery location's inventory
+            $targetLocationId = (!empty($purchaseOrder->delivery_location_id) && \Illuminate\Support\Str::isUuid((string)$purchaseOrder->delivery_location_id) && \App\Models\BusinessLocation::where('id', $purchaseOrder->delivery_location_id)->exists())
+                ? (string)$purchaseOrder->delivery_location_id
+                : ((!empty($purchaseOrder->business_location_id) && \Illuminate\Support\Str::isUuid((string)$purchaseOrder->business_location_id) && \App\Models\BusinessLocation::where('id', $purchaseOrder->business_location_id)->exists())
+                    ? (string)$purchaseOrder->business_location_id
+                    : \App\Models\BusinessLocation::first()?->id);
+
             foreach ($purchaseOrder->items()->get() as $item) {
                 $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                     [
-                        'business_location_id' => $purchaseOrder->delivery_location_id,
+                        'business_location_id' => $targetLocationId,
                         'storage_name' => 'Main Store',
                     ],
                     [

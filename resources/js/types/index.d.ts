@@ -49,3 +49,15 @@ export interface User {
   updated_at: string;
   [key: string]: unknown; // This allows for additional properties...
 }
+
+export type PageProps<T extends Record<string, unknown> = Record<string, unknown>> = T & {
+  auth: Auth;
+  appearance?: string;
+  status?: string;
+  flash: {
+    success?: string;
+    error?: string;
+    message?: string;
+  };
+  [key: string]: unknown;
+};

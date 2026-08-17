@@ -20,6 +20,9 @@ final class DatabaseSeeder extends Seeder
             BusinessLocationSeeder::class,
             AdminUserSeeder::class,
             RoleSeeder::class,
+            MenuPOSSeeder::class,
+            DummyInventorySeeder::class,
+            RecipeSeeder::class,
         ]);
     }
 }

@@ -17,14 +17,14 @@ class MenuPOSSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
         DB::table('menu_item_modifier_group')->truncate();
         MenuItem::truncate();
         Modifier::truncate();
         ModifierGroup::truncate();
         MenuCategory::truncate();
         \App\Models\RecipeItem::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
 
         // 1. Create Categories
         $catBurgers = MenuCategory::create(['name' => 'Signature Burgers', 'description' => '100% Angus beef, smashed to perfection.']);

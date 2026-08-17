@@ -1,9 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults, validateParameters } from './../wayfinder'
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::login
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
-* @route '/login'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
+ * @route '/login'
+ */
 export const login = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: login.url(options),
     method: 'get',
@@ -16,28 +16,27 @@ login.definition = {
 
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::login
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
-* @route '/login'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
+ * @route '/login'
+ */
 login.url = (options?: RouteQueryOptions) => {
     return login.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::login
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
-* @route '/login'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
+ * @route '/login'
+ */
 login.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: login.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::login
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
-* @route '/login'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:21
+ * @route '/login'
+ */
 login.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: login.url(options),
     method: 'head',
@@ -45,9 +44,9 @@ login.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::logout
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
-* @route '/logout'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
+ * @route '/logout'
+ */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: logout.url(options),
     method: 'post',
@@ -60,18 +59,18 @@ logout.definition = {
 
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::logout
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
-* @route '/logout'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
+ * @route '/logout'
+ */
 logout.url = (options?: RouteQueryOptions) => {
     return logout.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Auth\AuthenticatedSessionController::logout
-* @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
-* @route '/logout'
-*/
+ * @see app/Http/Controllers/Auth/AuthenticatedSessionController.php:46
+ * @route '/logout'
+ */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: logout.url(options),
     method: 'post',
@@ -79,9 +78,9 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \Laravel\Telescope\Http\Controllers\HomeController::telescope
-* @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
-* @route '/telescope/{view?}'
-*/
+ * @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
+ * @route '/telescope/{view?}'
+ */
 export const telescope = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: telescope.url(args, options),
     method: 'get',
@@ -94,29 +93,30 @@ telescope.definition = {
 
 /**
 * @see \Laravel\Telescope\Http\Controllers\HomeController::telescope
-* @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
-* @route '/telescope/{view?}'
-*/
+ * @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
+ * @route '/telescope/{view?}'
+ */
 telescope.url = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { view: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            view: args[0],
-        }
+                    view: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     validateParameters(args, [
-        "view",
-    ])
+            "view",
+        ])
 
     const parsedArgs = {
-        view: args?.view,
-    }
+                        view: args?.view,
+                }
 
     return telescope.definition.url
             .replace('{view?}', parsedArgs.view?.toString() ?? '')
@@ -125,28 +125,27 @@ telescope.url = (args?: { view?: string | number } | [view: string | number ] | 
 
 /**
 * @see \Laravel\Telescope\Http\Controllers\HomeController::telescope
-* @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
-* @route '/telescope/{view?}'
-*/
+ * @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
+ * @route '/telescope/{view?}'
+ */
 telescope.get = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: telescope.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \Laravel\Telescope\Http\Controllers\HomeController::telescope
-* @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
-* @route '/telescope/{view?}'
-*/
+ * @see vendor/laravel/telescope/src/Http/Controllers/HomeController.php:15
+ * @route '/telescope/{view?}'
+ */
 telescope.head = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: telescope.url(args, options),
     method: 'head',
 })
 
 /**
-* @see routes/web.php:8
-* @route '/'
-*/
+ * @see routes/web.php:8
+ * @route '/'
+ */
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
     method: 'get',
@@ -158,35 +157,35 @@ home.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:8
-* @route '/'
-*/
+ * @see routes/web.php:8
+ * @route '/'
+ */
 home.url = (options?: RouteQueryOptions) => {
     return home.definition.url + queryParams(options)
 }
 
 /**
-* @see routes/web.php:8
-* @route '/'
-*/
+ * @see routes/web.php:8
+ * @route '/'
+ */
 home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
     method: 'get',
 })
-
 /**
-* @see routes/web.php:8
-* @route '/'
-*/
+ * @see routes/web.php:8
+ * @route '/'
+ */
 home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: home.url(options),
     method: 'head',
 })
 
 /**
-* @see routes/web.php:13
-* @route '/dashboard'
-*/
+* @see \App\Http\Controllers\Dashboard\DashboardController::dashboard
+ * @see app/Http/Controllers/Dashboard/DashboardController.php:19
+ * @route '/dashboard'
+ */
 export const dashboard = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(options),
     method: 'get',
@@ -198,35 +197,37 @@ dashboard.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/web.php:13
-* @route '/dashboard'
-*/
+* @see \App\Http\Controllers\Dashboard\DashboardController::dashboard
+ * @see app/Http/Controllers/Dashboard/DashboardController.php:19
+ * @route '/dashboard'
+ */
 dashboard.url = (options?: RouteQueryOptions) => {
     return dashboard.definition.url + queryParams(options)
 }
 
 /**
-* @see routes/web.php:13
-* @route '/dashboard'
-*/
+* @see \App\Http\Controllers\Dashboard\DashboardController::dashboard
+ * @see app/Http/Controllers/Dashboard/DashboardController.php:19
+ * @route '/dashboard'
+ */
 dashboard.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(options),
     method: 'get',
 })
-
 /**
-* @see routes/web.php:13
-* @route '/dashboard'
-*/
+* @see \App\Http\Controllers\Dashboard\DashboardController::dashboard
+ * @see app/Http/Controllers/Dashboard/DashboardController.php:19
+ * @route '/dashboard'
+ */
 dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: dashboard.url(options),
     method: 'head',
 })
 
 /**
-* @see routes/web.php:17
-* @route '/set-active-location'
-*/
+ * @see routes/web.php:15
+ * @route '/set-active-location'
+ */
 export const setActiveLocation = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: setActiveLocation.url(options),
     method: 'post',
@@ -238,19 +239,18 @@ setActiveLocation.definition = {
 } satisfies RouteDefinition<["post"]>
 
 /**
-* @see routes/web.php:17
-* @route '/set-active-location'
-*/
+ * @see routes/web.php:15
+ * @route '/set-active-location'
+ */
 setActiveLocation.url = (options?: RouteQueryOptions) => {
     return setActiveLocation.definition.url + queryParams(options)
 }
 
 /**
-* @see routes/web.php:17
-* @route '/set-active-location'
-*/
+ * @see routes/web.php:15
+ * @route '/set-active-location'
+ */
 setActiveLocation.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: setActiveLocation.url(options),
     method: 'post',
 })
-

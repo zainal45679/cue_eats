@@ -105,16 +105,28 @@ class GoodsReceiptNoteController extends Controller
         abort(400, 'Source document missing.');
     }
 
+    private function resolveLocationUuid(...$candidates): string
+    {
+        foreach ($candidates as $id) {
+            if (!empty($id) && \Illuminate\Support\Str::isUuid((string)$id) && \App\Models\BusinessLocation::where('id', (string)$id)->exists()) {
+                return (string)$id;
+            }
+        }
+        return \App\Models\BusinessLocation::first()?->id ?? '';
+    }
+
     private function storeStoGrn($data)
     {
         $sto = StockTransferOrder::findOrFail($data['sto_id']);
         
-        $canReceive = auth()->user()->hasRole('admin') || auth()->user()->business_location_id === $sto->to_location_id;
+        $targetLocationId = $this->resolveLocationUuid($sto->to_location_id, $sto->from_location_id);
+
+        $canReceive = auth()->user()->hasRole('admin') || auth()->user()->business_location_id === $targetLocationId;
         if (!$canReceive) {
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        DB::transaction(function () use ($data, $sto) {
+        DB::transaction(function () use ($data, $sto, $targetLocationId) {
             $stoLocked = StockTransferOrder::where('id', $sto->id)->lockForUpdate()->first();
             if (!in_array($stoLocked->status, ['dispatched', 'partially_received'])) {
                 abort(403, 'STO must be dispatched before receiving.');
@@ -128,7 +140,7 @@ class GoodsReceiptNoteController extends Controller
             $grn = GoodsReceiptNote::create([
                 'stock_transfer_order_id' => $stoLocked->id,
                 'grn_number' => 'GRN-' . $nextId,
-                'location_id' => $sto->to_location_id,
+                'location_id' => $targetLocationId,
                 'received_by_id' => auth()->id(),
                 'status' => 'completed',
                 'remarks' => $data['remarks'] ?? null,
@@ -157,7 +169,7 @@ class GoodsReceiptNoteController extends Controller
                 if ($convertedReceivedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
-                            'business_location_id' => $grn->location_id,
+                            'business_location_id' => $targetLocationId,
                             'storage_name' => 'Main Store',
                         ],
                         [
@@ -177,7 +189,7 @@ class GoodsReceiptNoteController extends Controller
                     $balance->increment('available_qty', $convertedReceivedQty);
 
                     InventoryLedger::create([
-                        'business_location_id' => $stoLocked->to_location_id,
+                        'business_location_id' => $targetLocationId,
                         'ingredient_id' => $itemData['ingredient_id'],
                         'transaction_type' => 'transfer_in',
                         'reference_type' => GoodsReceiptNote::class,
@@ -219,12 +231,14 @@ class GoodsReceiptNoteController extends Controller
     {
         $po = \App\Models\PurchaseOrder::findOrFail($data['po_id']);
         
-        $canReceive = auth()->user()->hasRole('admin') || auth()->user()->business_location_id === $po->delivery_location_id;
+        $targetLocationId = $this->resolveLocationUuid($po->delivery_location_id, $po->business_location_id);
+
+        $canReceive = auth()->user()->hasRole('admin') || auth()->user()->business_location_id === $targetLocationId;
         if (!$canReceive) {
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        DB::transaction(function () use ($data, $po) {
+        DB::transaction(function () use ($data, $po, $targetLocationId) {
             $poLocked = \App\Models\PurchaseOrder::where('id', $po->id)->lockForUpdate()->first();
             if (!in_array($poLocked->status, ['approved', 'partially_received'])) {
                 abort(403, 'PO must be approved before receiving.');
@@ -238,7 +252,7 @@ class GoodsReceiptNoteController extends Controller
             $grn = GoodsReceiptNote::create([
                 'purchase_order_id' => $poLocked->id,
                 'grn_number' => 'GRN-' . $nextId,
-                'location_id' => $po->delivery_location_id,
+                'location_id' => $targetLocationId,
                 'received_by_id' => auth()->id(),
                 'status' => 'completed',
                 'remarks' => $data['remarks'] ?? null,
@@ -277,7 +291,7 @@ class GoodsReceiptNoteController extends Controller
                 if ($convertedReceivedQty > 0 || $convertedRejectedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
-                            'business_location_id' => $grn->location_id,
+                            'business_location_id' => $targetLocationId,
                             'storage_name' => 'Main Store',
                         ],
                         [
@@ -306,7 +320,7 @@ class GoodsReceiptNoteController extends Controller
                         $balance->increment('available_qty', $convertedReceivedQty);
 
                         InventoryLedger::create([
-                            'business_location_id' => $poLocked->delivery_location_id,
+                            'business_location_id' => $targetLocationId,
                             'ingredient_id' => $itemData['ingredient_id'],
                             'transaction_type' => 'purchase',
                             'reference_type' => GoodsReceiptNote::class,

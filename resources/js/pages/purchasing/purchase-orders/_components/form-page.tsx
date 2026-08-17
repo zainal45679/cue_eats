@@ -15,16 +15,16 @@ import { ZodSchemaProvider } from "@/provider/ZodSchemaProvider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
 
 const itemSchema = z.object({
-    ingredient_id: z.coerce.number().min(1, "Ingredient is required"),
-    supplier_id: z.coerce.number().optional(), // Used in category mode
+    ingredient_id: z.string().or(z.number()).refine((v) => !!v && String(v) !== "0" && String(v) !== "", "Ingredient is required"),
+    supplier_id: z.string().or(z.number()).optional(), // Used in category mode
     quantity: z.coerce.number().min(0.01, "Quantity must be > 0"),
     unit_price: z.coerce.number().min(0, "Price must be >= 0"),
 });
 
 const schema = z.object({
-    supplier_id: z.coerce.number().optional(), // Required in supplier mode
-    category_id: z.coerce.number().optional(), // Required in category mode
-    delivery_location_id: z.coerce.number().min(1, "Delivery Location is required"),
+    supplier_id: z.string().or(z.number()).optional(), // Required in supplier mode
+    category_id: z.string().or(z.number()).optional(), // Required in category mode
+    delivery_location_id: z.string().or(z.number()).refine((v) => !!v && String(v) !== "0" && String(v) !== "", "Delivery Location is required"),
     expected_delivery_date: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
     items: z.array(itemSchema).min(1, "At least one item is required"),
@@ -44,12 +44,12 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
         resolver: zodResolver(schema),
         mode: "onChange",
         defaultValues: {
-            supplier_id: defaultValues?.supplier_id || 0,
-            category_id: 0,
-            delivery_location_id: defaultValues?.delivery_location_id || 0,
+            supplier_id: defaultValues?.supplier_id || "",
+            category_id: "",
+            delivery_location_id: defaultValues?.delivery_location_id || "",
             expected_delivery_date: defaultValues?.expected_delivery_date || "",
             notes: defaultValues?.notes || "",
-            items: defaultValues?.items || [{ ingredient_id: 0, quantity: 1, unit_price: 0, supplier_id: 0 }],
+            items: defaultValues?.items || [{ ingredient_id: "", quantity: 1, unit_price: 0, supplier_id: "" }],
             mode: isEditing ? "supplier" : "supplier", 
         },
     });
@@ -66,21 +66,21 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
         data.mode = mode;
         
         // Manual validation for supplier mode
-        if (mode === "supplier" && (!data.supplier_id || data.supplier_id === 0)) {
+        if (mode === "supplier" && (!data.supplier_id || String(data.supplier_id) === "0" || String(data.supplier_id) === "")) {
             form.setError("supplier_id", { message: "Supplier is required" });
             return;
         }
 
         // Manual validation for category mode 
         if (mode === "category") {
-            if (!data.category_id || data.category_id === 0) {
+            if (!data.category_id || String(data.category_id) === "0" || String(data.category_id) === "") {
                 form.setError("category_id", { message: "Category is required" });
                 return;
             }
             
             let hasError = false;
             data.items.forEach((item, index) => {
-                if (!item.supplier_id || item.supplier_id === 0) {
+                if (!item.supplier_id || String(item.supplier_id) === "0" || String(item.supplier_id) === "") {
                     form.setError(`items.${index}.supplier_id` as any, { message: "Required" });
                     hasError = true;
                 }
@@ -224,11 +224,11 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                 const globalCategoryId = form.watch("category_id");
                                                 const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
 
-                                                const availableIngredients = globalCategoryId && Number(globalCategoryId) > 0
+                                                const availableIngredients = globalCategoryId && String(globalCategoryId) !== "0" && String(globalCategoryId) !== ""
                                                     ? ingredients.filter((i: any) => String(i.ingredient_category_id) === String(globalCategoryId))
                                                     : ingredients;
 
-                                                const availableSuppliers = currentIngredientId && Number(currentIngredientId) > 0
+                                                const availableSuppliers = currentIngredientId && String(currentIngredientId) !== "0" && String(currentIngredientId) !== ""
                                                     ? supplierIngredients
                                                         .filter((si: any) => String(si.ingredient_id) === String(currentIngredientId))
                                                         .map((si: any) => {

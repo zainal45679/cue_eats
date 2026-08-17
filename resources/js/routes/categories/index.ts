@@ -1,9 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::create
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/create'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/create'
+ */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
@@ -16,28 +16,27 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::create
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/create'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/create'
+ */
 create.url = (options?: RouteQueryOptions) => {
     return create.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::create
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/create'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/create'
+ */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::create
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/create'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/create'
+ */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: create.url(options),
     method: 'head',
@@ -45,9 +44,9 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::store
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
-* @route '/menu-pos/categories'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
+ * @route '/menu-pos/categories'
+ */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -60,18 +59,18 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::store
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
-* @route '/menu-pos/categories'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
+ * @route '/menu-pos/categories'
+ */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::store
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
-* @route '/menu-pos/categories'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:20
+ * @route '/menu-pos/categories'
+ */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -79,9 +78,9 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::show
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}'
+ */
 export const show = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
@@ -94,25 +93,26 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::show
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}'
+ */
 show.url = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { category: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            category: args[0],
-        }
+                    category: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        category: args.category,
-    }
+                        category: args.category,
+                }
 
     return show.definition.url
             .replace('{category}', parsedArgs.category.toString())
@@ -121,19 +121,18 @@ show.url = (args: { category: string | number } | [category: string | number ] |
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::show
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}'
+ */
 show.get = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::show
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}'
+ */
 show.head = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
     method: 'head',
@@ -141,9 +140,9 @@ show.head = (args: { category: string | number } | [category: string | number ] 
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::edit
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}/edit'
+ */
 export const edit = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
@@ -156,25 +155,26 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::edit
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}/edit'
+ */
 edit.url = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { category: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            category: args[0],
-        }
+                    category: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        category: args.category,
-    }
+                        category: args.category,
+                }
 
     return edit.definition.url
             .replace('{category}', parsedArgs.category.toString())
@@ -183,19 +183,18 @@ edit.url = (args: { category: string | number } | [category: string | number ] |
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::edit
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}/edit'
+ */
 edit.get = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::edit
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
-* @route '/menu-pos/categories/{category}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:0
+ * @route '/menu-pos/categories/{category}/edit'
+ */
 edit.head = (args: { category: string | number } | [category: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: edit.url(args, options),
     method: 'head',
@@ -203,10 +202,10 @@ edit.head = (args: { category: string | number } | [category: string | number ] 
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::update
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
-* @route '/menu-pos/categories/{category}'
-*/
-export const update = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
+ * @route '/menu-pos/categories/{category}'
+ */
+export const update = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
@@ -218,31 +217,31 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::update
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
-* @route '/menu-pos/categories/{category}'
-*/
-update.url = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
+ * @route '/menu-pos/categories/{category}'
+ */
+update.url = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { category: args }
     }
 
-    if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
-        args = { category: args.id }
-    }
-
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { category: args.id }
+        }
+    
     if (Array.isArray(args)) {
         args = {
-            category: args[0],
-        }
+                    category: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        category: typeof args.category === 'object'
-        ? args.category.id
-        : args.category,
-    }
+                        category: typeof args.category === 'object'
+                ? args.category.id
+                : args.category,
+                }
 
     return update.definition.url
             .replace('{category}', parsedArgs.category.toString())
@@ -251,30 +250,29 @@ update.url = (args: { category: number | { id: number } } | [category: number | 
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::update
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
-* @route '/menu-pos/categories/{category}'
-*/
-update.put = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
+ * @route '/menu-pos/categories/{category}'
+ */
+update.put = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::update
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
-* @route '/menu-pos/categories/{category}'
-*/
-update.patch = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:33
+ * @route '/menu-pos/categories/{category}'
+ */
+update.patch = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
     method: 'patch',
 })
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::destroy
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
-* @route '/menu-pos/categories/{category}'
-*/
-export const destroy = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
+ * @route '/menu-pos/categories/{category}'
+ */
+export const destroy = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
@@ -286,31 +284,31 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::destroy
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
-* @route '/menu-pos/categories/{category}'
-*/
-destroy.url = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
+ * @route '/menu-pos/categories/{category}'
+ */
+destroy.url = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { category: args }
     }
 
-    if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
-        args = { category: args.id }
-    }
-
+            if (typeof args === 'object' && !Array.isArray(args) && 'id' in args) {
+            args = { category: args.id }
+        }
+    
     if (Array.isArray(args)) {
         args = {
-            category: args[0],
-        }
+                    category: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        category: typeof args.category === 'object'
-        ? args.category.id
-        : args.category,
-    }
+                        category: typeof args.category === 'object'
+                ? args.category.id
+                : args.category,
+                }
 
     return destroy.definition.url
             .replace('{category}', parsedArgs.category.toString())
@@ -319,21 +317,20 @@ destroy.url = (args: { category: number | { id: number } } | [category: number |
 
 /**
 * @see \App\Http\Controllers\Dashboard\MenuCategoryController::destroy
-* @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
-* @route '/menu-pos/categories/{category}'
-*/
-destroy.delete = (args: { category: number | { id: number } } | [category: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
+ * @see app/Http/Controllers/Dashboard/MenuCategoryController.php:46
+ * @route '/menu-pos/categories/{category}'
+ */
+destroy.delete = (args: { category: string | { id: string } } | [category: string | { id: string } ] | string | { id: string }, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
-
 const categories = {
     create: Object.assign(create, create),
-    store: Object.assign(store, store),
-    show: Object.assign(show, show),
-    edit: Object.assign(edit, edit),
-    update: Object.assign(update, update),
-    destroy: Object.assign(destroy, destroy),
+store: Object.assign(store, store),
+show: Object.assign(show, show),
+edit: Object.assign(edit, edit),
+update: Object.assign(update, update),
+destroy: Object.assign(destroy, destroy),
 }
 
 export default categories

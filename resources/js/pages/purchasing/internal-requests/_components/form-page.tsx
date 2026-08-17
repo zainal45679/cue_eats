@@ -12,17 +12,17 @@ import { usePage, router } from "@inertiajs/react";
 import { ZodSchemaProvider } from "@/provider/ZodSchemaProvider";
 
 const itemSchema = z.object({
-    ingredient_id: z.coerce.number().min(1, "Ingredient is required"),
+    ingredient_id: z.string().or(z.number()).refine((v) => !!v && String(v) !== "0" && String(v) !== "", "Ingredient is required"),
     quantity: z.coerce.number().min(0.01, "Quantity must be > 0"),
 });
 
 const schema = z.object({
-    from_location_id: z.coerce.number().min(1, "Location is required"),
-    to_location_id: z.coerce.number().min(1, "Location is required"),
+    from_location_id: z.string().or(z.number()).refine((v) => !!v && String(v) !== "0" && String(v) !== "", "Location is required"),
+    to_location_id: z.string().or(z.number()).refine((v) => !!v && String(v) !== "0" && String(v) !== "", "Location is required"),
     remarks: z.string().nullable().optional(),
     items: z.array(itemSchema).min(1, "At least one item is required"),
 }).superRefine((data, ctx) => {
-    if (data.from_location_id === data.to_location_id && data.from_location_id > 0) {
+    if (data.from_location_id && data.to_location_id && String(data.from_location_id) === String(data.to_location_id) && String(data.from_location_id) !== "0") {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "Cannot request items from the same location",
@@ -42,10 +42,10 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
         resolver: zodResolver(schema),
         mode: "onChange",
         defaultValues: {
-            from_location_id: defaultValues?.from_location_id || 0,
-            to_location_id: defaultValues?.to_location_id || props.auth?.user?.business_location_id || 0,
+            from_location_id: defaultValues?.from_location_id || "",
+            to_location_id: defaultValues?.to_location_id || props.auth?.user?.business_location_id || "",
             remarks: defaultValues?.remarks || "",
-            items: defaultValues?.items || [{ ingredient_id: 0, quantity: 1 }],
+            items: defaultValues?.items || [{ ingredient_id: "", quantity: 1 }],
         },
     });
 
@@ -98,7 +98,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                     <h3 className="text-lg font-semibold tracking-tight">Requested Items</h3>
                                     <p className="text-sm text-muted-foreground">Add ingredients you want to request.</p>
                                 </div>
-                                <Button type="button" variant="outline" size="sm" onClick={() => append({ ingredient_id: 0, quantity: 1 })}>
+                                <Button type="button" variant="outline" size="sm" onClick={() => append({ ingredient_id: "", quantity: 1 })}>
                                     <Plus className="mr-2 size-4" /> Add Item
                                 </Button>
                             </div>
@@ -116,7 +116,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                             const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
                                             
                                             // Filter ingredients by category
-                                            const availableIngredients = currentCategoryId && Number(currentCategoryId) > 0
+                                            const availableIngredients = currentCategoryId && String(currentCategoryId) !== "0" && String(currentCategoryId) !== ""
                                                 ? ingredients.filter((i: any) => String(i.ingredient_category_id) === String(currentCategoryId))
                                                 : ingredients;
 

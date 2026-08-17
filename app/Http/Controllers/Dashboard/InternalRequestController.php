@@ -53,8 +53,8 @@ class InternalRequestController extends Controller
             $data['requested_by_id'] = auth()->id();
             
             // Security: Enforce tenant scope. A branch user can only request items FOR their own branch.
-            $toLocId = auth()->user()->hasRole('admin') ? $data['to_location_id'] : auth()->user()->business_location_id;
-            $data['to_location_id'] = $toLocId;
+            $toLocId = auth()->user()->hasRole('admin') ? $data['to_location_id'] : (auth()->user()->business_location_id ?? $data['to_location_id']);
+            $data['to_location_id'] = \App\Models\BusinessLocation::where('id', $toLocId)->exists() ? $toLocId : \App\Models\BusinessLocation::first()?->id;
 
             $data['request_number'] = 'REQ-' . time(); // Simple generator
             $data['status'] = 'pending_approval'; // Skip draft, go straight to pending approval
@@ -171,10 +171,14 @@ class InternalRequestController extends Controller
             'stos.items.ingredient' => fn($q) => $q->withTrashed()
         ]);
 
+        $fromLocId = \App\Models\BusinessLocation::where('id', $internalRequest->from_location_id)->exists() 
+            ? $internalRequest->from_location_id 
+            : \App\Models\BusinessLocation::first()?->id;
+
         // Load live stock for the sending location
         foreach ($internalRequest->items as $item) {
-            $balance = \App\Models\InventoryBalance::whereHas('storageLocation', function($q) use ($internalRequest) {
-                $q->where('business_location_id', $internalRequest->from_location_id);
+            $balance = \App\Models\InventoryBalance::whereHas('storageLocation', function($q) use ($fromLocId) {
+                $q->where('business_location_id', $fromLocId);
             })->where('ingredient_id', $item->ingredient_id)->sum('available_qty');
             
             $item->live_stock = $balance;
@@ -237,11 +241,27 @@ class InternalRequestController extends Controller
             }
 
             if ($hasDispatchedAnything) {
+                // Ensure valid location UUIDs exist in business_locations
+                $fromLocation = \App\Models\BusinessLocation::find($internalRequest->from_location_id) 
+                    ?? \App\Models\BusinessLocation::where('is_parent_location', true)->first() 
+                    ?? \App\Models\BusinessLocation::first();
+                    
+                $toLocation = \App\Models\BusinessLocation::find($internalRequest->to_location_id) 
+                    ?? \App\Models\BusinessLocation::where('id', '!=', $fromLocation->id)->first() 
+                    ?? $fromLocation;
+
+                if ($internalRequest->from_location_id !== $fromLocation->id || $internalRequest->to_location_id !== $toLocation->id) {
+                    $internalRequest->update([
+                        'from_location_id' => $fromLocation->id,
+                        'to_location_id' => $toLocation->id,
+                    ]);
+                }
+
                 $sto = \App\Models\StockTransferOrder::create([
                     'internal_request_id' => $internalRequest->id,
                     'sto_number' => 'STO-' . time(),
-                    'from_location_id' => $internalRequest->from_location_id,
-                    'to_location_id' => $internalRequest->to_location_id,
+                    'from_location_id' => $fromLocation->id,
+                    'to_location_id' => $toLocation->id,
                     'status' => 'dispatched',
                     'dispatched_at' => now(),
                     'created_by' => auth()->id(),
@@ -249,7 +269,7 @@ class InternalRequestController extends Controller
 
                 $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                     [
-                        'business_location_id' => $internalRequest->from_location_id,
+                        'business_location_id' => $fromLocation->id,
                         'storage_name' => 'Main Store',
                     ],
                     [
@@ -272,7 +292,7 @@ class InternalRequestController extends Controller
                     $balance->decrement('available_qty', $dItem['dispatched_quantity']);
 
                     \App\Models\InventoryLedger::create([
-                        'business_location_id' => $internalRequest->from_location_id,
+                        'business_location_id' => $fromLocation->id,
                         'ingredient_id' => $dItem['ingredient_id'],
                         'transaction_type' => 'transfer_out',
                         'reference_type' => \App\Models\StockTransferOrder::class,

@@ -1,9 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::index
-* @see app/Http/Controllers/Dashboard/UserController.php:17
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:17
+ * @route '/users'
+ */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
@@ -16,28 +16,27 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::index
-* @see app/Http/Controllers/Dashboard/UserController.php:17
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:17
+ * @route '/users'
+ */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::index
-* @see app/Http/Controllers/Dashboard/UserController.php:17
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:17
+ * @route '/users'
+ */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::index
-* @see app/Http/Controllers/Dashboard/UserController.php:17
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:17
+ * @route '/users'
+ */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
@@ -45,9 +44,9 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::create
-* @see app/Http/Controllers/Dashboard/UserController.php:37
-* @route '/users/create'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:37
+ * @route '/users/create'
+ */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
@@ -60,28 +59,27 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::create
-* @see app/Http/Controllers/Dashboard/UserController.php:37
-* @route '/users/create'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:37
+ * @route '/users/create'
+ */
 create.url = (options?: RouteQueryOptions) => {
     return create.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::create
-* @see app/Http/Controllers/Dashboard/UserController.php:37
-* @route '/users/create'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:37
+ * @route '/users/create'
+ */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::create
-* @see app/Http/Controllers/Dashboard/UserController.php:37
-* @route '/users/create'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:37
+ * @route '/users/create'
+ */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: create.url(options),
     method: 'head',
@@ -89,9 +87,9 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::store
-* @see app/Http/Controllers/Dashboard/UserController.php:46
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:46
+ * @route '/users'
+ */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -104,18 +102,18 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::store
-* @see app/Http/Controllers/Dashboard/UserController.php:46
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:46
+ * @route '/users'
+ */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::store
-* @see app/Http/Controllers/Dashboard/UserController.php:46
-* @route '/users'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:46
+ * @route '/users'
+ */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -123,9 +121,9 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::show
-* @see app/Http/Controllers/Dashboard/UserController.php:77
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:77
+ * @route '/users/{user}'
+ */
 export const show = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
@@ -138,25 +136,26 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::show
-* @see app/Http/Controllers/Dashboard/UserController.php:77
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:77
+ * @route '/users/{user}'
+ */
 show.url = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { user: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            user: args[0],
-        }
+                    user: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        user: args.user,
-    }
+                        user: args.user,
+                }
 
     return show.definition.url
             .replace('{user}', parsedArgs.user.toString())
@@ -165,19 +164,18 @@ show.url = (args: { user: string | number } | [user: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::show
-* @see app/Http/Controllers/Dashboard/UserController.php:77
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:77
+ * @route '/users/{user}'
+ */
 show.get = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::show
-* @see app/Http/Controllers/Dashboard/UserController.php:77
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:77
+ * @route '/users/{user}'
+ */
 show.head = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
     method: 'head',
@@ -185,9 +183,9 @@ show.head = (args: { user: string | number } | [user: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::edit
-* @see app/Http/Controllers/Dashboard/UserController.php:93
-* @route '/users/{user}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:93
+ * @route '/users/{user}/edit'
+ */
 export const edit = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
@@ -200,25 +198,26 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::edit
-* @see app/Http/Controllers/Dashboard/UserController.php:93
-* @route '/users/{user}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:93
+ * @route '/users/{user}/edit'
+ */
 edit.url = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { user: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            user: args[0],
-        }
+                    user: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        user: args.user,
-    }
+                        user: args.user,
+                }
 
     return edit.definition.url
             .replace('{user}', parsedArgs.user.toString())
@@ -227,19 +226,18 @@ edit.url = (args: { user: string | number } | [user: string | number ] | string 
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::edit
-* @see app/Http/Controllers/Dashboard/UserController.php:93
-* @route '/users/{user}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:93
+ * @route '/users/{user}/edit'
+ */
 edit.get = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::edit
-* @see app/Http/Controllers/Dashboard/UserController.php:93
-* @route '/users/{user}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:93
+ * @route '/users/{user}/edit'
+ */
 edit.head = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: edit.url(args, options),
     method: 'head',
@@ -247,9 +245,9 @@ edit.head = (args: { user: string | number } | [user: string | number ] | string
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::update
-* @see app/Http/Controllers/Dashboard/UserController.php:115
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:115
+ * @route '/users/{user}'
+ */
 export const update = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
@@ -262,25 +260,26 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::update
-* @see app/Http/Controllers/Dashboard/UserController.php:115
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:115
+ * @route '/users/{user}'
+ */
 update.url = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { user: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            user: args[0],
-        }
+                    user: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        user: args.user,
-    }
+                        user: args.user,
+                }
 
     return update.definition.url
             .replace('{user}', parsedArgs.user.toString())
@@ -289,19 +288,18 @@ update.url = (args: { user: string | number } | [user: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::update
-* @see app/Http/Controllers/Dashboard/UserController.php:115
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:115
+ * @route '/users/{user}'
+ */
 update.put = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::update
-* @see app/Http/Controllers/Dashboard/UserController.php:115
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:115
+ * @route '/users/{user}'
+ */
 update.patch = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
     method: 'patch',
@@ -309,9 +307,9 @@ update.patch = (args: { user: string | number } | [user: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::destroy
-* @see app/Http/Controllers/Dashboard/UserController.php:152
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:152
+ * @route '/users/{user}'
+ */
 export const destroy = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
@@ -324,25 +322,26 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::destroy
-* @see app/Http/Controllers/Dashboard/UserController.php:152
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:152
+ * @route '/users/{user}'
+ */
 destroy.url = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { user: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            user: args[0],
-        }
+                    user: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        user: args.user,
-    }
+                        user: args.user,
+                }
 
     return destroy.definition.url
             .replace('{user}', parsedArgs.user.toString())
@@ -351,22 +350,21 @@ destroy.url = (args: { user: string | number } | [user: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Dashboard\UserController::destroy
-* @see app/Http/Controllers/Dashboard/UserController.php:152
-* @route '/users/{user}'
-*/
+ * @see app/Http/Controllers/Dashboard/UserController.php:152
+ * @route '/users/{user}'
+ */
 destroy.delete = (args: { user: string | number } | [user: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
-
 const users = {
     index: Object.assign(index, index),
-    create: Object.assign(create, create),
-    store: Object.assign(store, store),
-    show: Object.assign(show, show),
-    edit: Object.assign(edit, edit),
-    update: Object.assign(update, update),
-    destroy: Object.assign(destroy, destroy),
+create: Object.assign(create, create),
+store: Object.assign(store, store),
+show: Object.assign(show, show),
+edit: Object.assign(edit, edit),
+update: Object.assign(update, update),
+destroy: Object.assign(destroy, destroy),
 }
 
 export default users

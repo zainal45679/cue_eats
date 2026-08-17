@@ -1,9 +1,9 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::search
-* @see app/Http/Controllers/Dashboard/BrandController.php:17
-* @route '/supply-chain/brands/search'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:17
+ * @route '/supply-chain/brands/search'
+ */
 export const search = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: search.url(options),
     method: 'get',
@@ -16,28 +16,27 @@ search.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::search
-* @see app/Http/Controllers/Dashboard/BrandController.php:17
-* @route '/supply-chain/brands/search'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:17
+ * @route '/supply-chain/brands/search'
+ */
 search.url = (options?: RouteQueryOptions) => {
     return search.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::search
-* @see app/Http/Controllers/Dashboard/BrandController.php:17
-* @route '/supply-chain/brands/search'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:17
+ * @route '/supply-chain/brands/search'
+ */
 search.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: search.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::search
-* @see app/Http/Controllers/Dashboard/BrandController.php:17
-* @route '/supply-chain/brands/search'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:17
+ * @route '/supply-chain/brands/search'
+ */
 search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: search.url(options),
     method: 'head',
@@ -45,9 +44,9 @@ search.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::index
-* @see app/Http/Controllers/Dashboard/BrandController.php:26
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:26
+ * @route '/supply-chain/brands'
+ */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
@@ -60,28 +59,27 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::index
-* @see app/Http/Controllers/Dashboard/BrandController.php:26
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:26
+ * @route '/supply-chain/brands'
+ */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::index
-* @see app/Http/Controllers/Dashboard/BrandController.php:26
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:26
+ * @route '/supply-chain/brands'
+ */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::index
-* @see app/Http/Controllers/Dashboard/BrandController.php:26
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:26
+ * @route '/supply-chain/brands'
+ */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
@@ -89,9 +87,9 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::create
-* @see app/Http/Controllers/Dashboard/BrandController.php:39
-* @route '/supply-chain/brands/create'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:39
+ * @route '/supply-chain/brands/create'
+ */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
@@ -104,28 +102,27 @@ create.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::create
-* @see app/Http/Controllers/Dashboard/BrandController.php:39
-* @route '/supply-chain/brands/create'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:39
+ * @route '/supply-chain/brands/create'
+ */
 create.url = (options?: RouteQueryOptions) => {
     return create.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::create
-* @see app/Http/Controllers/Dashboard/BrandController.php:39
-* @route '/supply-chain/brands/create'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:39
+ * @route '/supply-chain/brands/create'
+ */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::create
-* @see app/Http/Controllers/Dashboard/BrandController.php:39
-* @route '/supply-chain/brands/create'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:39
+ * @route '/supply-chain/brands/create'
+ */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: create.url(options),
     method: 'head',
@@ -133,9 +130,9 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::store
-* @see app/Http/Controllers/Dashboard/BrandController.php:46
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:46
+ * @route '/supply-chain/brands'
+ */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -148,18 +145,18 @@ store.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::store
-* @see app/Http/Controllers/Dashboard/BrandController.php:46
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:46
+ * @route '/supply-chain/brands'
+ */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
 }
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::store
-* @see app/Http/Controllers/Dashboard/BrandController.php:46
-* @route '/supply-chain/brands'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:46
+ * @route '/supply-chain/brands'
+ */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
@@ -167,9 +164,9 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::show
-* @see app/Http/Controllers/Dashboard/BrandController.php:0
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:0
+ * @route '/supply-chain/brands/{brand}'
+ */
 export const show = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
@@ -182,25 +179,26 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::show
-* @see app/Http/Controllers/Dashboard/BrandController.php:0
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:0
+ * @route '/supply-chain/brands/{brand}'
+ */
 show.url = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { brand: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            brand: args[0],
-        }
+                    brand: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        brand: args.brand,
-    }
+                        brand: args.brand,
+                }
 
     return show.definition.url
             .replace('{brand}', parsedArgs.brand.toString())
@@ -209,19 +207,18 @@ show.url = (args: { brand: string | number } | [brand: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::show
-* @see app/Http/Controllers/Dashboard/BrandController.php:0
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:0
+ * @route '/supply-chain/brands/{brand}'
+ */
 show.get = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::show
-* @see app/Http/Controllers/Dashboard/BrandController.php:0
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:0
+ * @route '/supply-chain/brands/{brand}'
+ */
 show.head = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
     method: 'head',
@@ -229,9 +226,9 @@ show.head = (args: { brand: string | number } | [brand: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::edit
-* @see app/Http/Controllers/Dashboard/BrandController.php:62
-* @route '/supply-chain/brands/{brand}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:62
+ * @route '/supply-chain/brands/{brand}/edit'
+ */
 export const edit = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
@@ -244,25 +241,26 @@ edit.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::edit
-* @see app/Http/Controllers/Dashboard/BrandController.php:62
-* @route '/supply-chain/brands/{brand}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:62
+ * @route '/supply-chain/brands/{brand}/edit'
+ */
 edit.url = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { brand: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            brand: args[0],
-        }
+                    brand: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        brand: args.brand,
-    }
+                        brand: args.brand,
+                }
 
     return edit.definition.url
             .replace('{brand}', parsedArgs.brand.toString())
@@ -271,19 +269,18 @@ edit.url = (args: { brand: string | number } | [brand: string | number ] | strin
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::edit
-* @see app/Http/Controllers/Dashboard/BrandController.php:62
-* @route '/supply-chain/brands/{brand}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:62
+ * @route '/supply-chain/brands/{brand}/edit'
+ */
 edit.get = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: edit.url(args, options),
     method: 'get',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::edit
-* @see app/Http/Controllers/Dashboard/BrandController.php:62
-* @route '/supply-chain/brands/{brand}/edit'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:62
+ * @route '/supply-chain/brands/{brand}/edit'
+ */
 edit.head = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: edit.url(args, options),
     method: 'head',
@@ -291,9 +288,9 @@ edit.head = (args: { brand: string | number } | [brand: string | number ] | stri
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::update
-* @see app/Http/Controllers/Dashboard/BrandController.php:73
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:73
+ * @route '/supply-chain/brands/{brand}'
+ */
 export const update = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
@@ -306,25 +303,26 @@ update.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::update
-* @see app/Http/Controllers/Dashboard/BrandController.php:73
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:73
+ * @route '/supply-chain/brands/{brand}'
+ */
 update.url = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { brand: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            brand: args[0],
-        }
+                    brand: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        brand: args.brand,
-    }
+                        brand: args.brand,
+                }
 
     return update.definition.url
             .replace('{brand}', parsedArgs.brand.toString())
@@ -333,19 +331,18 @@ update.url = (args: { brand: string | number } | [brand: string | number ] | str
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::update
-* @see app/Http/Controllers/Dashboard/BrandController.php:73
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:73
+ * @route '/supply-chain/brands/{brand}'
+ */
 update.put = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: update.url(args, options),
     method: 'put',
 })
-
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::update
-* @see app/Http/Controllers/Dashboard/BrandController.php:73
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:73
+ * @route '/supply-chain/brands/{brand}'
+ */
 update.patch = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: update.url(args, options),
     method: 'patch',
@@ -353,9 +350,9 @@ update.patch = (args: { brand: string | number } | [brand: string | number ] | s
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::destroy
-* @see app/Http/Controllers/Dashboard/BrandController.php:91
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:91
+ * @route '/supply-chain/brands/{brand}'
+ */
 export const destroy = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
@@ -368,25 +365,26 @@ destroy.definition = {
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::destroy
-* @see app/Http/Controllers/Dashboard/BrandController.php:91
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:91
+ * @route '/supply-chain/brands/{brand}'
+ */
 destroy.url = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
         args = { brand: args }
     }
 
+    
     if (Array.isArray(args)) {
         args = {
-            brand: args[0],
-        }
+                    brand: args[0],
+                }
     }
 
     args = applyUrlDefaults(args)
 
     const parsedArgs = {
-        brand: args.brand,
-    }
+                        brand: args.brand,
+                }
 
     return destroy.definition.url
             .replace('{brand}', parsedArgs.brand.toString())
@@ -395,14 +393,13 @@ destroy.url = (args: { brand: string | number } | [brand: string | number ] | st
 
 /**
 * @see \App\Http\Controllers\Dashboard\BrandController::destroy
-* @see app/Http/Controllers/Dashboard/BrandController.php:91
-* @route '/supply-chain/brands/{brand}'
-*/
+ * @see app/Http/Controllers/Dashboard/BrandController.php:91
+ * @route '/supply-chain/brands/{brand}'
+ */
 destroy.delete = (args: { brand: string | number } | [brand: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: destroy.url(args, options),
     method: 'delete',
 })
-
 const BrandController = { search, index, create, store, show, edit, update, destroy }
 
 export default BrandController
