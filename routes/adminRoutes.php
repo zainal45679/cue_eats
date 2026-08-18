@@ -68,6 +68,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('inventory')->group(function () {
         Route::get('ledger', [\App\Http\Controllers\Dashboard\InventoryLedgerController::class, 'index'])->name('ledger.index');
         Route::get('live-stock', [InventoryBalanceController::class, 'index'])->name('live-stock.index');
+        Route::post('storage-transfers', [StorageLocationController::class, 'transfer'])->name('storage-locations.transfer');
         Route::get('consumption', [\App\Http\Controllers\Dashboard\InventoryConsumptionController::class, 'index'])->name('consumption.index');
     });
 
@@ -105,6 +106,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('menu-pos')->group(function () {
         // Tables / Dine-in
         Route::get('tables', [\App\Http\Controllers\Dashboard\TableController::class, 'index'])->name('pos.tables');
+        Route::post('zones', [\App\Http\Controllers\Dashboard\TableController::class, 'storeZone'])->name('zones.store');
+        Route::put('zones/{zone}', [\App\Http\Controllers\Dashboard\TableController::class, 'updateZone'])->name('zones.update');
+        Route::delete('zones/{zone}', [\App\Http\Controllers\Dashboard\TableController::class, 'destroyZone'])->name('zones.destroy');
+        
+        Route::post('tables/create', [\App\Http\Controllers\Dashboard\TableController::class, 'storeTable'])->name('tables.store');
+        Route::put('tables/{table}', [\App\Http\Controllers\Dashboard\TableController::class, 'updateTable'])->name('tables.update');
+        Route::delete('tables/{table}', [\App\Http\Controllers\Dashboard\TableController::class, 'destroyTable'])->name('tables.destroy');
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
         // Resource routes for form actions (except index)
@@ -115,6 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // POS Terminal
         Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
         Route::post('terminal/open-table', [\App\Http\Controllers\Dashboard\PosController::class, 'openTable'])->name('pos.open-table');
+        Route::post('terminal/check-stock', [\App\Http\Controllers\Dashboard\PosController::class, 'checkStock'])->name('pos.check-stock');
         Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
 
         // KDS (Kitchen Display System)

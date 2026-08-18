@@ -131,4 +131,75 @@ final class StorageLocationController extends Controller
 
         return TableHelper::search($request, $query, ['storage_name', 'storage_type']);
     }
+
+    public function transfer(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'from_storage_location_id' => ['required', 'exists:storage_locations,id'],
+            'to_storage_location_id' => ['required', 'exists:storage_locations,id', 'different:from_storage_location_id'],
+            'ingredient_id' => ['required', 'exists:ingredients,id'],
+            'quantity' => ['required', 'numeric', 'min:0.001'],
+        ]);
+
+        $fromStorage = StorageLocation::findOrFail($validated['from_storage_location_id']);
+        $toStorage = StorageLocation::findOrFail($validated['to_storage_location_id']);
+
+        if ($fromStorage->business_location_id !== $toStorage->business_location_id) {
+            return back()->withErrors(['error' => 'Inter-storage transfers can only occur within the same branch location.']);
+        }
+
+        $qty = (float) $validated['quantity'];
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($fromStorage, $toStorage, $validated, $qty) {
+            $fromBalance = \App\Models\InventoryBalance::firstOrCreate(
+                ['storage_location_id' => $fromStorage->id, 'ingredient_id' => $validated['ingredient_id']],
+                ['available_qty' => 0, 'reserved_qty' => 0]
+            );
+
+            if ((float) $fromBalance->available_qty < $qty) {
+                $ingredient = \App\Models\Ingredient::find($validated['ingredient_id']);
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'quantity' => "Insufficient stock in {$fromStorage->storage_name} for " . ($ingredient ? $ingredient->name : 'item') . ". (Available: {$fromBalance->available_qty})"
+                ]);
+            }
+
+            $toBalance = \App\Models\InventoryBalance::firstOrCreate(
+                ['storage_location_id' => $toStorage->id, 'ingredient_id' => $validated['ingredient_id']],
+                ['available_qty' => 0, 'reserved_qty' => 0]
+            );
+
+            // Deduct from Source
+            $fromBalance->decrement('available_qty', $qty);
+            // Increment Destination
+            $toBalance->increment('available_qty', $qty);
+
+            // Log Source Ledger
+            \App\Models\InventoryLedger::create([
+                'business_location_id' => $fromStorage->business_location_id,
+                'storage_location_id' => $fromStorage->id,
+                'ingredient_id' => $validated['ingredient_id'],
+                'transaction_type' => 'storage_transfer',
+                'reference_type' => StorageLocation::class,
+                'reference_id' => $toStorage->id,
+                'quantity' => -$qty,
+                'running_balance' => $fromBalance->fresh()->available_qty,
+                'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
+            ]);
+
+            // Log Destination Ledger
+            \App\Models\InventoryLedger::create([
+                'business_location_id' => $toStorage->business_location_id,
+                'storage_location_id' => $toStorage->id,
+                'ingredient_id' => $validated['ingredient_id'],
+                'transaction_type' => 'storage_transfer',
+                'reference_type' => StorageLocation::class,
+                'reference_id' => $fromStorage->id,
+                'quantity' => $qty,
+                'running_balance' => $toBalance->fresh()->available_qty,
+                'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
+            ]);
+        });
+
+        return back()->with('success', 'Stock transferred successfully.');
+    }
 }

@@ -17,6 +17,7 @@ class RoleSeeder extends Seeder
         $procurementRole = \App\Models\Role::firstOrCreate(['name' => 'procurement_manager', 'guard_name' => 'web']);
         $outletManagerRole = \App\Models\Role::firstOrCreate(['name' => 'outlet_manager', 'guard_name' => 'web']);
         $outletStaffRole = \App\Models\Role::firstOrCreate(['name' => 'outlet_staff', 'guard_name' => 'web']);
+        $waiterRole = \App\Models\Role::firstOrCreate(['name' => 'waiter', 'guard_name' => 'web']);
 
         // 3. Admin: All permissions
         $adminRole->syncPermissions(\App\Models\Permission::all());
@@ -50,7 +51,14 @@ class RoleSeeder extends Seeder
         ];
         $outletStaffRole->syncPermissions(\App\Models\Permission::whereIn('name', $staffPermissions)->get());
 
+        // Waiter: Basic POS order read
+        $waiterPermissions = [
+            'read.inventory-balances',
+        ];
+        $waiterRole->syncPermissions(\App\Models\Permission::whereIn('name', $waiterPermissions)->get());
+
         // 7. Seed Test Users
+        $allLocations = \App\Models\BusinessLocation::all();
         $outlets = \App\Models\BusinessLocation::where('is_parent_location', false)->take(3)->get();
         
         if ($outlets->count() < 3) {
@@ -94,6 +102,22 @@ class RoleSeeder extends Seeder
             $manager3->syncRoles([$outletManagerRole]);
         }
 
-        $this->command->info('Comprehensive RBAC and test users seeded successfully.');
+        // Seed 2 dummy waiters for each business location branch
+        foreach ($allLocations as $locationIndex => $location) {
+            $locSlug = strtolower(preg_replace('/[^a-z0-9]/i', '', $location->location_code ?: "loc{$locationIndex}"));
+            for ($w = 1; $w <= 2; $w++) {
+                $waiterUser = \App\Models\User::firstOrCreate(
+                    ['email' => "waiter{$w}.{$locSlug}@example.com"],
+                    [
+                        'name' => "Waiter {$w} ({$location->location_name})",
+                        'password' => \Illuminate\Support\Facades\Hash::make('password'),
+                        'business_location_id' => $location->id,
+                    ]
+                );
+                $waiterUser->syncRoles([$waiterRole]);
+            }
+        }
+
+        $this->command->info('Comprehensive RBAC and test users (including waiters) seeded successfully.');
     }
 }

@@ -50,10 +50,20 @@ class InventoryBalanceController extends Controller
             }
         }
             
+        $storageLocationsQuery = \App\Models\StorageLocation::where('status', true);
+        if (!auth()->user()->hasRole('admin') || $activeLocationId) {
+            $locId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
+            if ($locId) {
+                $storageLocationsQuery->where('business_location_id', $locId);
+            }
+        }
+        $storageLocations = $storageLocationsQuery->get();
+
         return Inertia::render('inventory/live-stock/index', [
             'inventoryBalances' => $data,
             'serverCategories' => $cleanCategories,
-            'totalItemsCount' => $allBalances->count()
+            'totalItemsCount' => $allBalances->count(),
+            'storageLocations' => $storageLocations,
         ]);
     }
 }

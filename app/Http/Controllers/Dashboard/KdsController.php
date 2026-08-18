@@ -39,6 +39,11 @@ class KdsController extends Controller
             'rejection_reason' => $validated['rejection_reason'] ?? null
         ]);
 
+        // Deduct inventory when order is being prepared or ready in KDS (if not already deducted)
+        if (in_array($validated['kitchen_status'], ['preparing', 'ready'])) {
+            \App\Services\InventoryDeductionService::deductOrder($order, true);
+        }
+
         return back()->with('success', 'Order status updated.');
     }
 }
