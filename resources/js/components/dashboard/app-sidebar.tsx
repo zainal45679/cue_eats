@@ -25,8 +25,16 @@ export function AppSidebar() {
     if (roles?.includes("admin")) {
       return true;
     }
+    
+    const isManager = roles?.includes("outlet_manager") || roles?.includes("manager");
+    
+    if (isManager) {
+      if (item.group === "Setup & Config") return false;
+      if (item.title === "Organization" || item.title === "Roles and Permissions") return false;
+    }
 
-    if (item.adminOnly) {
+    // Only non-managers get blocked by adminOnly
+    if (item.adminOnly && !isManager) {
       return false;
     }
 

@@ -94,6 +94,27 @@ export const Configs: TConfigs = {
       adminOnly: true,
     },
     {
+      title: "POS Terminal",
+      href: "/menu-pos/terminal",
+      icon: MonitorSmartphone,
+    },
+    {
+      title: "Dine-In Tables",
+      href: "/menu-pos/tables",
+      icon: LayoutGrid,
+    },
+    {
+      title: "Live Orders",
+      href: "/menu-pos/live-orders",
+      icon: ClipboardList,
+    },
+    {
+      title: "Menu Management",
+      href: "/menu-pos",
+      icon: Utensils,
+      adminOnly: true,
+    },
+    {
       title: "Live Stock",
       href: "/inventory/live-stock",
       icon: Archive,
@@ -162,27 +183,6 @@ export const Configs: TConfigs = {
       icon: Network,
       group: "Setup & Config",
       permission: "brands",
-    },
-    {
-      title: "POS Terminal",
-      href: "/menu-pos/terminal",
-      icon: MonitorSmartphone,
-    },
-    {
-      title: "Dine-In Tables",
-      href: "/menu-pos/tables",
-      icon: LayoutGrid,
-    },
-    {
-      title: "Menu Management",
-      href: "/menu-pos",
-      icon: Utensils,
-      adminOnly: true,
-    },
-    {
-      title: "Live Orders",
-      href: "/menu-pos/live-orders",
-      icon: ClipboardList,
     },
     {
       title: "Inventory Setup",

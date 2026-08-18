@@ -105,11 +105,18 @@ class PosController extends Controller
     public function occupyTable(Request $request)
     {
         $request->validate(['table_id' => 'required|exists:dining_tables,id']);
-        $table = \App\Models\DiningTable::find($request->table_id);
+        $table = \App\Models\DiningTable::with('zone')->find($request->table_id);
         
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
+            ? session('active_location_id') 
             : auth()->user()->business_location_id;
+            
+        if (!$locationId && $table && $table->zone) {
+            $locationId = $table->zone->business_location_id;
+        }
+        if (!$locationId) {
+            $locationId = \App\Models\BusinessLocation::first()?->id ?? 1;
+        }
 
         $activeOrder = \App\Models\Order::where('dining_table_id', $table->id)
             ->whereNotIn('status', ['paid', 'cancelled', 'Completed'])
@@ -184,8 +191,19 @@ class PosController extends Controller
             }
 
                 $locationId = auth()->user()->hasRole('admin') 
-                    ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
+                    ? session('active_location_id') 
                     : auth()->user()->business_location_id;
+                    
+                if (!$locationId && !empty($validated['dining_table_id'])) {
+                    $table = \App\Models\DiningTable::with('zone')->find($validated['dining_table_id']);
+                    if ($table && $table->zone) {
+                        $locationId = $table->zone->business_location_id;
+                    }
+                }
+                
+                if (!$locationId) {
+                    $locationId = \App\Models\BusinessLocation::first()?->id ?? 1;
+                }
                     
                 $storageLocation = \App\Models\StorageLocation::where('business_location_id', $locationId)->first();
                 $storageLocationId = $storageLocation ? $storageLocation->id : 1;

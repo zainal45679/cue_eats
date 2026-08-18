@@ -1,6 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shadcn/ui/card';
-import { DollarSign, ShoppingBag, ChefHat, AlertTriangle, ArrowRight, TrendingUp, XCircle, Users, Activity, PackageOpen } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Users, Activity, PackageOpen } from 'lucide-react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Button } from '@/components/shadcn/ui/button';
 import { cn } from '@/lib/utils';
@@ -60,71 +59,34 @@ export default function Dashboard({
 
             {/* SECTION 1: FINANCIALS */}
             <div className="space-y-4">
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Gross Revenue */}
-                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
-                        <CardContent className="p-4 pl-6 flex items-center justify-between h-full">
-                            <div>
-                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Gross Revenue</p>
-                                <h3 className="text-3xl font-black leading-none">${metrics.todaysRevenue.toFixed(2)}</h3>
-                            </div>
-                            <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl shrink-0">
-                                <DollarSign className="size-6" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
-                    {/* Total Orders */}
-                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
-                        <CardContent className="p-4 pl-6 flex items-center justify-between h-full">
-                            <div>
-                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Orders</p>
-                                <h3 className="text-3xl font-black leading-none">{metrics.todaysOrders}</h3>
-                            </div>
-                            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
-                                <ShoppingBag className="size-6" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* AOV */}
-                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-purple-500" />
-                        <CardContent className="p-4 pl-6 flex items-center justify-between h-full">
-                            <div>
-                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Avg Order Value</p>
-                                <h3 className="text-3xl font-black leading-none">${metrics.aov.toFixed(2)}</h3>
-                            </div>
-                            <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl shrink-0">
-                                <TrendingUp className="size-6" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Canceled */}
-                    <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
-                        <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
-                        <CardContent className="p-4 pl-6 flex items-center justify-between h-full">
-                            <div>
-                                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Canceled</p>
-                                <h3 className="text-3xl font-black leading-none">{metrics.canceledOrders}</h3>
-                            </div>
-                            <div className="p-3 bg-red-500/10 text-red-500 rounded-xl shrink-0">
-                                <XCircle className="size-6" />
-                            </div>
-                        </CardContent>
-                    </Card>
+                
+                {/* Refined Typography Data Strip */}
+                <div className="flex flex-col md:flex-row md:items-end gap-10 pb-6 border-b border-border/40 mb-6">
+                    <div>
+                        <div className="text-sm font-semibold text-muted-foreground tracking-tight mb-2">Today's Gross Revenue</div>
+                        <div className="text-6xl font-black tracking-tighter tabular-nums leading-none">${metrics.todaysRevenue.toFixed(2)}</div>
+                    </div>
+                    <div className="flex gap-8 md:ml-auto">
+                        <div>
+                            <div className="text-sm font-medium text-muted-foreground mb-1">Orders</div>
+                            <div className="text-2xl font-bold tracking-tight tabular-nums leading-none">{metrics.todaysOrders}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm font-medium text-muted-foreground mb-1">Avg Value</div>
+                            <div className="text-2xl font-bold tracking-tight tabular-nums leading-none">${metrics.aov.toFixed(2)}</div>
+                        </div>
+                        <div>
+                            <div className="text-sm font-medium text-muted-foreground mb-1">Canceled</div>
+                            <div className="text-2xl font-bold tracking-tight text-red-600 dark:text-red-400 tabular-nums leading-none">{metrics.canceledOrders}</div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                     {/* Sales Trend Chart */}
-                    <Card className="col-span-4 rounded-xl border-sidebar-border/70 shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold">7-Day Revenue Trend</CardTitle>
-                        </CardHeader>
-                        <CardContent>
+                    <div className="col-span-4 space-y-4 p-6 rounded-3xl bg-card border border-border/50 shadow-sm">
+    <h3 className="text-lg font-bold tracking-tight">7-Day Revenue Trend</h3>
+    
                             <div className="h-[220px] w-full mt-2 flex items-end justify-between px-2">
                                 {[...salesTrend].reverse().map((day, idx) => {
                                     const heightPercentage = Math.max((day.revenue / maxRevenue) * 100, 2); // min 2%
@@ -151,15 +113,13 @@ export default function Dashboard({
                                     );
                                 })}
                             </div>
-                        </CardContent>
-                    </Card>
+                        
+</div>
 
                     {/* Order Types */}
-                    <Card className="col-span-3 rounded-xl border-sidebar-border/70 shadow-sm">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-base font-bold">Sales by Type</CardTitle>
-                        </CardHeader>
-                        <CardContent>
+                    <div className="col-span-3 space-y-4 p-6 rounded-3xl bg-card border border-border/50 shadow-sm">
+    <h3 className="text-lg font-bold tracking-tight">Sales by Type</h3>
+    
                             <div className="space-y-4 pt-2">
                                 {orderTypes.length === 0 ? (
                                     <div className="text-center text-muted-foreground text-sm py-4">No sales data today.</div>
@@ -173,15 +133,15 @@ export default function Dashboard({
                                                     <span className="font-bold text-sm">${parseFloat(type.revenue.toString()).toFixed(2)}</span>
                                                 </div>
                                                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
+                                                    <div className="h-full bg-primary/80 rounded-full" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
                                         );
                                     })
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
+                        
+</div>
                 </div>
             </div>
 
@@ -189,37 +149,39 @@ export default function Dashboard({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-2">
                 
                 {/* Kitchen Load */}
-                <Card className="rounded-xl border-sidebar-border/70 shadow-sm flex flex-col">
-                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="text-base font-bold">Kitchen Load</CardTitle>
-                            <CardDescription className="text-xs">Live KDS tickets</CardDescription>
-                        </div>
+                <div className="space-y-4 p-6 rounded-3xl bg-card border border-border/50 shadow-sm flex flex-col h-full">
+    <div className="flex items-center justify-between">
+        <div>
+            <h3 className="text-lg font-bold tracking-tight">Kitchen Load</h3>
+            <p className="text-sm text-muted-foreground">Live KDS tickets</p>
+        </div>
+        
                         <Button variant="outline" size="icon" className="h-8 w-8" asChild>
                             <Link href="/menu-pos/kds?layout=dashboard"><ArrowRight className="h-4 w-4" /></Link>
                         </Button>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex items-center justify-center pt-4">
+                    
+    </div>
+    
                         <div className="flex w-full gap-2">
-                            <div className="flex-1 flex flex-col items-center justify-center p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
-                                <span className="text-4xl font-black text-amber-600 mb-1">{kitchen.pending}</span>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80">Pending</span>
+                            <div className="flex-1 flex flex-col items-center justify-center p-5 bg-amber-50 dark:bg-amber-500/10 rounded-2xl border border-amber-200/50 dark:border-amber-500/20">
+                                <span className="text-4xl font-extrabold text-amber-600 dark:text-amber-500 mb-1">{kitchen.pending}</span>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700/70 dark:text-amber-500/80">Pending</span>
                             </div>
-                            <div className="flex-1 flex flex-col items-center justify-center p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                                <span className="text-4xl font-black text-blue-600 mb-1">{kitchen.preparing}</span>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700/80">Prep</span>
+                            <div className="flex-1 flex flex-col items-center justify-center p-5 bg-blue-50 dark:bg-blue-500/10 rounded-2xl border border-blue-200/50 dark:border-blue-500/20">
+                                <span className="text-4xl font-extrabold text-blue-600 dark:text-blue-500 mb-1">{kitchen.preparing}</span>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700/70 dark:text-blue-500/80">Prep</span>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    
+</div>
 
                 {/* Staff Leaderboard */}
-                <Card className="rounded-xl border-sidebar-border/70 shadow-sm">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base font-bold">Cashier Leaderboard</CardTitle>
-                        <CardDescription className="text-xs">Top staff by revenue today</CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <div className="space-y-4 p-6 rounded-3xl bg-card border border-border/50 shadow-sm">
+    <div>
+        <h3 className="text-lg font-bold tracking-tight">Cashier Leaderboard</h3>
+        <p className="text-sm text-muted-foreground">Top staff by revenue today</p>
+    </div>
+    
                         <div className="space-y-4 pt-2">
                             {cashierPerformance.length === 0 ? (
                                 <div className="text-center text-muted-foreground text-sm py-4">No data available.</div>
@@ -247,22 +209,24 @@ export default function Dashboard({
                                 })
                             )}
                         </div>
-                    </CardContent>
-                </Card>
+                    
+</div>
 
                 {/* Critical Inventory */}
-                <Card className="rounded-xl border-red-500/30 shadow-sm bg-red-500/5">
-                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="text-base font-bold text-red-600 flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4" /> Low Stock Alerts
-                            </CardTitle>
-                        </div>
+                <div className="space-y-4 p-6 rounded-3xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30">
+    <div className="flex items-center justify-between">
+        <div>
+            <h3 className="text-lg font-bold tracking-tight text-red-600 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" /> Low Stock Alerts
+            </h3>
+        </div>
+        
                         <Button variant="outline" size="icon" className="h-8 w-8 text-red-600 border-red-200 hover:bg-red-100" asChild>
                             <Link href="/inventory/live-stock"><ArrowRight className="h-4 w-4" /></Link>
                         </Button>
-                    </CardHeader>
-                    <CardContent>
+                    
+    </div>
+    
                         <div className="space-y-3 pt-2">
                             {lowStockItems.length === 0 ? (
                                 <div className="text-center text-muted-foreground text-sm py-8 font-medium">
@@ -275,15 +239,15 @@ export default function Dashboard({
                                             <span className="font-bold text-sm truncate">{item.name}</span>
                                             <span className="text-[10px] text-muted-foreground uppercase">{item.location}</span>
                                         </div>
-                                        <div className="shrink-0 font-black text-red-600 bg-red-100 dark:bg-red-950 px-2 py-1 rounded-md text-sm">
+                                        <div className="shrink-0 font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-md text-sm border border-red-100 dark:border-red-500/20">
                                             {item.qty} {item.uom}
                                         </div>
                                     </div>
                                 ))
                             )}
                         </div>
-                    </CardContent>
-                </Card>
+                    
+</div>
 
             </div>
         </div>

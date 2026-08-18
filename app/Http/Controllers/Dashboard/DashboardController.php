@@ -19,13 +19,13 @@ class DashboardController extends Controller
     public function index()
     {
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', BusinessLocation::first()?->id ?? 1) 
+            ? session('active_location_id') 
             : auth()->user()->business_location_id;
 
         $today = Carbon::today();
 
         // 1. KPI Metrics
-        $completedOrdersToday = Order::where('business_location_id', $locationId)
+        $completedOrdersToday = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->where('status', 'Completed');
             
@@ -33,20 +33,20 @@ class DashboardController extends Controller
         $todaysOrders = $completedOrdersToday->count();
         $aov = $todaysOrders > 0 ? $todaysRevenue / $todaysOrders : 0;
 
-        $canceledOrders = Order::where('business_location_id', $locationId)
+        $canceledOrders = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->where('status', 'Canceled')
             ->count();
 
         // 2. Order Types Breakdown
-        $orderTypes = Order::where('business_location_id', $locationId)
+        $orderTypes = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->select('order_type', DB::raw('count(*) as count'), DB::raw('SUM(grand_total) as revenue'))
             ->groupBy('order_type')
             ->get();
 
         // 3. Kitchen Status Breakdown
-        $kitchenStatus = Order::where('business_location_id', $locationId)
+        $kitchenStatus = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->select('kitchen_status', DB::raw('count(*) as count'))
             ->groupBy('kitchen_status')
@@ -56,7 +56,7 @@ class DashboardController extends Controller
         $activeOrders = ($kitchenStatus['pending'] ?? 0) + ($kitchenStatus['preparing'] ?? 0);
 
         // 4. Cashier Performance Leaderboard
-        $cashierPerformance = Order::where('business_location_id', $locationId)
+        $cashierPerformance = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->where('status', 'Completed')
             ->select('user_id', DB::raw('count(*) as orders_count'), DB::raw('SUM(grand_total) as total_revenue'))
@@ -74,7 +74,7 @@ class DashboardController extends Controller
             });
 
         // 5. Inventory: Top Consumed Today
-        $topConsumed = InventoryLedger::where('business_location_id', $locationId)
+        $topConsumed = InventoryLedger::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
             ->where('transaction_type', 'sale') // Deductions
             ->select('ingredient_id', DB::raw('SUM(ABS(quantity)) as total_consumed'))
@@ -92,8 +92,8 @@ class DashboardController extends Controller
             });
 
         // 6. Inventory: Detailed Low Stock Alerts
-        $lowStockItems = InventoryBalance::whereHas('storageLocation', function($q) use ($locationId) {
-                $q->where('business_location_id', $locationId);
+        $lowStockItems = InventoryBalance::when($locationId, function($q) use ($locationId) {
+                $q->whereHas('storageLocation', fn($sq) => $sq->where('business_location_id', $locationId));
             })
             ->where('available_qty', '<=', 10) // Threshold can be dynamic later
             ->with(['ingredient.baseUom', 'storageLocation'])
@@ -113,7 +113,7 @@ class DashboardController extends Controller
         $last7Days = collect();
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $revenue = Order::where('business_location_id', $locationId)
+            $revenue = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
                 ->whereDate('created_at', $date)
                 ->where('status', 'Completed')
                 ->sum('grand_total');
