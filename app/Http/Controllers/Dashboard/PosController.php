@@ -276,7 +276,6 @@ class PosController extends Controller
                         \App\Services\InventoryDeductionService::deductOrderItem($orderItem, $locationId, $allowOverride);
                     }
                 }
-            }
 
                 // Recalculate Totals
                 $order->load('items.modifiers');
