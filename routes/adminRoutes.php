@@ -113,6 +113,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('tables/create', [\App\Http\Controllers\Dashboard\TableController::class, 'storeTable'])->name('tables.store');
         Route::put('tables/{table}', [\App\Http\Controllers\Dashboard\TableController::class, 'updateTable'])->name('tables.update');
         Route::delete('tables/{table}', [\App\Http\Controllers\Dashboard\TableController::class, 'destroyTable'])->name('tables.destroy');
+        Route::post('tables/merge', [\App\Http\Controllers\Dashboard\TableController::class, 'merge'])->name('pos.tables.merge');
+        Route::post('tables/unmerge', [\App\Http\Controllers\Dashboard\TableController::class, 'unmerge'])->name('pos.tables.unmerge');
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
         // Resource routes for form actions (except index)
@@ -124,6 +126,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('terminal', [\App\Http\Controllers\Dashboard\PosController::class, 'index'])->name('pos.terminal');
         Route::post('terminal/open-table', [\App\Http\Controllers\Dashboard\PosController::class, 'openTable'])->name('pos.open-table');
         Route::post('terminal/check-stock', [\App\Http\Controllers\Dashboard\PosController::class, 'checkStock'])->name('pos.check-stock');
+        Route::post('terminal/occupy-table', [\App\Http\Controllers\Dashboard\PosController::class, 'occupyTable'])->name('pos.occupy-table');
         Route::post('terminal/checkout', [\App\Http\Controllers\Dashboard\PosController::class, 'checkout'])->name('pos.checkout');
 
         // KDS (Kitchen Display System)

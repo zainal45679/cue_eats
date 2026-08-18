@@ -32,7 +32,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
         waiter_id: waiterId || '',
         pax: pax || 1,
         customer_name: '',
-        order_type: 'Dine-in',
+        order_type: tableId ? 'Dine-in' : 'Takeaway',
         payment_method: 'Cash',
         tendered_amount: '' as string | number,
         allow_override: false,
@@ -48,6 +48,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                 dining_table_id: tableId || '',
                 waiter_id: waiterId || '',
                 pax: pax || 1,
+                order_type: tableId ? 'Dine-in' : 'Takeaway',
                 allow_override: false,
                 tendered_amount: subtotal > 0 ? String(subtotal) : ''
             }));

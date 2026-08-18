@@ -7,6 +7,21 @@ import { cn } from '@/lib/utils';
 import { ZoneFormDialog } from './ZoneFormDialog';
 import { TableFormDialog } from './TableFormDialog';
 
+const getMergeSpan = (tableName: string) => {
+    if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
+    const matches = tableName.match(/\d+/g);
+    if (!matches || matches.length < 2) return "col-span-2 sm:col-span-2 md:col-span-2";
+    
+    if (matches.length >= 3) {
+        return "col-span-2 sm:col-span-2 md:col-span-2 row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
+    }
+    
+    const diff = Math.abs(parseInt(matches[0]) - parseInt(matches[1]));
+    return diff === 1 
+        ? "col-span-2 sm:col-span-2 md:col-span-2"
+        : "row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
+}
+
 export default function TablesScreen({ zones }: { zones: any[] }) {
     const { auth } = usePage().props as any;
     const currentUserId = auth?.user?.id;
@@ -18,6 +33,8 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
     const [activeZone, setActiveZone] = useState<string | null>(zones.length > 0 ? zones[0].id : null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isManageMode, setIsManageMode] = useState(false);
+    const [mergeMode, setMergeMode] = useState(false);
+    const [selectedTablesToMerge, setSelectedTablesToMerge] = useState<string[]>([]);
 
     // Dialog States
     const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
@@ -37,18 +54,42 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
         }
     }, [zones]);
 
+    useEffect(() => {
+        if (!auth.user) return;
+        const locId = auth.user.business_location_id || 1; // Fallback or dynamic based on active loc
+        
+        const channel = window.Echo.channel(`tables.${locId}`)
+            .listen('.App\\Events\\TableStatusUpdated', () => {
+                router.reload({ only: ['zones'] });
+            });
+
+        return () => {
+            channel.stopListening('.App\\Events\\TableStatusUpdated');
+            window.Echo.leaveChannel(`tables.${locId}`);
+        };
+    }, [auth.user]);
+
     const activeZoneData = zones.find(z => z.id === activeZone);
 
     const getTableColorClass = (table: any) => {
         if (!table.active_order) return 'bg-card border-border border-l-4 border-l-green-500 hover:border-l-green-600 text-card-foreground shadow-sm'; 
-        if (table.active_order.status === 'billed') return 'bg-card border-border border-l-4 border-l-red-500 text-card-foreground shadow-sm'; 
-        return 'bg-card border-border border-l-4 border-l-orange-500 text-card-foreground shadow-sm'; 
+        if (table.active_order.status === 'billed') return 'bg-card border-border border-l-4 border-l-red-500 hover:border-l-red-600 text-card-foreground shadow-sm'; 
+        return 'bg-card border-border border-l-4 border-l-orange-500 hover:border-l-orange-600 text-card-foreground shadow-sm'; 
     };
 
     const handleTableClick = (table: any) => {
         if (isManageMode) {
             setEditingTable(table);
             setTableDialogOpen(true);
+            return;
+        }
+
+        if (mergeMode) {
+            if (selectedTablesToMerge.includes(table.id)) {
+                setSelectedTablesToMerge(selectedTablesToMerge.filter(id => id !== table.id));
+            } else {
+                setSelectedTablesToMerge([...selectedTablesToMerge, table.id]);
+            }
             return;
         }
         router.post('/menu-pos/terminal/open-table', { table_id: table.id });
@@ -145,6 +186,47 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                     Total: {totalTables}
                                 </div>
                             </div>
+                            
+                            {/* Merge Controls */}
+                            <div className="flex items-center gap-2">
+                                {mergeMode ? (
+                                    <>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm"
+                                            onClick={() => { setMergeMode(false); setSelectedTablesToMerge([]); }}
+                                            className="h-8"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button 
+                                            variant="default" 
+                                            size="sm"
+                                            disabled={selectedTablesToMerge.length < 2}
+                                            onClick={() => {
+                                                router.post('/menu-pos/tables/merge', { table_ids: selectedTablesToMerge }, {
+                                                    onSuccess: () => {
+                                                        setMergeMode(false);
+                                                        setSelectedTablesToMerge([]);
+                                                    }
+                                                });
+                                            }}
+                                            className="h-8 bg-primary text-primary-foreground font-bold hover:bg-primary/90"
+                                        >
+                                            Confirm Merge ({selectedTablesToMerge.length})
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => setMergeMode(true)}
+                                        className="h-8 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 font-medium"
+                                    >
+                                        Merge Tables
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -224,7 +306,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                 </div>
 
                 {/* Main Content Area - Table Grid */}
-                <ScrollArea className="flex-1 p-4 min-h-0">
+                <ScrollArea className="flex-1 min-h-0">
                     {zones.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-16">
                             <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>

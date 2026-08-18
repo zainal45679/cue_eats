@@ -357,7 +357,14 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                                                         price_adjustment: mod.price_adjustment
                                                     })) : []
                                                 }))
-                                            }, { onSuccess: clearCart });
+                                            }, { 
+                                                onSuccess: clearCart,
+                                                onError: (errors) => {
+                                                    console.error(errors);
+                                                    const firstError = Object.values(errors)[0];
+                                                    toast.error(firstError as string || 'Failed to save KOT');
+                                                }
+                                            });
                                         }}
                                     >
                                         Save KOT
