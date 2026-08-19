@@ -169,28 +169,39 @@ export default function InventoryLedgerIndex() {
             header: "Reference",
             cell: ({ row }: any) => {
                 if (!row.original.reference_type) return "-";
-                const typeName = row.original.reference_type.split("\\").pop();
-                
-                let refDisplay = row.original.reference_id;
                 const ref = row.original.reference;
                 
+                let typeName = row.original.reference_type.split("\\").pop();
+                let refDisplay = "";
+
                 if (ref) {
-                    if (ref.order_number) refDisplay = ref.order_number;
-                    else if (ref.grn_number) refDisplay = ref.grn_number;
-                    else if (ref.po_number) refDisplay = ref.po_number;
-                    else if (ref.transfer_number) refDisplay = ref.transfer_number;
-                    else if (ref.reference_number) refDisplay = ref.reference_number;
+                    if (ref.order?.order_number) {
+                        typeName = "Order";
+                        refDisplay = ref.order.order_number;
+                    } else if (ref.order_number) {
+                        typeName = "Order";
+                        refDisplay = ref.order_number;
+                    } else if (ref.grn_number) {
+                        typeName = "GRN";
+                        refDisplay = ref.grn_number;
+                    } else if (ref.po_number) {
+                        typeName = "PO";
+                        refDisplay = ref.po_number;
+                    } else if (ref.transfer_number) {
+                        typeName = "Transfer";
+                        refDisplay = ref.transfer_number;
+                    } else if (ref.reference_number) {
+                        typeName = "Ref";
+                        refDisplay = ref.reference_number;
+                    }
                 }
 
-                if (typeof refDisplay === 'string') {
-                    // Strip UUIDs to keep the UI clean
-                    refDisplay = refDisplay.replace(/-?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/, '');
-                    
-                    if (!refDisplay || refDisplay === '-' || refDisplay.endsWith('-')) {
-                        refDisplay = typeof row.original.reference_id === 'string' 
-                            ? row.original.reference_id.substring(0, 8) 
-                            : row.original.reference_id;
-                    }
+                if (!refDisplay) {
+                    if (typeName === 'OrderItem') typeName = 'Order';
+                    const rawId = typeof row.original.reference_id === 'string' 
+                        ? row.original.reference_id.substring(0, 8) 
+                        : row.original.reference_id;
+                    refDisplay = rawId;
                 }
 
                 return <span className="text-muted-foreground text-xs font-mono">{typeName} #{refDisplay}</span>;

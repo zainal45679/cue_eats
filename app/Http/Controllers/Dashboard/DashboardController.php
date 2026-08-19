@@ -100,13 +100,25 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 6. Inventory: Detailed Low Stock Alerts
-        $lowStockItems = InventoryBalance::when($locationId, function($q) use ($locationId) {
-                $q->whereHas('storageLocation', fn($sq) => $sq->where('business_location_id', $locationId));
-            })
-            ->where('available_qty', '<=', 10)
-            ->with(['ingredient.baseUom', 'storageLocation'])
-            ->orderBy('available_qty', 'asc')
+        // 6. Inventory: Detailed Low Stock Alerts (Branch-Aggregated Purchasing Alert)
+        $lowStockItems = Ingredient::where('is_inventory_item', true)
+            ->with('baseUom')
+            ->select('id', 'name', 'base_uom_id')
+            ->selectSub(function ($query) use ($locationId) {
+                $query->from('inventory_balances')
+                    ->join('storage_locations', 'inventory_balances.storage_location_id', '=', 'storage_locations.id')
+                    ->whereColumn('inventory_balances.ingredient_id', 'ingredients.id')
+                    ->where('storage_locations.status', true);
+
+                if ($locationId) {
+                    $query->where('storage_locations.business_location_id', $locationId);
+                }
+
+                $query->select(DB::raw('COALESCE(SUM(inventory_balances.available_qty), 0)'));
+            }, 'total_available')
+            ->groupBy('ingredients.id')
+            ->having('total_available', '<=', 10)
+            ->orderBy('total_available', 'asc')
             ->take(10)
             ->get()
             ->map(function ($ingredient) {

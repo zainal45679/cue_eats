@@ -11,7 +11,16 @@ class InventoryLedgerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = InventoryLedger::with(['location', 'ingredient.baseUom', 'createdBy', 'reference']);
+        $query = InventoryLedger::with([
+            'location', 
+            'ingredient.baseUom', 
+            'createdBy', 
+            'reference' => function ($morphTo) {
+                $morphTo->morphWith([
+                    \App\Models\OrderItem::class => ['order'],
+                ]);
+            }
+        ]);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
