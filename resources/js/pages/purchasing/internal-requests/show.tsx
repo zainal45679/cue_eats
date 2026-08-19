@@ -33,10 +33,14 @@ export default function ShowInternalRequestPage({ internalRequest, canApprove, c
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft': return <Badge variant="secondary" className="bg-slate-100 text-slate-700">Draft</Badge>;
-            case 'pending_fulfillment': return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">Pending Fulfillment</Badge>;
-            case 'converted_to_sto': return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Converted to STO</Badge>;
-            case 'rejected': return <Badge variant="destructive">Rejected</Badge>;
-            default: return <Badge variant="outline">{status}</Badge>;
+            case 'pending_approval': return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">Pending Approval</Badge>;
+            case 'pending_fulfillment': return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200">Pending Fulfillment</Badge>;
+            case 'fulfilled': return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200">Fulfilled</Badge>;
+            case 'partially_fulfilled': return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200">Partially Fulfilled</Badge>;
+            case 'partially_rejected': return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 border-orange-200">Partially Rejected</Badge>;
+            case 'converted_to_sto': return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200">Converted to STO</Badge>;
+            case 'rejected': return <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
+            default: return <Badge variant="outline" className="uppercase">{status.replace('_', ' ')}</Badge>;
         }
     };
 

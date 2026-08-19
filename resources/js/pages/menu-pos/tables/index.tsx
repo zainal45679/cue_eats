@@ -6,6 +6,7 @@ import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ZoneFormDialog } from './ZoneFormDialog';
 import { TableFormDialog } from './TableFormDialog';
+import { PrintReceipt } from '../terminal/components/PrintReceipt';
 
 const getMergeSpan = (tableName: string) => {
     if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
@@ -23,7 +24,14 @@ const getMergeSpan = (tableName: string) => {
 }
 
 export default function TablesScreen({ zones }: { zones: any[] }) {
-    const { auth } = usePage().props as any;
+    const { auth, flash } = usePage().props as any;
+    const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
+
+    useEffect(() => {
+        if (flash?.recent_order) {
+            setOrderToPrint(flash.recent_order);
+        }
+    }, [flash?.recent_order]);
     const currentUserId = auth?.user?.id;
     const userRoles = auth?.roles || auth?.user?.roles || [];
     const canManage = Array.isArray(userRoles) 
@@ -351,6 +359,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                         
                                         // Lock logic: If an active order exists and current user is not the creator
                                         const isLockedByOther = !isManageMode && order && order.user_id !== currentUserId;
+                                        const isSelectedForMerge = selectedTablesToMerge.includes(table.id);
                                         
                                         return (
                                             <div 
@@ -360,13 +369,20 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                                     "relative flex flex-col p-2.5 border rounded-lg transition-all min-h-[96px] group overflow-hidden",
                                                     colorClass,
                                                     isLockedByOther ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:shadow-md hover:scale-[1.02]",
-                                                    isManageMode && "border-dashed border-2 border-primary/50"
+                                                    isManageMode && "border-dashed border-2 border-primary/50",
+                                                    isSelectedForMerge && "ring-2 ring-primary border-primary bg-primary/5"
                                                 )}
                                             >
                                                 {isLockedByOther && (
                                                     <div className="absolute inset-0 bg-black/5 z-10 flex flex-col items-center justify-center backdrop-blur-[1px]">
                                                         <Lock className="w-8 h-8 text-foreground/40 mb-1" />
                                                         <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">Occupied</span>
+                                                    </div>
+                                                )}
+
+                                                {isSelectedForMerge && (
+                                                    <div className="absolute top-1 right-1 z-20 bg-primary text-primary-foreground rounded-full p-1 shadow-sm">
+                                                        <Check size={12} className="stroke-[3]" />
                                                     </div>
                                                 )}
 
@@ -397,12 +413,21 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                                 )}
 
                                                 <div className="flex justify-between items-start mb-1 relative z-0">
-                                                    <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
-                                                    <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
-                                                        isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
-                                                    )}>
-                                                        <Users size={10} /> 
-                                                        {order?.pax || table.seating_capacity}
+                                                    <div className="text-base font-bold leading-none tracking-tight flex items-center gap-1.5 flex-wrap">
+                                                        <span>{table.name}</span>
+                                                        {table.is_merged && (
+                                                            <span className="text-[9px] bg-purple-500/10 text-purple-600 border border-purple-200 px-1 py-0.5 rounded font-semibold uppercase tracking-wider">
+                                                                Merged
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
+                                                            isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
+                                                        )}>
+                                                            <Users size={10} /> 
+                                                            {order?.pax || table.seating_capacity}
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
@@ -429,8 +454,21 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                                                            Available
+                                                        <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                                                            <span>Available</span>
+                                                            {table.is_merged && !mergeMode && !isManageMode && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-5 text-[10px] px-1.5 text-purple-600 hover:bg-purple-50 font-semibold lowercase tracking-normal"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id });
+                                                                    }}
+                                                                >
+                                                                    Unmerge
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -465,6 +503,15 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                 zones={zones}
                 defaultZoneId={activeZone || undefined}
             />
+
+            {/* Hidden Print Component */}
+            {orderToPrint && (
+                <PrintReceipt 
+                    order={orderToPrint} 
+                    isBillOnly={true}
+                    onPrinted={() => setOrderToPrint(null)} 
+                />
+            )}
         </>
     );
 }

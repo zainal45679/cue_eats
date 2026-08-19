@@ -20,4 +20,5 @@ class Order extends Model
     
     public function diningTable() { return $this->belongsTo(DiningTable::class, 'dining_table_id'); }
     public function waiter() { return $this->belongsTo(User::class, 'waiter_id'); }
+    public function kots() { return $this->hasMany(PosKot::class, 'pos_order_id')->orderBy('round_number', 'asc'); }
 }

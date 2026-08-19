@@ -1,159 +1,188 @@
 import { usePage } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-export function PrintReceipt({ order, onPrinted }: { order: any, onPrinted?: () => void }) {
+export function PrintReceipt({ 
+    order, 
+    isBillOnly = false,
+    onPrinted 
+}: { 
+    order: any, 
+    isBillOnly?: boolean,
+    onPrinted?: () => void 
+}) {
     const { organization } = usePage().props as any;
-    
+    const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
-        if (order) {
-            // Small delay to ensure render is complete
+        setMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (order && mounted) {
             const timer = setTimeout(() => {
                 window.print();
                 if (onPrinted) onPrinted();
-            }, 300);
+            }, 350);
             return () => clearTimeout(timer);
         }
-    }, [order]);
+    }, [order, mounted]);
 
-    if (!order) return null;
+    if (!order || !mounted) return null;
 
     const location = order.location || {};
-    const date = new Date(order.created_at).toLocaleString();
+    const date = new Date(order.created_at || Date.now()).toLocaleString();
     
-    // Determine if we should print KOT, Receipt, or both based on location settings
-    const workflow = location.kitchen_workflow || 'print_only';
-    const showKOT = workflow === 'print_only' || workflow === 'both';
-    
-    return (
-        <>
+    // Check if we should render KOT section on regular non-dining checkout
+    const isDineIn = order.order_type === 'Dine-in';
+    const showKOT = !isBillOnly && !isDineIn;
+
+    const content = (
+        <div id="thermal-print-root" className="text-black bg-white w-full max-w-[80mm] text-[12px] font-mono leading-tight p-2">
             <style type="text/css" media="print" dangerouslySetInnerHTML={{ __html: `
                 @page { 
-                    size: 80mm 297mm; 
-                    margin: 0; 
+                    size: 80mm; 
+                    margin: 0mm !important; 
                 }
-                html, body { 
-                    width: 80mm !important; 
-                    margin: 0 !important; 
-                    padding: 0 !important; 
+                @media print {
+                    *, *:before, *:after {
+                        box-sizing: border-box !important;
+                    }
+                    html, body { 
+                        width: 80mm !important; 
+                        max-width: 80mm !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        background: #fff !important;
+                        color: #000 !important;
+                        overflow: visible !important;
+                    }
+                    #app {
+                        display: none !important;
+                    }
+                    #thermal-print-root {
+                        display: block !important;
+                        position: relative !important;
+                        float: none !important;
+                        width: 80mm !important;
+                        max-width: 80mm !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        margin: 0 !important;
+                        padding: 2mm !important;
+                        box-sizing: border-box !important;
+                        background: #fff !important;
+                        color: #000 !important;
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
+                    }
                 }
             ` }} />
-            <div className="hidden print:block text-black bg-white w-full max-w-[80mm] mx-auto text-[12px] font-mono leading-tight p-2">
-                {/* --- CUSTOMER RECEIPT --- */}
-            <div className="text-center mb-4">
-                <h1 className="font-bold text-xl mb-1 uppercase">{organization?.name || 'Restaurant'}</h1>
-                {location.address && <p>{location.address}</p>}
-                {location.phone && <p>Tel: {location.phone}</p>}
-                {location.receipt_header && <p className="mt-2 text-[10px] whitespace-pre-wrap">{location.receipt_header}</p>}
+
+            {/* --- CUSTOMER RECEIPT / BILL --- */}
+            <div className="text-center mb-3">
+                <h1 className="font-bold text-lg uppercase leading-tight">{organization?.name || 'Restaurant'}</h1>
+                {location.address && <p className="text-[11px]">{location.address}</p>}
+                {location.phone && <p className="text-[11px]">Tel: {location.phone}</p>}
+                {location.receipt_header && <p className="mt-1 text-[10px] whitespace-pre-wrap">{location.receipt_header}</p>}
             </div>
 
-            <div className="mb-4 border-y border-black border-dashed py-2">
+            <div className="mb-3 border-y border-black border-dashed py-1.5 text-xs">
                 <div className="flex justify-between">
                     <span>Order: <strong>{order.order_number}</strong></span>
                     <span>{order.order_type}</span>
                 </div>
-                <div className="flex justify-between mt-1">
+                <div className="flex justify-between mt-0.5">
                     <span>{date}</span>
                     <span>Cashier: {order.cashier?.name || 'Admin'}</span>
                 </div>
                 {order.customer_name && (
-                    <div className="mt-1">Customer: {order.customer_name}</div>
+                    <div className="mt-0.5">Customer: {order.customer_name}</div>
                 )}
             </div>
 
-            <table className="w-full mb-4">
-                <thead>
-                    <tr className="border-b border-black text-left">
-                        <th className="w-10 pb-1">Qty</th>
-                        <th className="pb-1">Item</th>
-                        <th className="text-right pb-1">Amt</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {order.items?.map((item: any) => (
-                        <tr key={item.id} className="align-top">
-                            <td className="pt-2">{item.quantity}</td>
-                            <td className="pt-2">
-                                <div className="font-bold">{item.menu_item?.name}</div>
-                                {item.modifiers?.map((mod: any, idx: number) => (
-                                    <div key={idx} className="text-[10px] pl-2">+ {mod.modifier?.name}</div>
-                                ))}
-                            </td>
-                            <td className="text-right pt-2">${parseFloat(item.subtotal).toFixed(2)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {(() => {
+                // Consolidate identical items across rounds for clean customer receipt
+                const consolidated: Record<string, any> = {};
+                (order.items || []).forEach((item: any) => {
+                    const modIds = (item.modifiers || []).map((m: any) => m.modifier_id || m.modifier?.id).sort().join(',');
+                    const key = `${item.menu_item_id || item.menu_item?.id}_${item.notes || ''}_${modIds}`;
+                    
+                    const unitPrice = Number(item.unit_price || item.price || 0);
+                    const qty = Number(item.quantity || 1);
+                    const lineSubtotal = (unitPrice > 0) ? (unitPrice * qty) : Number(item.subtotal || 0);
 
-            <div className="border-t border-black pt-2 mb-4 space-y-1">
-                <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>${parseFloat(order.subtotal).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>${parseFloat(order.tax_total).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-black">
-                    <span>TOTAL</span>
-                    <span>${parseFloat(order.grand_total).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-[10px] mt-1">
-                    <span>Paid via {order.payment_method}</span>
-                </div>
-            </div>
+                    if (!consolidated[key]) {
+                        consolidated[key] = {
+                            ...item,
+                            quantity: qty,
+                            subtotal: lineSubtotal,
+                        };
+                    } else {
+                        consolidated[key].quantity += qty;
+                        consolidated[key].subtotal += lineSubtotal;
+                    }
+                });
+                const itemList = Object.values(consolidated);
 
-            <div className="text-center mt-4 mb-4">
-                {location.receipt_footer && <p className="mb-2 whitespace-pre-wrap">{location.receipt_footer}</p>}
-                <p className="font-bold">Thank you for your visit!</p>
-            </div>
-
-            {/* --- KOT SECTION (If applicable) --- */}
-            {showKOT && (
-                <>
-                    {/* Tear/Cut Line */}
-                    <div className="border-t-2 border-black border-dashed my-8 text-center text-xs">
-                        <span className="bg-white px-2">✂ CUT HERE ✂</span>
-                    </div>
-
-                    <div className="text-center mb-4">
-                        <h2 className="font-black text-2xl uppercase mb-1">KOT</h2>
-                        <h3 className="font-bold text-xl">{order.order_type}</h3>
-                    </div>
-
-                    <div className="mb-4 border-y border-black border-dashed py-2 font-bold text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-xl">#{order.order_number}</span>
-                        </div>
-                        <div className="mt-1 font-normal text-xs">{date}</div>
-                    </div>
-
-                    <table className="w-full mb-8">
+                return (
+                    <table className="w-full mb-3 text-xs">
                         <thead>
-                            <tr className="border-b-2 border-black text-left">
-                                <th className="w-12 pb-1 text-lg">Qty</th>
-                                <th className="pb-1 text-lg">Item</th>
+                            <tr className="border-b border-black text-left">
+                                <th className="w-8 pb-1">Qty</th>
+                                <th className="pb-1">Item</th>
+                                <th className="text-right pb-1">Amt</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {order.items?.map((item: any) => (
-                                <tr key={item.id} className="align-top border-b border-gray-300">
-                                    <td className="pt-3 pb-3 font-black text-xl">{item.quantity}</td>
-                                    <td className="pt-3 pb-3">
-                                        <div className="font-bold text-base">{item.menu_item?.name}</div>
-                                        {item.modifiers?.map((mod: any, idx: number) => (
-                                            <div key={idx} className="text-sm font-semibold italic pl-2">+ {mod.modifier?.name}</div>
+                            {itemList.map((item: any, idx: number) => (
+                                <tr key={idx} className="align-top">
+                                    <td className="pt-1.5 font-bold">{item.quantity}</td>
+                                    <td className="pt-1.5">
+                                        <div className="font-bold">{item.menu_item?.name || 'Item'}</div>
+                                        {item.modifiers?.map((mod: any, mIdx: number) => (
+                                            <div key={mIdx} className="text-[10px] pl-2">+ {mod.modifier?.name}</div>
                                         ))}
                                         {item.notes && (
-                                            <div className="text-sm border border-black p-1 mt-1 font-semibold">Note: {item.notes}</div>
+                                            <div className="text-[10px] italic">Note: {item.notes}</div>
                                         )}
                                     </td>
+                                    <td className="text-right pt-1.5 font-bold">${Number(item.subtotal).toFixed(2)}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                </>
-            )}
+                );
+            })()}
+
+            <div className="border-t border-black pt-1.5 mb-3 space-y-1 text-xs">
+                <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${parseFloat(order.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Tax / GST</span>
+                    <span>${parseFloat(order.tax_total || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base mt-1.5 pt-1.5 border-t border-black">
+                    <span>TOTAL</span>
+                    <span>${parseFloat(order.grand_total || 0).toFixed(2)}</span>
+                </div>
+                {order.payment_method && (
+                    <div className="flex justify-between text-[10px] mt-0.5">
+                        <span>Paid via {order.payment_method}</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="text-center mt-2 mb-2">
+                {location.receipt_footer && <p className="mb-1 whitespace-pre-wrap">{location.receipt_footer}</p>}
+                <p className="font-bold">Thank you for your visit!</p>
+            </div>
         </div>
-        </>
     );
+
+    return createPortal(content, document.body);
 }

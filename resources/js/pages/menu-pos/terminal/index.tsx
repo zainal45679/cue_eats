@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
 import { PrintReceipt } from './components/PrintReceipt';
+import { PrintKOT } from './components/PrintKOT';
 import { DineInTopBar } from './DineInTopBar';
 import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
@@ -21,7 +22,8 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
     
     // Support auto-print from flash
     const { flash, auth } = usePage().props as any;
-    const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
+    const [orderToPrint, setOrderToPrint] = useState<any>(null);
+    const [kotToPrint, setKotToPrint] = useState<any>(null);
     
     const isWaiter = auth?.roles?.includes('waiter');
 
@@ -29,12 +31,25 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
     const [waiterId, setWaiterId] = useState<string>(activeOrder?.waiter_id || (isWaiter ? auth.user.id : ''));
     const [pax, setPax] = useState<string>(activeOrder?.pax?.toString() || table?.seating_capacity?.toString() || '');
 
-    // If a new flash order comes in (e.g. from a fresh checkout), update orderToPrint
+    const triggerKotPrint = (kotData: any) => {
+        if (!kotData) return;
+        setKotToPrint({ ...kotData, _ts: Date.now() });
+    };
+
+    const triggerOrderPrint = (orderData: any) => {
+        if (!orderData) return;
+        setOrderToPrint({ ...orderData, _ts: Date.now() });
+    };
+
+    // If new flash order or KOT comes in, update print state
     useEffect(() => {
-        if (flash?.recent_order) {
-            setOrderToPrint(flash.recent_order);
+        if (flash?.recent_kot) {
+            triggerKotPrint(flash.recent_kot);
         }
-    }, [flash?.recent_order]);
+        if (flash?.recent_order) {
+            triggerOrderPrint(flash.recent_order);
+        }
+    }, [flash?.recent_order, flash?.recent_kot]);
     
     const [selectedItemForMod, setSelectedItemForMod] = useState<any | null>(null);
     const [isModModalOpen, setIsModModalOpen] = useState(false);
@@ -123,6 +138,21 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
         }
     };
 
+    const getItemUnitPrice = (item: any, selectedMods?: Record<string, any[]>): number => {
+        let base = parseFloat(item.price || 0);
+        const modsObj = selectedMods || item.selectedModifiers;
+        if (modsObj) {
+            const mods = Object.values(modsObj).flat();
+            mods.forEach((mod: any) => {
+                const adj = parseFloat(mod?.price_adjustment ?? mod?.price ?? 0);
+                if (!isNaN(adj)) {
+                    base += adj;
+                }
+            });
+        }
+        return base;
+    };
+
     const addToCart = (item: any, selectedModifiers: Record<string, any[]>) => {
         if (!checkInventory(item, selectedModifiers, 1)) {
             alert('Insufficient stock for this item or its modifiers.');
@@ -131,16 +161,12 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
 
         const hash = getModifierHash(selectedModifiers);
         const existingItemIndex = cart.findIndex(c => c.id === item.id && c.modHash === hash);
-        
-        // Calculate item base price + modifiers
-        let itemUnitPrice = parseFloat(item.price);
-        Object.values(selectedModifiers).flat().forEach((mod: any) => {
-            itemUnitPrice += parseFloat(mod.price_adjustment);
-        });
+        const itemUnitPrice = getItemUnitPrice(item, selectedModifiers);
 
         if (existingItemIndex >= 0) {
             const newCart = [...cart];
             newCart[existingItemIndex].quantity += 1;
+            newCart[existingItemIndex].unitPriceWithMods = itemUnitPrice;
             setCart(newCart);
         } else {
             setCart([...cart, { 
@@ -172,7 +198,7 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
 
     const clearCart = () => setCart([]);
 
-    const subtotal = cart.reduce((sum, item) => sum + (item.unitPriceWithMods * item.quantity), 0);
+    const subtotal = cart.reduce((sum, item) => sum + (getItemUnitPrice(item) * item.quantity), 0);
 
     return (
         <>
@@ -300,10 +326,10 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                                                     </p>
                                                 ))}
                                             </div>
-                                            <p className="font-semibold whitespace-nowrap">${(item.unitPriceWithMods * item.quantity).toFixed(2)}</p>
+                                            <p className="font-semibold whitespace-nowrap">${(getItemUnitPrice(item) * item.quantity).toFixed(2)}</p>
                                         </div>
                                         <div className="flex items-center justify-between mt-2">
-                                            <span className="text-xs text-muted-foreground">${item.unitPriceWithMods.toFixed(2)} / ea</span>
+                                            <span className="text-xs text-muted-foreground">${getItemUnitPrice(item).toFixed(2)} / ea</span>
                                             <div className="flex items-center bg-muted/50 border rounded-md overflow-hidden h-7">
                                                 <button className="px-2.5 h-full hover:bg-muted transition-colors flex items-center justify-center" onClick={() => updateQuantity(item.cart_id, -1)}>
                                                     <Minus className="w-3 h-3" />
@@ -358,7 +384,13 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                                                     })) : []
                                                 }))
                                             }, { 
-                                                onSuccess: clearCart,
+                                                onSuccess: (page: any) => {
+                                                    clearCart();
+                                                    const recentKot = page?.props?.flash?.recent_kot;
+                                                    if (recentKot) {
+                                                        triggerKotPrint(recentKot);
+                                                    }
+                                                },
                                                 onError: (errors) => {
                                                     console.error(errors);
                                                     const firstError = Object.values(errors)[0];
@@ -435,13 +467,19 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                 }}
             />
 
-            {/* Hidden Print Component */}
-            {orderToPrint && (
+            {/* Print Components - Render only ONE at a time */}
+            {kotToPrint ? (
+                <PrintKOT 
+                    kot={kotToPrint} 
+                    onPrinted={() => setKotToPrint(null)} 
+                />
+            ) : orderToPrint ? (
                 <PrintReceipt 
                     order={orderToPrint} 
+                    isBillOnly={flash?.is_bill_only || activeOrder?.order_type === 'Dine-in'}
                     onPrinted={() => setOrderToPrint(null)} 
                 />
-            )}
+            ) : null}
         </>
     );
 }

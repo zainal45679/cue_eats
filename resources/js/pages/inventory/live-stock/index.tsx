@@ -15,9 +15,11 @@ import { ArrowRightLeft } from 'lucide-react';
 
 export default function InventoryBalancesIndex({
   inventoryBalances,
+  allInventoryBalances = [],
   serverCategories,
   totalItemsCount,
   storageLocations = [],
+  ingredients = [],
 }: PageProps<{
   inventoryBalances: {
     rows: any[];
@@ -28,9 +30,11 @@ export default function InventoryBalancesIndex({
     links: any[];
     filters?: any[];
   };
+  allInventoryBalances?: any[];
   serverCategories?: Record<string, number>;
   totalItemsCount?: number;
   storageLocations?: any[];
+  ingredients?: any[];
 }>) {
   const [activeTab, setActiveTab] = useState("all");
   const [showCategorySidebar, setShowCategorySidebar] = useState(false);
@@ -386,6 +390,8 @@ export default function InventoryBalancesIndex({
         onOpenChange={setTransferDialogOpen}
         storageLocations={storageLocations}
         inventoryBalances={inventoryBalances.rows || []}
+        allInventoryBalances={allInventoryBalances}
+        allIngredients={ingredients}
         preselectedBalance={selectedRowForTransfer}
       />
     </XPage>

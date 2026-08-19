@@ -200,6 +200,13 @@ class PosController extends Controller
                         $locationId = $order->business_location_id;
                         $order->delete();
                         if ($tableId) {
+                            \App\Models\DiningTable::where('parent_table_id', $tableId)->update(['parent_table_id' => null]);
+                            $tbl = \App\Models\DiningTable::find($tableId);
+                            if ($tbl) {
+                                $tbl->status = 'available';
+                                $tbl->parent_table_id = null;
+                                $tbl->save();
+                            }
                             DB::afterCommit(function () use ($tableId, $locationId) {
                                 event(new \App\Events\TableStatusUpdated($tableId, $locationId));
                             });
@@ -221,6 +228,7 @@ class PosController extends Controller
                     // Update basic details if changed
                     if (isset($validated['pax'])) $order->pax = $validated['pax'];
                     if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
+                    if (isset($validated['dining_table_id'])) $order->dining_table_id = $validated['dining_table_id'];
                     if ($validated['action'] === 'save_kot') $order->status = 'running';
                     $order->save();
                 } else {
@@ -250,17 +258,55 @@ class PosController extends Controller
                     ]);
                 }
 
-                // Append NEW items if any
+                // Create KOT Round if saving KOT or placing order with items
+                $recentKotPayload = null;
                 if (!empty($validated['cart'])) {
+                    // Reset kitchen_status to pending if order was previously marked ready or rejected
+                    if (in_array($order->kitchen_status, ['ready', 'rejected'])) {
+                        $order->kitchen_status = 'pending';
+                    }
+
+                    // Determine Next KOT Round Number
+                    $currentMaxRound = \App\Models\PosKot::where('pos_order_id', $order->id)->max('round_number') ?? 0;
+                    $nextRound = $currentMaxRound + 1;
+                    $kotNumber = 'KOT-' . $order->order_number . '-R' . $nextRound;
+
+                    $posKot = \App\Models\PosKot::create([
+                        'pos_order_id' => $order->id,
+                        'round_number' => $nextRound,
+                        'kot_number' => $kotNumber,
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    $kotItemsPayload = [];
+
                     foreach ($validated['cart'] as $item) {
+                        $modAdjustment = 0;
+                        if (!empty($item['modifiers'])) {
+                            foreach ($item['modifiers'] as $mod) {
+                                $modAdjustment += floatval($mod['price_adjustment'] ?? 0);
+                            }
+                        }
+                        $unitPriceWithMods = floatval($item['price']) + $modAdjustment;
+
                         $orderItem = OrderItem::create([
                             'pos_order_id' => $order->id,
                             'menu_item_id' => $item['menu_item_id'],
                             'quantity' => $item['quantity'],
-                            'unit_price' => $item['price'],
-                            'subtotal' => $item['price'] * $item['quantity'],
+                            'unit_price' => $unitPriceWithMods,
+                            'subtotal' => $unitPriceWithMods * $item['quantity'],
+                            'notes' => $item['notes'] ?? null,
+                            'kot_round' => $nextRound,
+                        ]);
+
+                        $kotItem = \App\Models\PosKotItem::create([
+                            'pos_kot_id' => $posKot->id,
+                            'menu_item_id' => $item['menu_item_id'],
+                            'quantity' => $item['quantity'],
                             'notes' => $item['notes'] ?? null,
                         ]);
+
+                        $modifierDetails = [];
 
                         if (!empty($item['modifiers'])) {
                             foreach ($item['modifiers'] as $mod) {
@@ -269,29 +315,64 @@ class PosController extends Controller
                                     'modifier_id' => $mod['modifier_id'],
                                     'price_adjustment' => $mod['price_adjustment'],
                                 ]);
+
+                                \App\Models\PosKotItemModifier::create([
+                                    'pos_kot_item_id' => $kotItem->id,
+                                    'modifier_id' => $mod['modifier_id'],
+                                    'price_adjustment' => $mod['price_adjustment'],
+                                ]);
+
+                                $modModel = \App\Models\Modifier::find($mod['modifier_id']);
+                                if ($modModel) {
+                                    $modifierDetails[] = ['modifier_name' => $modModel->name];
+                                }
                             }
                         }
+
+                        $menuItemModel = \App\Models\MenuItem::find($item['menu_item_id']);
+
+                        $kotItemsPayload[] = [
+                            'id' => $kotItem->id,
+                            'menu_item_name' => $menuItemModel?->name ?? 'Item',
+                            'quantity' => $item['quantity'],
+                            'notes' => $item['notes'] ?? null,
+                            'modifiers' => $modifierDetails,
+                        ];
 
                         // Deduct Inventory for Menu Item and Modifiers via InventoryDeductionService
                         \App\Services\InventoryDeductionService::deductOrderItem($orderItem, $locationId, $allowOverride);
                     }
+
+                    $order->load(['diningTable', 'waiter']);
+                    $recentKotPayload = [
+                        'id' => $posKot->id,
+                        'kot_number' => $posKot->kot_number,
+                        'round_number' => $posKot->round_number,
+                        'order_number' => $order->order_number,
+                        'table_name' => $order->diningTable?->name ?? 'Table',
+                        'order_type' => $order->order_type,
+                        'waiter_name' => $order->waiter?->name ?? auth()->user()->name,
+                        'created_at' => $posKot->created_at->toIso8601String(),
+                        'items' => $kotItemsPayload,
+                    ];
+                } else if ($validated['action'] === 'save_kot') {
+                    // No new items provided when save_kot was clicked
+                    return back()->with('info', 'No new items to send to kitchen.');
                 }
 
-                // Recalculate Totals
-                $order->load('items.modifiers');
-                $subtotal = 0;
-                foreach ($order->items as $item) {
-                    $itemTotal = $item->unit_price;
-                    foreach ($item->modifiers as $mod) {
-                        $itemTotal += $mod->price_adjustment;
+                // Recalculate Totals if items exist
+                $order->load('items');
+                if ($order->items->count() > 0) {
+                    $subtotal = 0;
+                    foreach ($order->items as $item) {
+                        $subtotal += floatval($item->subtotal);
                     }
-                    $subtotal += ($itemTotal * $item->quantity);
+                    
+                    $tax_total = 0; // Hardcoded 0 for now
+                    $order->subtotal = $subtotal;
+                    $order->tax_total = $tax_total;
+                    $order->grand_total = $subtotal + $tax_total;
                 }
-                
-                $tax_total = 0; // Hardcoded 0 for now
-                $order->subtotal = $subtotal;
-                $order->tax_total = $tax_total;
-                $order->grand_total = $subtotal + $tax_total;
 
                 // Update Status based on action
                 if ($validated['action'] === 'settle') {
@@ -313,12 +394,17 @@ class PosController extends Controller
                 
                 $order->save();
 
-                // Update Dining Table Status if applicable
+                // Update Dining Table Status & Auto-Unmerge if applicable
                 if ($order->dining_table_id) {
                     $table = \App\Models\DiningTable::find($order->dining_table_id);
                     if ($table) {
                         if ($order->status === 'Completed') {
                             $table->status = 'available';
+                            
+                            // Auto-unmerge all tables in this merge group
+                            $targetParentId = $table->parent_table_id ?? $table->id;
+                            \App\Models\DiningTable::where('parent_table_id', $targetParentId)->update(['parent_table_id' => null, 'status' => 'available']);
+                            $table->parent_table_id = null;
                         } else if ($order->status === 'billed') {
                             $table->status = 'billed';
                         } else {
@@ -328,14 +414,15 @@ class PosController extends Controller
                     }
                 }
 
-                return $order;
+                return ['order' => $order, 'recent_kot' => $recentKotPayload];
             });
 
             if ($result instanceof \Illuminate\Http\RedirectResponse) {
                 return $result;
             }
 
-            $order = $result;
+            $order = $result['order'];
+            $recentKot = $result['recent_kot'];
             $order->load(['items.menuItem', 'items.modifiers.modifier', 'location', 'cashier']);
             
             // Broadcast KOT only if there were new items
@@ -343,17 +430,34 @@ class PosController extends Controller
                 event(new \App\Events\OrderCreated($order));
             }
             
-            // Redirect based on action
-            if ($order->status === 'Completed' || $order->status === 'billed') {
-                return redirect()->route('pos.tables')->with([
-                    'success' => "Order {$order->order_number} " . ($order->status === 'Completed' ? 'settled' : 'billed') . " successfully.",
-                    'recent_order' => $order
+            // Redirect based on action and order type
+            if ($validated['action'] === 'save_kot') {
+                return back()->with([
+                    'success' => "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent to kitchen.",
+                    'recent_kot' => $recentKot
                 ]);
             }
-            
+
+            if ($validated['action'] === 'print_bill') {
+                return back()->with([
+                    'success' => "Bill for {$order->order_number} generated.",
+                    'recent_order' => $order,
+                    'is_bill_only' => true
+                ]);
+            }
+
+            if ($order->dining_table_id && $order->status === 'Completed') {
+                return redirect()->route('pos.tables')->with([
+                    'success' => "Order {$order->order_number} settled successfully.",
+                    'recent_order' => $order,
+                    'is_bill_only' => true
+                ]);
+            }
+
             return back()->with([
-                'success' => "KOT for {$order->order_number} saved.",
-                'recent_order' => $order
+                'success' => "Order {$order->order_number} " . ($order->status === 'Completed' ? 'settled' : 'saved') . " successfully.",
+                'recent_order' => $order,
+                'recent_kot' => $recentKot
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;

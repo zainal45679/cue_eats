@@ -151,6 +151,12 @@ class TableController extends Controller
 
         \App\Models\DiningTable::whereIn('id', $tableIds)->update(['parent_table_id' => $parentTableId]);
 
+        $parentTable = \App\Models\DiningTable::find($parentTableId);
+        if ($parentTable) {
+            $locationId = $parentTable->diningZone?->business_location_id ?? 1;
+            event(new \App\Events\TableStatusUpdated($parentTableId, $locationId));
+        }
+
         return back()->with('success', 'Tables merged successfully.');
     }
 
@@ -160,7 +166,13 @@ class TableController extends Controller
             'parent_table_id' => 'required|exists:dining_tables,id'
         ]);
 
+        $parentTable = \App\Models\DiningTable::find($request->parent_table_id);
         \App\Models\DiningTable::where('parent_table_id', $request->parent_table_id)->update(['parent_table_id' => null]);
+
+        if ($parentTable) {
+            $locationId = $parentTable->diningZone?->business_location_id ?? 1;
+            event(new \App\Events\TableStatusUpdated($parentTable->id, $locationId));
+        }
 
         return back()->with('success', 'Tables unmerged successfully.');
     }

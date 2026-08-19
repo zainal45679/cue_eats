@@ -132,6 +132,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // KDS (Kitchen Display System)
         Route::get('kds', [\App\Http\Controllers\Dashboard\KdsController::class, 'index'])->name('pos.kds');
         Route::post('kds/{order}/status', [\App\Http\Controllers\Dashboard\KdsController::class, 'updateStatus'])->name('pos.kds.update-status');
+        Route::post('kds/kot/{kot}/status', [\App\Http\Controllers\Dashboard\KdsController::class, 'updateKotStatus'])->name('pos.kds.kot-update-status');
 
         // Live Orders (Manager)
         Route::get('live-orders', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'index'])->name('live-orders.index');

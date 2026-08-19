@@ -29,9 +29,8 @@ class InternalRequest extends Model
     ];
 
     protected $casts = [
-        'from_location_id' => 'integer',
-        'to_location_id' => 'integer',
-        'requested_by_id' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     // Removed TenantScope because Internal Requests have from_location_id and to_location_id

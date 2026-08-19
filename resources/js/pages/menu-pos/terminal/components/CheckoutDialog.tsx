@@ -76,7 +76,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
             notes: '',
             modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
                 modifier_id: mod.id,
-                price_adjustment: mod.price_adjustment
+                price_adjustment: parseFloat(mod.price_adjustment ?? mod.price ?? 0)
             })) : []
         }))
     }));

@@ -61,9 +61,15 @@ class InventoryBalanceController extends Controller
 
         return Inertia::render('inventory/live-stock/index', [
             'inventoryBalances' => $data,
+            'allInventoryBalances' => $allBalances->map(fn($b) => [
+                'storage_location_id' => $b->storage_location_id,
+                'ingredient_id' => $b->ingredient_id,
+                'available_qty' => (float) $b->available_qty,
+            ]),
             'serverCategories' => $cleanCategories,
             'totalItemsCount' => $allBalances->count(),
             'storageLocations' => $storageLocations,
+            'ingredients' => \App\Models\Ingredient::with('baseUom')->select('id', 'name', 'base_uom_id')->get(),
         ]);
     }
 }

@@ -338,21 +338,37 @@ class InternalRequestController extends Controller
                 }
             }
 
+            // Calculate total dispatched and rejected quantities across all items
+            $totalDispatched = 0;
+            $totalRejected = 0;
+            foreach ($internalRequest->items as $item) {
+                $totalDispatched += (float) $item->dispatched_quantity;
+                $totalRejected += (float) $item->rejected_quantity;
+            }
+
             if ($allItemsProcessed) {
-                $internalRequest->update(['status' => 'fulfilled']);
-                $message = "Your request {$internalRequest->request_number} has been fully completed.";
-                $type = 'success';
-            } else {
-                $internalRequest->update(['status' => 'partially_fulfilled']);
-                if ($hasDispatchedAnything) {
-                    $stoCount = \App\Models\StockTransferOrder::where('internal_request_id', $internalRequest->id)->count();
-                    $message = $stoCount > 1 
-                        ? "An additional shipment for {$internalRequest->request_number} has been dispatched."
-                        : "Your request {$internalRequest->request_number} has been partially fulfilled.";
+                if ($totalDispatched == 0 && $totalRejected > 0) {
+                    $internalRequest->update(['status' => 'rejected']);
+                    $message = "Your request {$internalRequest->request_number} has been rejected.";
+                    $type = 'warning';
+                } elseif ($totalRejected > 0 && $totalDispatched > 0) {
+                    $internalRequest->update(['status' => 'partially_rejected']);
+                    $message = "Your request {$internalRequest->request_number} has been partially fulfilled ({$totalDispatched} dispatched, {$totalRejected} rejected).";
                     $type = 'info';
                 } else {
-                    $message = "Some remaining quantities for {$internalRequest->request_number} have been rejected.";
-                    $type = 'warning';
+                    $internalRequest->update(['status' => 'fulfilled']);
+                    $message = "Your request {$internalRequest->request_number} has been fully completed.";
+                    $type = 'success';
+                }
+            } else {
+                if ($totalDispatched > 0) {
+                    $internalRequest->update(['status' => 'partially_fulfilled']);
+                    $message = "Your request {$internalRequest->request_number} has been partially fulfilled.";
+                    $type = 'info';
+                } else {
+                    $internalRequest->update(['status' => 'pending_fulfillment']);
+                    $message = "Quantities for {$internalRequest->request_number} have been updated.";
+                    $type = 'info';
                 }
             }
 

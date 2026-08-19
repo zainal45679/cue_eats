@@ -25,6 +25,8 @@ interface StorageTransferDialogProps {
     onOpenChange: (open: boolean) => void;
     storageLocations: any[];
     inventoryBalances?: any[];
+    allInventoryBalances?: any[];
+    allIngredients?: any[];
     preselectedBalance?: any;
 }
 
@@ -33,6 +35,8 @@ export function StorageTransferDialog({
     onOpenChange,
     storageLocations,
     inventoryBalances = [],
+    allInventoryBalances = [],
+    allIngredients = [],
     preselectedBalance,
 }: StorageTransferDialogProps) {
     const [fromStorageId, setFromStorageId] = useState<string>('');
@@ -42,10 +46,13 @@ export function StorageTransferDialog({
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Extract unique ingredients list from inventory balances
+    // Combine ingredients list
     const ingredientsMap = new Map();
+    allIngredients.forEach((ing) => {
+        if (ing?.id) ingredientsMap.set(ing.id, ing);
+    });
     inventoryBalances.forEach((bal) => {
-        if (bal.ingredient) {
+        if (bal.ingredient?.id) {
             ingredientsMap.set(bal.ingredient.id, bal.ingredient);
         }
     });
@@ -63,10 +70,21 @@ export function StorageTransferDialog({
     }, [preselectedBalance, open, storageLocations]);
 
     // Available stock for selected fromStorage and ingredient
-    const selectedSourceBalance = inventoryBalances.find(
+    // Primary lookup: un-paginated allInventoryBalances
+    // Fallback: paginated inventoryBalances or preselectedBalance
+    const balanceSource = (allInventoryBalances && allInventoryBalances.length > 0) 
+        ? allInventoryBalances 
+        : inventoryBalances;
+
+    const selectedSourceBalance = balanceSource.find(
         (b) => b.storage_location_id === fromStorageId && b.ingredient_id === ingredientId
     );
-    const availableStock = selectedSourceBalance ? Number(selectedSourceBalance.available_qty) || 0 : 0;
+
+    const availableStock = selectedSourceBalance 
+        ? Number(selectedSourceBalance.available_qty) || 0 
+        : (preselectedBalance && preselectedBalance.storage_location_id === fromStorageId && preselectedBalance.ingredient_id === ingredientId)
+            ? Number(preselectedBalance.available_qty) || 0
+            : 0;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

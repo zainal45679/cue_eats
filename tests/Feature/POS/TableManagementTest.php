@@ -135,3 +135,55 @@ test('cashier can finalize and settle a running dine-in table order with quick c
         'status' => 'available',
     ]);
 });
+
+test('tables can be merged, unmerged manually, and automatically unmerged upon order settlement', function () {
+    $this->actingAs($this->user);
+
+    $zone = DiningZone::create([
+        'business_location_id' => $this->location->id,
+        'name' => 'Vip Room',
+    ]);
+
+    $t1 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'T1', 'seating_capacity' => 2, 'status' => 'available']);
+    $t2 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'T2', 'seating_capacity' => 2, 'status' => 'available']);
+
+    // 1. Merge T1 and T2
+    $response = $this->post('/menu-pos/tables/merge', [
+        'table_ids' => [$t1->id, $t2->id]
+    ]);
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('dining_tables', ['id' => $t2->id, 'parent_table_id' => $t1->id]);
+
+    // 2. Manual Unmerge T1
+    $response = $this->post('/menu-pos/tables/unmerge', [
+        'parent_table_id' => $t1->id
+    ]);
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('dining_tables', ['id' => $t2->id, 'parent_table_id' => null]);
+
+    // 3. Merge again, place order, and verify Automatic Unmerge upon payment settlement
+    $this->post('/menu-pos/tables/merge', ['table_ids' => [$t1->id, $t2->id]]);
+    $order = Order::create([
+        'order_number' => 'ORD-MERGE-1',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'dining_table_id' => $t1->id,
+        'status' => 'running',
+        'kitchen_status' => 'pending',
+        'subtotal' => 60.00,
+        'grand_total' => 60.00,
+    ]);
+
+    $this->post('/menu-pos/terminal/checkout', [
+        'action' => 'settle',
+        'order_id' => $order->id,
+        'dining_table_id' => $t1->id,
+        'order_type' => 'Dine-in',
+        'payment_method' => 'Cash',
+        'tendered_amount' => 60.00,
+        'cart' => [],
+    ]);
+
+    // T2 should now be automatically unmerged (parent_table_id = null) and available
+    $this->assertDatabaseHas('dining_tables', ['id' => $t2->id, 'parent_table_id' => null, 'status' => 'available']);
+});

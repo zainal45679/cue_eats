@@ -240,3 +240,90 @@ test('order items deduct stock from kitchen storage when created or prepared in 
         'available_qty' => 44
     ]);
 });
+
+test('case 1: Main Store = 0, Main Kitchen = 340 -> transfer 20 from Main Kitchen succeeds', function () {
+    $this->actingAs($this->user);
+
+    InventoryBalance::create(['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+    InventoryBalance::create(['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 340]);
+
+    $response = $this->post('/inventory/storage-transfers', [
+        'from_storage_location_id' => $this->mainKitchen->id,
+        'to_storage_location_id' => $this->mainStore->id,
+        'ingredient_id' => $this->ingredient->id,
+        'quantity' => 20,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 320]);
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 20]);
+});
+
+test('case 2: Main Store = 20, Main Kitchen = 0 -> transfer 20 from Main Store succeeds', function () {
+    $this->actingAs($this->user);
+
+    InventoryBalance::create(['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 20]);
+    InventoryBalance::create(['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+
+    $response = $this->post('/inventory/storage-transfers', [
+        'from_storage_location_id' => $this->mainStore->id,
+        'to_storage_location_id' => $this->mainKitchen->id,
+        'ingredient_id' => $this->ingredient->id,
+        'quantity' => 20,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 20]);
+});
+
+test('case 3: Main Store = 0, Main Kitchen = 20 -> reverse transfer 20 from Main Kitchen succeeds', function () {
+    $this->actingAs($this->user);
+
+    InventoryBalance::create(['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+    InventoryBalance::create(['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 20]);
+
+    $response = $this->post('/inventory/storage-transfers', [
+        'from_storage_location_id' => $this->mainKitchen->id,
+        'to_storage_location_id' => $this->mainStore->id,
+        'ingredient_id' => $this->ingredient->id,
+        'quantity' => 20,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 20]);
+});
+
+test('case 4: Main Store = 10, Main Kitchen = 0 -> attempting transfer 20 correctly fails', function () {
+    $this->actingAs($this->user);
+
+    InventoryBalance::create(['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 10]);
+    InventoryBalance::create(['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+
+    $response = $this->post('/inventory/storage-transfers', [
+        'from_storage_location_id' => $this->mainStore->id,
+        'to_storage_location_id' => $this->mainKitchen->id,
+        'ingredient_id' => $this->ingredient->id,
+        'quantity' => 20,
+    ]);
+
+    $response->assertSessionHasErrors(['quantity']);
+    $this->assertDatabaseHas('inventory_balances', ['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 10]);
+});
+
+test('case 5: live stock page returns allInventoryBalances payload for transfer modal regardless of table filters', function () {
+    $this->actingAs($this->user);
+
+    InventoryBalance::create(['storage_location_id' => $this->mainStore->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 0]);
+    InventoryBalance::create(['storage_location_id' => $this->mainKitchen->id, 'ingredient_id' => $this->ingredient->id, 'available_qty' => 340]);
+
+    $response = $this->get('/inventory/live-stock');
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn ($page) => 
+        $page->has('allInventoryBalances')
+             ->where('allInventoryBalances.0.available_qty', 0)
+             ->where('allInventoryBalances.1.available_qty', 340)
+    );
+});
