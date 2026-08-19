@@ -12,18 +12,18 @@ class KdsController extends Controller
     public function index()
     {
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', \App\Models\BusinessLocation::first()?->id ?? 1) 
+            ? session('active_location_id') 
             : auth()->user()->business_location_id;
 
         $orders = Order::with([
-            'items.menuItem', 
-            'items.modifiers.modifier', 
-            'kots.items.menuItem', 
-            'kots.items.modifiers.modifier', 
-            'diningTable', 
+            'items.menuItem',
+            'items.modifiers.modifier',
+            'kots.items.menuItem',
+            'kots.items.modifiers.modifier',
+            'diningTable',
             'waiter'
         ])
-            ->where('business_location_id', $locationId)
+            ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereIn('kitchen_status', ['pending', 'preparing'])
             ->orderBy('created_at', 'asc')
             ->get();

@@ -19,8 +19,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $activeLocationId = session('active_location_id');
-        $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
+        $locationId = auth()->user()->hasRole('admin') 
+            ? session('active_location_id') 
+            : auth()->user()->business_location_id;
 
         $today = Carbon::today();
 
@@ -33,28 +34,30 @@ class DashboardController extends Controller
         };
 
         // 1. KPI Metrics
-        $completedOrdersToday = Order::query()->whereDate('created_at', $today)->where('status', 'Completed');
-        $applyLocationFilter($completedOrdersToday);
+        $completedOrdersToday = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->where('status', 'Completed');
             
         $todaysRevenue = (float) $completedOrdersToday->sum('grand_total');
         $todaysOrders = $completedOrdersToday->count();
         $aov = $todaysOrders > 0 ? $todaysRevenue / $todaysOrders : 0;
 
-        $canceledOrdersQuery = Order::query()->whereDate('created_at', $today)->where('status', 'Canceled');
-        $applyLocationFilter($canceledOrdersQuery);
-        $canceledOrders = $canceledOrdersQuery->count();
+        $canceledOrders = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->where('status', 'Canceled')
+            ->count();
 
         // 2. Order Types Breakdown
-        $orderTypesQuery = Order::query()->whereDate('created_at', $today);
-        $applyLocationFilter($orderTypesQuery);
-        $orderTypes = $orderTypesQuery->select('order_type', DB::raw('count(*) as count'), DB::raw('SUM(grand_total) as revenue'))
+        $orderTypes = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->select('order_type', DB::raw('count(*) as count'), DB::raw('SUM(grand_total) as revenue'))
             ->groupBy('order_type')
             ->get();
 
         // 3. Kitchen Status Breakdown
-        $kitchenStatusQuery = Order::query()->whereDate('created_at', $today);
-        $applyLocationFilter($kitchenStatusQuery);
-        $kitchenStatus = $kitchenStatusQuery->select('kitchen_status', DB::raw('count(*) as count'))
+        $kitchenStatus = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->select('kitchen_status', DB::raw('count(*) as count'))
             ->groupBy('kitchen_status')
             ->pluck('count', 'kitchen_status')
             ->toArray();
@@ -62,9 +65,10 @@ class DashboardController extends Controller
         $activeOrders = ($kitchenStatus['pending'] ?? 0) + ($kitchenStatus['preparing'] ?? 0);
 
         // 4. Cashier Performance Leaderboard
-        $cashierPerformanceQuery = Order::query()->whereDate('created_at', $today)->where('status', 'Completed');
-        $applyLocationFilter($cashierPerformanceQuery);
-        $cashierPerformance = $cashierPerformanceQuery->select('user_id', DB::raw('count(*) as orders_count'), DB::raw('SUM(grand_total) as total_revenue'))
+        $cashierPerformance = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->where('status', 'Completed')
+            ->select('user_id', DB::raw('count(*) as orders_count'), DB::raw('SUM(grand_total) as total_revenue'))
             ->groupBy('user_id')
             ->with('cashier:id,name')
             ->orderByDesc('total_revenue')
@@ -79,9 +83,10 @@ class DashboardController extends Controller
             });
 
         // 5. Inventory: Top Consumed Today
-        $topConsumedQuery = InventoryLedger::query()->whereDate('created_at', $today)->where('transaction_type', 'sale');
-        $applyLocationFilter($topConsumedQuery);
-        $topConsumed = $topConsumedQuery->select('ingredient_id', DB::raw('SUM(ABS(quantity)) as total_consumed'))
+        $topConsumed = InventoryLedger::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereDate('created_at', $today)
+            ->where('transaction_type', 'sale')
+            ->select('ingredient_id', DB::raw('SUM(ABS(quantity)) as total_consumed'))
             ->groupBy('ingredient_id')
             ->with('ingredient.baseUom')
             ->orderByDesc('total_consumed')
@@ -95,25 +100,13 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 6. Inventory: Detailed Low Stock Alerts (Branch-Aggregated Purchasing Alert)
-        $lowStockItems = Ingredient::where('is_inventory_item', true)
-            ->with('baseUom')
-            ->select('id', 'name', 'base_uom_id')
-            ->selectSub(function ($query) use ($locationId) {
-                $query->from('inventory_balances')
-                    ->join('storage_locations', 'inventory_balances.storage_location_id', '=', 'storage_locations.id')
-                    ->whereColumn('inventory_balances.ingredient_id', 'ingredients.id')
-                    ->where('storage_locations.status', true);
-
-                if ($locationId) {
-                    $query->where('storage_locations.business_location_id', $locationId);
-                }
-
-                $query->select(DB::raw('COALESCE(SUM(inventory_balances.available_qty), 0)'));
-            }, 'total_available')
-            ->groupBy('ingredients.id')
-            ->having('total_available', '<=', 10)
-            ->orderBy('total_available', 'asc')
+        // 6. Inventory: Detailed Low Stock Alerts
+        $lowStockItems = InventoryBalance::when($locationId, function($q) use ($locationId) {
+                $q->whereHas('storageLocation', fn($sq) => $sq->where('business_location_id', $locationId));
+            })
+            ->where('available_qty', '<=', 10)
+            ->with(['ingredient.baseUom', 'storageLocation'])
+            ->orderBy('available_qty', 'asc')
             ->take(10)
             ->get()
             ->map(function ($ingredient) {
@@ -129,9 +122,10 @@ class DashboardController extends Controller
         $last7Days = collect();
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $trendQuery = Order::query()->whereDate('created_at', $date)->where('status', 'Completed');
-            $applyLocationFilter($trendQuery);
-            $revenue = $trendQuery->sum('grand_total');
+            $revenue = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+                ->whereDate('created_at', $date)
+                ->where('status', 'Completed')
+                ->sum('grand_total');
             
             $last7Days->push([
                 'name' => $date->format('M d'),

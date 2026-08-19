@@ -58,6 +58,7 @@ function isItemActive(item: NavItem, currentUrl: string): boolean {
 
 const getGroupIcon = (groupName: string) => {
   switch (groupName) {
+    case "Point of Sale": return <ShoppingCart className="h-5 w-5 text-primary" />;
     case "Inventory Operations": return <Package className="h-5 w-5 text-primary" />;
     case "Internal Transfers": return <ArrowRightLeft className="h-5 w-5 text-primary" />;
     case "External Purchasing": return <Truck className="h-5 w-5 text-primary" />;
