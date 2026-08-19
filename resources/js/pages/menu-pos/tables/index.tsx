@@ -4,6 +4,7 @@ import { Users, ReceiptText, Clock, User, ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 
 const getMergeSpan = (tableName: string) => {
     if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
@@ -20,13 +21,28 @@ const getMergeSpan = (tableName: string) => {
         : "row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
 }
 
-export default function TablesScreen({ zones }: { zones: any[] }) {
+export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     const { auth } = usePage().props as any;
-    const currentUserId = auth.user?.id;
-    const [activeZone, setActiveZone] = useState(zones.length > 0 ? zones[0].id : null);
+    const currentUserId = auth?.user?.id;
+    const isAllOutlets = auth?.active_location_id === null;
+    const allLocations = auth?.all_business_locations || [];
+    const [selectedLocationId, setSelectedLocationId] = useState(
+        isAllOutlets ? (allLocations[0]?.id || null) : auth?.active_location_id
+    );
+    
+    const visibleZones = zones.filter((z: any) => z.business_location_id === selectedLocationId);
+    
+    const [activeZone, setActiveZone] = useState(visibleZones.length > 0 ? visibleZones[0].id : null);
     const [currentTime, setCurrentTime] = useState(new Date());
+
     const [mergeMode, setMergeMode] = useState(false);
     const [selectedTablesToMerge, setSelectedTablesToMerge] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (visibleZones.length > 0 && !visibleZones.find((z: any) => z.id === activeZone)) {
+            setActiveZone(visibleZones[0].id);
+        }
+    }, [selectedLocationId, visibleZones]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -48,7 +64,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
         };
     }, [auth.user]);
 
-    const activeZoneData = zones.find(z => z.id === activeZone);
+    const activeZoneData = visibleZones.find((z: any) => z.id === activeZone);
 
     const getTableColorClass = (table: any) => {
         if (!table.active_order) return 'bg-card border-border border-l-4 border-l-green-500 hover:border-l-green-600 text-card-foreground shadow-sm'; 
@@ -84,7 +100,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
     let occupied = 0;
     let billed = 0;
 
-    zones.forEach(zone => {
+    visibleZones.forEach(zone => {
         zone.tables?.forEach((table: any) => {
             totalTables++;
             if (!table.active_order) available++;
@@ -176,29 +192,53 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                         </div>
                     </div>
 
-                    {/* Zone Toggles (Matching POS categories) */}
-                    {zones.length > 0 && (
-                        <ScrollArea className="w-full whitespace-nowrap">
-                            <div className="flex space-x-2 pb-1">
-                                {zones.map(zone => (
-                                    <Button 
-                                        key={zone.id}
-                                        variant={activeZone === zone.id ? 'default' : 'secondary'}
-                                        className="rounded-full px-5 h-8 text-xs"
-                                        onClick={() => setActiveZone(zone.id)}
-                                    >
-                                        {zone.name}
-                                    </Button>
-                                ))}
+                    {/* Zone Toggles & Location Dropdown */}
+                    <div className="flex items-center justify-between w-full mb-1">
+                        {visibleZones.length > 0 ? (
+                            <ScrollArea className="flex-1 whitespace-nowrap mr-4">
+                                <div className="flex space-x-2 pb-1">
+                                    {visibleZones.map((zone: any) => (
+                                        <Button 
+                                            key={zone.id}
+                                            variant={activeZone === zone.id ? 'default' : 'secondary'}
+                                            className="rounded-full px-5 h-8 text-xs shrink-0"
+                                            onClick={() => setActiveZone(zone.id)}
+                                        >
+                                            {zone.name}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <ScrollBar orientation="horizontal" className="hidden" />
+                            </ScrollArea>
+                        ) : (
+                            <div className="flex-1"></div>
+                        )}
+
+                        {isAllOutlets && allLocations.length > 1 && (
+                            <div className="shrink-0">
+                                <Select 
+                                    value={selectedLocationId ? selectedLocationId.toString() : ''} 
+                                    onValueChange={(val) => setSelectedLocationId(val)}
+                                >
+                                    <SelectTrigger className="w-[180px] h-8 rounded-full text-xs bg-muted/50 border-border/50 focus:ring-0">
+                                        <SelectValue placeholder="Select Location" />
+                                    </SelectTrigger>
+                                    <SelectContent align="end">
+                                        {allLocations.map((loc: any) => (
+                                            <SelectItem key={loc.id} value={loc.id.toString()} className="text-sm">
+                                                {loc.location_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <ScrollBar orientation="horizontal" className="hidden" />
-                        </ScrollArea>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* Main Content Area - Table Grid */}
                 <ScrollArea className="flex-1 min-h-0">
-                    {zones.length === 0 ? (
+                    {visibleZones.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
                             <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>
                             <p className="text-sm mt-1">Please set up your dining zones and tables in the admin panel.</p>
