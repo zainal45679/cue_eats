@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, ReceiptText, Clock, User, ArrowLeft, Lock, Plus, Settings2, Edit2, Trash2, Check } from 'lucide-react';
+import { Users, ReceiptText, Clock, User, ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { ZoneFormDialog } from './ZoneFormDialog';
-import { TableFormDialog } from './TableFormDialog';
-import { PrintReceipt } from '../terminal/components/PrintReceipt';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 
 const getMergeSpan = (tableName: string) => {
     if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
@@ -23,33 +21,28 @@ const getMergeSpan = (tableName: string) => {
         : "row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
 }
 
-export default function TablesScreen({ zones }: { zones: any[] }) {
-    const { auth, flash } = usePage().props as any;
-    const [orderToPrint, setOrderToPrint] = useState<any>(flash?.recent_order || null);
-
-    useEffect(() => {
-        if (flash?.recent_order) {
-            setOrderToPrint(flash.recent_order);
-        }
-    }, [flash?.recent_order]);
+export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
+    const { auth } = usePage().props as any;
     const currentUserId = auth?.user?.id;
-    const userRoles = auth?.roles || auth?.user?.roles || [];
-    const canManage = Array.isArray(userRoles) 
-        ? (userRoles.length === 0 || userRoles.includes('admin') || userRoles.includes('outlet_manager'))
-        : true;
-
-    const [activeZone, setActiveZone] = useState<string | null>(zones.length > 0 ? zones[0].id : null);
+    const isAllOutlets = auth?.active_location_id === null;
+    const allLocations = auth?.all_business_locations || [];
+    const [selectedLocationId, setSelectedLocationId] = useState(
+        isAllOutlets ? (allLocations[0]?.id || null) : auth?.active_location_id
+    );
+    
+    const visibleZones = zones.filter((z: any) => z.business_location_id === selectedLocationId);
+    
+    const [activeZone, setActiveZone] = useState(visibleZones.length > 0 ? visibleZones[0].id : null);
     const [currentTime, setCurrentTime] = useState(new Date());
-    const [isManageMode, setIsManageMode] = useState(false);
+
     const [mergeMode, setMergeMode] = useState(false);
     const [selectedTablesToMerge, setSelectedTablesToMerge] = useState<string[]>([]);
 
-    // Dialog States
-    const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
-    const [editingZone, setEditingZone] = useState<any>(null);
-
-    const [tableDialogOpen, setTableDialogOpen] = useState(false);
-    const [editingTable, setEditingTable] = useState<any>(null);
+    useEffect(() => {
+        if (visibleZones.length > 0 && !visibleZones.find((z: any) => z.id === activeZone)) {
+            setActiveZone(visibleZones[0].id);
+        }
+    }, [selectedLocationId, visibleZones]);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -57,13 +50,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
     }, []);
 
     useEffect(() => {
-        if (zones.length > 0 && (!activeZone || !zones.some(z => z.id === activeZone))) {
-            setActiveZone(zones[0].id);
-        }
-    }, [zones]);
-
-    useEffect(() => {
-        if (!window.Echo || !auth.user) return;
+        if (!auth.user) return;
         const locId = auth.user.business_location_id || 1; // Fallback or dynamic based on active loc
         
         const channel = window.Echo.channel(`tables.${locId}`)
@@ -72,14 +59,12 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
             });
 
         return () => {
-            if (window.Echo) {
-                channel.stopListening('.App\\Events\\TableStatusUpdated');
-                window.Echo.leaveChannel(`tables.${locId}`);
-            }
+            channel.stopListening('.App\\Events\\TableStatusUpdated');
+            window.Echo.leaveChannel(`tables.${locId}`);
         };
     }, [auth.user]);
 
-    const activeZoneData = zones.find(z => z.id === activeZone);
+    const activeZoneData = visibleZones.find((z: any) => z.id === activeZone);
 
     const getTableColorClass = (table: any) => {
         if (!table.active_order) return 'bg-card border-border border-l-4 border-l-green-500 hover:border-l-green-600 text-card-foreground shadow-sm'; 
@@ -88,12 +73,6 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
     };
 
     const handleTableClick = (table: any) => {
-        if (isManageMode) {
-            setEditingTable(table);
-            setTableDialogOpen(true);
-            return;
-        }
-
         if (mergeMode) {
             if (selectedTablesToMerge.includes(table.id)) {
                 setSelectedTablesToMerge(selectedTablesToMerge.filter(id => id !== table.id));
@@ -103,20 +82,6 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
             return;
         }
         router.post('/menu-pos/terminal/open-table', { table_id: table.id });
-    };
-
-    const handleDeleteTable = (e: React.MouseEvent, table: any) => {
-        e.stopPropagation();
-        if (confirm(`Are you sure you want to delete "${table.name}"?`)) {
-            router.delete(`/menu-pos/tables/${table.id}`);
-        }
-    };
-
-    const handleDeleteZone = (e: React.MouseEvent, zone: any) => {
-        e.stopPropagation();
-        if (confirm(`Are you sure you want to delete zone "${zone.name}" and all its tables?`)) {
-            router.delete(`/menu-pos/zones/${zone.id}`);
-        }
     };
 
     const getRunningTime = (createdAt: string) => {
@@ -135,7 +100,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
     let occupied = 0;
     let billed = 0;
 
-    zones.forEach(zone => {
+    visibleZones.forEach(zone => {
         zone.tables?.forEach((table: any) => {
             totalTables++;
             if (!table.active_order) available++;
@@ -146,7 +111,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
 
     return (
         <>
-            <Head title="Dine-In Floor" />
+            <Head title="Dine-In Tables" />
             <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden flex-col">
                 
                 {/* Top Navigation Header */}
@@ -164,22 +129,9 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                             <h1 className="text-lg font-bold tracking-tight">Dine-In Floor</h1>
                         </div>
                         
-                        <div className="flex items-center gap-3">
-                            {/* Management Mode Toggle */}
-                            {canManage && (
-                                <Button
-                                    variant={isManageMode ? "default" : "outline"}
-                                    size="sm"
-                                    className="h-8 text-xs font-semibold"
-                                    onClick={() => setIsManageMode(!isManageMode)}
-                                >
-                                    <Settings2 className="w-3.5 h-3.5 mr-1.5" />
-                                    {isManageMode ? "Exit Manage Mode" : "Manage Floor"}
-                                </Button>
-                            )}
-
-                            {/* Stats Summary */}
-                            <div className="flex items-center gap-4 text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50">
+                        {/* Stats Summary */}
+                        <div className="flex items-center gap-4">
+                            <div className="text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-4">
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
                                     <span className="text-muted-foreground">Available: {available}</span>
@@ -192,7 +144,7 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                                     <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                                     <span className="text-muted-foreground">Billed: {billed}</span>
                                 </div>
-                                <div className="pl-2 ml-2 border-l border-border text-foreground font-bold">
+                                <div className="pl-2 border-l border-border text-foreground font-bold">
                                     Total: {totalTables}
                                 </div>
                             </div>
@@ -240,76 +192,45 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
                         </div>
                     </div>
 
-                    {/* Zone Toggles & Zone Actions */}
-                    <div className="flex items-center justify-between gap-2">
-                        <ScrollArea className="flex-1 whitespace-nowrap">
-                            <div className="flex items-center space-x-2 pb-1">
-                                {zones.map(zone => (
-                                    <div key={zone.id} className="relative group/zone inline-flex items-center">
+                    {/* Zone Toggles & Location Dropdown */}
+                    <div className="flex items-center justify-between w-full mb-1">
+                        {visibleZones.length > 0 ? (
+                            <ScrollArea className="flex-1 whitespace-nowrap mr-4">
+                                <div className="flex space-x-2 pb-1">
+                                    {visibleZones.map((zone: any) => (
                                         <Button 
+                                            key={zone.id}
                                             variant={activeZone === zone.id ? 'default' : 'secondary'}
-                                            className="rounded-full px-5 h-8 text-xs"
+                                            className="rounded-full px-5 h-8 text-xs shrink-0"
                                             onClick={() => setActiveZone(zone.id)}
                                         >
                                             {zone.name}
                                         </Button>
-                                        {isManageMode && activeZone === zone.id && (
-                                            <div className="flex items-center ml-1 space-x-0.5">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingZone(zone);
-                                                        setZoneDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Edit2 size={12} />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-6 w-6 rounded-full text-muted-foreground hover:text-destructive"
-                                                    onClick={(e) => handleDeleteZone(e, zone)}
-                                                >
-                                                    <Trash2 size={12} />
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                            <ScrollBar orientation="horizontal" className="hidden" />
-                        </ScrollArea>
+                                    ))}
+                                </div>
+                                <ScrollBar orientation="horizontal" className="hidden" />
+                            </ScrollArea>
+                        ) : (
+                            <div className="flex-1"></div>
+                        )}
 
-                        {/* Add Zone / Add Table Actions */}
-                        {isManageMode && (
-                            <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs"
-                                    onClick={() => {
-                                        setEditingZone(null);
-                                        setZoneDialogOpen(true);
-                                    }}
+                        {isAllOutlets && allLocations.length > 1 && (
+                            <div className="shrink-0">
+                                <Select 
+                                    value={selectedLocationId ? selectedLocationId.toString() : ''} 
+                                    onValueChange={(val) => setSelectedLocationId(val)}
                                 >
-                                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Zone
-                                </Button>
-
-                                {activeZoneData && (
-                                    <Button
-                                        size="sm"
-                                        className="h-8 text-xs"
-                                        onClick={() => {
-                                            setEditingTable(null);
-                                            setTableDialogOpen(true);
-                                        }}
-                                    >
-                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Table
-                                    </Button>
-                                )}
+                                    <SelectTrigger className="w-[180px] h-8 rounded-full text-xs bg-muted/50 border-border/50 focus:ring-0">
+                                        <SelectValue placeholder="Select Location" />
+                                    </SelectTrigger>
+                                    <SelectContent align="end">
+                                        {allLocations.map((loc: any) => (
+                                            <SelectItem key={loc.id} value={loc.id.toString()} className="text-sm">
+                                                {loc.location_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
                     </div>
@@ -317,201 +238,111 @@ export default function TablesScreen({ zones }: { zones: any[] }) {
 
                 {/* Main Content Area - Table Grid */}
                 <ScrollArea className="flex-1 min-h-0">
-                    {zones.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-16">
+                    {visibleZones.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
                             <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>
-                            <p className="text-sm mt-1 mb-4">Set up your dining zones and tables to start managing floor orders.</p>
-                            {canManage && (
-                                <Button
-                                    onClick={() => {
-                                        setEditingZone(null);
-                                        setZoneDialogOpen(true);
-                                    }}
-                                >
-                                    <Plus className="w-4 h-4 mr-2" /> Add First Dining Zone
-                                </Button>
-                            )}
+                            <p className="text-sm mt-1">Please set up your dining zones and tables in the admin panel.</p>
                         </div>
                     ) : activeZoneData ? (
-                        <div>
-                            {activeZoneData.tables?.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground py-16">
-                                    <p className="text-base font-medium text-foreground">No tables in "{activeZoneData.name}"</p>
-                                    <p className="text-sm mt-1 mb-4">Add tables to this zone to start accepting dine-in orders.</p>
-                                    {canManage && (
-                                        <Button
-                                            onClick={() => {
-                                                setEditingTable(null);
-                                                setTableDialogOpen(true);
-                                            }}
-                                        >
-                                            <Plus className="w-4 h-4 mr-2" /> Add Table to {activeZoneData.name}
-                                        </Button>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 pb-8">
-                                    {activeZoneData.tables?.map((table: any) => {
-                                        const order = table.active_order;
-                                        const isAvailable = !order;
-                                        const isBilled = order?.status === 'billed';
-                                        const colorClass = getTableColorClass(table);
-                                        
-                                        // Lock logic: If an active order exists and current user is not the creator
-                                        const isLockedByOther = !isManageMode && order && order.user_id !== currentUserId;
-                                        const isSelectedForMerge = selectedTablesToMerge.includes(table.id);
-                                        
-                                        return (
-                                            <div 
-                                                key={table.id}
-                                                onClick={() => !isLockedByOther && handleTableClick(table)}
-                                                className={cn(
-                                                    "relative flex flex-col p-2.5 border rounded-lg transition-all min-h-[96px] group overflow-hidden",
-                                                    colorClass,
-                                                    isLockedByOther ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:shadow-md hover:scale-[1.02]",
-                                                    isManageMode && "border-dashed border-2 border-primary/50",
-                                                    isSelectedForMerge && "ring-2 ring-primary border-primary bg-primary/5"
-                                                )}
-                                            >
-                                                {isLockedByOther && (
-                                                    <div className="absolute inset-0 bg-black/5 z-10 flex flex-col items-center justify-center backdrop-blur-[1px]">
-                                                        <Lock className="w-8 h-8 text-foreground/40 mb-1" />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">Occupied</span>
-                                                    </div>
-                                                )}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4 pb-8">
+                            {activeZoneData.tables?.map((table: any) => {
+                                const order = table.active_order;
+                                const isAvailable = !order;
+                                const isBilled = order?.status === 'billed';
+                                const colorClass = getTableColorClass(table);
+                                
+                                // Lock logic: If an active order exists and current user is not the creator
+                                const isLockedByOther = order && order.user_id !== currentUserId;
+                                
+                                return (
+                                    <div 
+                                        key={table.id}
+                                        onClick={() => (!isLockedByOther || mergeMode) && handleTableClick(table)}
+                                        className={cn(
+                                            "relative flex flex-col p-2.5 border rounded-lg transition-all min-h-[96px] group overflow-hidden",
+                                            table.is_merged ? cn(getMergeSpan(table.name), "bg-gradient-to-br from-card to-muted/30") : "",
+                                            colorClass,
+                                            isLockedByOther && !mergeMode ? "opacity-70 cursor-not-allowed hover:scale-[1.02]" : "cursor-pointer hover:shadow-md hover:scale-[1.02]",
+                                            selectedTablesToMerge.includes(table.id) ? "ring-2 ring-primary ring-offset-2 bg-primary/5 scale-[1.02]" : ""
+                                        )}
+                                    >
+                                        {isLockedByOther && !mergeMode && (
+                                            <div className="absolute inset-0 bg-black/5 z-10 flex flex-col items-center justify-center backdrop-blur-[1px]">
+                                                <Users className="w-8 h-8 text-foreground/40 mb-1" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">Occupied</span>
+                                            </div>
+                                        )}
 
-                                                {isSelectedForMerge && (
-                                                    <div className="absolute top-1 right-1 z-20 bg-primary text-primary-foreground rounded-full p-1 shadow-sm">
-                                                        <Check size={12} className="stroke-[3]" />
-                                                    </div>
-                                                )}
-
-                                                {/* Manage Actions Hover Overlay */}
-                                                {isManageMode && (
-                                                    <div className="absolute top-1 right-1 flex items-center space-x-1 z-20">
-                                                        <Button
-                                                            size="icon"
-                                                            variant="secondary"
-                                                            className="h-6 w-6 rounded-full shadow-sm"
+                                        <div className="flex justify-between items-start mb-1 relative z-0">
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
+                                                {table.is_merged && (
+                                                    <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 mt-0.5">
+                                                        <span>🔗 Merged</span>
+                                                        <span 
+                                                            className="text-red-500 hover:text-red-600 cursor-pointer ml-1"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                setEditingTable(table);
-                                                                setTableDialogOpen(true);
+                                                                if (confirm("Are you sure you want to unmerge these tables?")) {
+                                                                    router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id });
+                                                                }
                                                             }}
                                                         >
-                                                            <Edit2 size={12} />
-                                                        </Button>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="destructive"
-                                                            className="h-6 w-6 rounded-full shadow-sm"
-                                                            onClick={(e) => handleDeleteTable(e, table)}
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </Button>
-                                                    </div>
-                                                )}
-
-                                                <div className="flex justify-between items-start mb-1 relative z-0">
-                                                    <div className="text-base font-bold leading-none tracking-tight flex items-center gap-1.5 flex-wrap">
-                                                        <span>{table.name}</span>
-                                                        {table.is_merged && (
-                                                            <span className="text-[9px] bg-purple-500/10 text-purple-600 border border-purple-200 px-1 py-0.5 rounded font-semibold uppercase tracking-wider">
-                                                                Merged
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
-                                                            isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
-                                                        )}>
-                                                            <Users size={10} /> 
-                                                            {order?.pax || table.seating_capacity}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="flex-1 flex flex-col justify-end mt-1">
-                                                    {order ? (
-                                                        <div className="flex justify-between items-end">
-                                                            <div className="space-y-1">
-                                                                {order.waiter && (
-                                                                    <div className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                                                                        <User size={10} className="text-muted-foreground" />
-                                                                        <span className="truncate max-w-[70px]">{order.waiter.name}</span>
-                                                                    </div>
-                                                                )}
-                                                                <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
-                                                                    <Clock size={10} className="text-muted-foreground" />
-                                                                    <span>{getRunningTime(order.created_at)}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground">Total</div>
-                                                                <div className="font-bold text-sm leading-none tracking-tight text-foreground">
-                                                                    ${Number(order.grand_total).toFixed(2)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                                                            <span>Available</span>
-                                                            {table.is_merged && !mergeMode && !isManageMode && (
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="h-5 text-[10px] px-1.5 text-purple-600 hover:bg-purple-50 font-semibold lowercase tracking-normal"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id });
-                                                                    }}
-                                                                >
-                                                                    Unmerge
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {isBilled && (
-                                                    <div className="absolute top-2 right-2 flex h-2 w-2">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-sm"></span>
-                                                    </div>
+                                                            (Unmerge)
+                                                        </span>
+                                                    </span>
                                                 )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                            <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
+                                                isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
+                                            )}>
+                                                <Users size={10} /> 
+                                                {order?.pax || table.seating_capacity}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex-1 flex flex-col justify-end mt-1">
+                                            {order ? (
+                                                <div className="flex justify-between items-end">
+                                                    <div className="space-y-1">
+                                                        {order.waiter && (
+                                                            <div className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                                                                <User size={10} className="text-muted-foreground" />
+                                                                <span className="truncate max-w-[70px]">{order.waiter.name}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
+                                                            <Clock size={10} className="text-muted-foreground" />
+                                                            <span>{getRunningTime(order.created_at)}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground">Total</div>
+                                                        <div className="font-bold text-sm leading-none tracking-tight text-foreground">
+                                                            ₹{Number(order.grand_total).toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                                                    Available
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {isBilled && (
+                                            <div className="absolute top-2 right-2 flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-sm"></span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                        })}
+                    </div>
                     ) : null}
                 </ScrollArea>
             </div>
-
-            {/* Zone & Table Management Modals */}
-            <ZoneFormDialog
-                open={zoneDialogOpen}
-                onOpenChange={setZoneDialogOpen}
-                zone={editingZone}
-            />
-
-            <TableFormDialog
-                open={tableDialogOpen}
-                onOpenChange={setTableDialogOpen}
-                table={editingTable}
-                zones={zones}
-                defaultZoneId={activeZone || undefined}
-            />
-
-            {/* Hidden Print Component */}
-            {orderToPrint && (
-                <PrintReceipt 
-                    order={orderToPrint} 
-                    isBillOnly={true}
-                    onPrinted={() => setOrderToPrint(null)} 
-                />
-            )}
         </>
     );
 }
