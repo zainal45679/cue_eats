@@ -14,12 +14,12 @@ class TableController extends Controller
     public function index(Request $request)
     {
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id') 
+            ? (session('active_location_id') ?: (auth()->user()->business_location_id ?: \App\Models\BusinessLocation::first()?->id)) 
             : auth()->user()->business_location_id;
 
         $zones = DiningZone::with(['tables' => function ($query) {
             $query->with(['activeOrder.items', 'activeOrder.waiter', 'children']);
-        }])->when($locationId, fn($q) => $q->where('business_location_id', $locationId))->get();
+        }])->where('business_location_id', $locationId)->get();
 
         // Process tables to hide children and append their names/capacities to the parent
         $zones->transform(function ($zone) {

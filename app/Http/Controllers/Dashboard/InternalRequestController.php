@@ -26,6 +26,14 @@ class InternalRequestController extends Controller
         return Inertia::render('purchasing/internal-requests/index', [
             'internalRequests' => \App\Helpers\TableHelper::query($query)
                 ->searchColumns(['request_number'])
+                ->addCustomFilter('fromLocation', function ($q, $val) {
+                    $vals = is_array($val) ? $val : [$val];
+                    $q->whereIn('from_location_id', $vals);
+                })
+                ->addCustomFilter('toLocation', function ($q, $val) {
+                    $vals = is_array($val) ? $val : [$val];
+                    $q->whereIn('to_location_id', $vals);
+                })
                 ->transform(fn ($ir): array => $ir->toArray())
                 ->get(),
             'locations' => \App\Models\BusinessLocation::all(),

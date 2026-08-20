@@ -129,6 +129,28 @@ export default function InventoryBalancesIndex({
     return { ...inventoryBalances, rows: filteredRows };
   }, [inventoryBalances, activeTab]);
 
+  const storageLocationOptions = useMemo(() => {
+    return storageLocations.map((loc: any) => ({
+      label: loc.storage_name,
+      value: loc.storage_name,
+    }));
+  }, [storageLocations]);
+
+  const ingredientOptions = useMemo(() => {
+    return ingredients.map((ing: any) => ({
+      label: ing.name,
+      value: ing.name,
+    }));
+  }, [ingredients]);
+
+  const categoryOptions = useMemo(() => {
+    if (!serverCategories) return [];
+    return Object.keys(serverCategories).map((cat) => ({
+      label: cat,
+      value: cat,
+    }));
+  }, [serverCategories]);
+
   return (
     <XPage 
       title="Live Stock" 
@@ -283,7 +305,7 @@ export default function InventoryBalancesIndex({
                     <button
                       key={cat}
                       onClick={() => handleCategoryClick(cat)}
-                      className={`group w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                      className={`group w-full text-left px-3 py-1.5 rounded-md text-sm flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
                         selectedCategory === cat 
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' 
                           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -309,21 +331,21 @@ export default function InventoryBalancesIndex({
                 header: 'Ingredient',
                 accessorKey: 'ingredient.name',
                 enableColumnFilter: true,
-                meta: { label: 'Ingredient', variant: 'text' },
+                meta: { label: 'Ingredient', variant: 'select', options: ingredientOptions },
               },
               {
                 id: 'ingredient.category.name',
                 header: 'Category',
                 accessorKey: 'ingredient.category.name',
                 enableColumnFilter: true,
-                meta: { label: 'Category', variant: 'text' },
+                meta: { label: 'Category', variant: 'select', options: categoryOptions },
               },
               {
                 id: 'storage_location.storage_name',
                 header: 'Storage Location',
                 accessorKey: 'storage_location.storage_name',
                 enableColumnFilter: true,
-                meta: { label: 'Storage Location', variant: 'text' },
+                meta: { label: 'Storage Location', variant: 'select', options: storageLocationOptions },
               },
               {
                 id: 'branch',

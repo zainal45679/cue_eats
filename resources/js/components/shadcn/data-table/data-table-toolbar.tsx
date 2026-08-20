@@ -26,7 +26,8 @@ export function DataTableToolbar<TData>({
   ...props
 }: DataTableToolbarProps<TData>) {
   const [showFilters, setShowFilters] = React.useState(false);
-  const isFiltered = table.getState().columnFilters.length > 0;
+  const genericColumnFilters = table.getState().columnFilters.filter((filter) => filter.id !== "created_at");
+  const isFiltered = genericColumnFilters.length > 0;
   const globalFilter = table.getState().globalFilter as string;
 
   const columns = React.useMemo(
@@ -37,7 +38,7 @@ export function DataTableToolbar<TData>({
   // Use prop value if provided, otherwise calculate from table state
   const activeFilterCount =
     propActiveFilterCount ??
-    table.getState().columnFilters.filter((filter) => {
+    genericColumnFilters.filter((filter) => {
       const value = filter.value;
       // Count any filter that has a value (not null, undefined, or empty)
       if (value === null || value === undefined) return false;
@@ -55,7 +56,20 @@ export function DataTableToolbar<TData>({
       ...Object.fromEntries(new URLSearchParams(window.location.search)),
     };
 
-    delete queryParams.filters;
+    if (queryParams.filters) {
+      try {
+        const parsed = JSON.parse(queryParams.filters);
+        const dateFilter = parsed.find((f: any) => f.id === 'created_at');
+        if (dateFilter) {
+          queryParams.filters = JSON.stringify([dateFilter]);
+        } else {
+          delete queryParams.filters;
+        }
+      } catch {
+        delete queryParams.filters;
+      }
+    }
+
     delete queryParams.search;
     delete queryParams.page;
     delete queryParams.perPage;

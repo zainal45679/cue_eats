@@ -28,7 +28,57 @@ class InventoryBalanceController extends Controller
 
         // Clone query before TableHelper applies filters so categories remain global
         $globalQuery = clone $query;
-        $data = TableHelper::query($query)->get();
+        $data = TableHelper::query($query)
+            ->searchColumns(['ingredient.name', 'ingredient.code', 'storageLocation.storage_name', 'ingredient.category.name'])
+            ->addCustomFilter('ingredient.name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient', function ($iq) use ($vals, $val) {
+                    $iq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('ingredient', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient', function ($iq) use ($vals, $val) {
+                    $iq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('storage_location.storage_name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('storageLocation', function ($lq) use ($vals, $val) {
+                    $lq->whereIn('storage_name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('storage_name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('storageLocation', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('storageLocation', function ($lq) use ($vals, $val) {
+                    $lq->whereIn('storage_name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('storage_name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('ingredient.category.name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient.category', function ($cq) use ($vals, $val) {
+                    $cq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('category', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient.category', function ($cq) use ($vals, $val) {
+                    $cq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->get();
 
         $allBalances = $globalQuery->with('ingredient.category')->get();
         $balanceCategories = $allBalances->groupBy(function($item) {

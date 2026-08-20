@@ -433,10 +433,13 @@ export function XDataTable<T extends { id: string | number }>({
     getRowId: (row) => String(row.id),
   } as UseDataTableOptions<T>);
 
-  // Calculate active filter count from the filters hook
+  // Calculate active filter count from the filters hook (excluding date filter created_at)
   const activeFilterCount = React.useMemo(
     () =>
       filters.filters.filter((filter) => {
+        if (filter.id === "created_at") {
+          return false;
+        }
         const value = filter.value;
         if (value === null || value === undefined) {
           return false;
