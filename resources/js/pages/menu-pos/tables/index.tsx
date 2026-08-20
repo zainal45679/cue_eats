@@ -50,7 +50,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     }, []);
 
     useEffect(() => {
-        if (!auth.user) return;
+        if (!auth.user || !window.Echo) return;
         const locId = auth.user.business_location_id || 1; // Fallback or dynamic based on active loc
         
         const channel = window.Echo.channel(`tables.${locId}`)
@@ -59,8 +59,10 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
             });
 
         return () => {
-            channel.stopListening('.App\\Events\\TableStatusUpdated');
-            window.Echo.leaveChannel(`tables.${locId}`);
+            if (window.Echo) {
+                channel.stopListening('.App\\Events\\TableStatusUpdated');
+                window.Echo.leaveChannel(`tables.${locId}`);
+            }
         };
     }, [auth.user]);
 
