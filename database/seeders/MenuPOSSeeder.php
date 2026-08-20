@@ -243,5 +243,60 @@ class MenuPOSSeeder extends Seeder
         $bev2->modifierGroups()->attach([
             $modDrinkSize->id => ['id' => \Illuminate\Support\Str::uuid()]
         ]);
+
+        // 6. Create Dummy Dining Zones & Tables for all Business Locations
+        $locations = \App\Models\BusinessLocation::all();
+        foreach ($locations as $loc) {
+            $mainHall = \App\Models\DiningZone::firstOrCreate([
+                'business_location_id' => $loc->id,
+                'name' => 'Main Dining Hall',
+            ], [
+                'description' => 'Primary indoor dining area',
+            ]);
+
+            $terrace = \App\Models\DiningZone::firstOrCreate([
+                'business_location_id' => $loc->id,
+                'name' => 'Outdoor Terrace',
+            ], [
+                'description' => 'Patio & open-air seating',
+            ]);
+
+            $vipLounge = \App\Models\DiningZone::firstOrCreate([
+                'business_location_id' => $loc->id,
+                'name' => 'VIP Lounge',
+            ], [
+                'description' => 'Private dining & party booths',
+            ]);
+
+            // Table 1: 2-Seater (Couples / Small)
+            \App\Models\DiningTable::firstOrCreate(
+                ['dining_zone_id' => $mainHall->id, 'name' => 'Table 1'],
+                ['seating_capacity' => 2, 'status' => 'available']
+            );
+
+            // Table 2: 4-Seater (Standard Family)
+            \App\Models\DiningTable::firstOrCreate(
+                ['dining_zone_id' => $mainHall->id, 'name' => 'Table 2'],
+                ['seating_capacity' => 4, 'status' => 'available']
+            );
+
+            // Table 3: 6-Seater (Group Table)
+            \App\Models\DiningTable::firstOrCreate(
+                ['dining_zone_id' => $mainHall->id, 'name' => 'Table 3'],
+                ['seating_capacity' => 6, 'status' => 'available']
+            );
+
+            // Table 4: Outdoor 4-Seater
+            \App\Models\DiningTable::firstOrCreate(
+                ['dining_zone_id' => $terrace->id, 'name' => 'Patio T-1'],
+                ['seating_capacity' => 4, 'status' => 'available']
+            );
+
+            // Table 5: 8-Seater VIP Booth
+            \App\Models\DiningTable::firstOrCreate(
+                ['dining_zone_id' => $vipLounge->id, 'name' => 'VIP Suite A'],
+                ['seating_capacity' => 8, 'status' => 'available']
+            );
+        }
     }
 }

@@ -128,14 +128,13 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                                                         onClick={() => { if (!isAtMax) handleMultiSelect(group.id, modifier, !isSelected, group.max_selections) }}
                                                         className={`flex items-center justify-between p-3 border rounded-lg hover:border-primary transition-colors cursor-pointer ${isSelected ? 'border-primary bg-primary/5' : ''} ${isAtMax ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     >
-                                                        <div className="flex items-center space-x-3 flex-1">
+                                                        <div className="flex items-center space-x-3 flex-1 pointer-events-none">
                                                             <Checkbox 
                                                                 id={`mod-${modifier.id}`} 
                                                                 checked={isSelected}
                                                                 disabled={isAtMax}
-                                                                onCheckedChange={(checked) => handleMultiSelect(group.id, modifier, checked as boolean, group.max_selections)}
                                                             />
-                                                            <Label htmlFor={`mod-${modifier.id}`} className="cursor-pointer flex-1 font-medium">{modifier.name}</Label>
+                                                            <Label className="flex-1 font-medium cursor-pointer">{modifier.name}</Label>
                                                         </div>
                                                         <span className="text-sm text-muted-foreground">
                                                             {parseFloat(modifier.price_adjustment) > 0 ? `+$${parseFloat(modifier.price_adjustment).toFixed(2)}` : ''}

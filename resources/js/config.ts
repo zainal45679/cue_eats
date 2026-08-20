@@ -80,7 +80,7 @@ export const AppSettings: AppConfig = {
     path: "/logo.svg",
     className: "size-10 fill-current text-white",
   },
-  title: "Laravel StarterKit",
+  title: "Cue Eats",
   themeColor: "#F05340",
   isDarkForeground: false,
 };

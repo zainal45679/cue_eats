@@ -14,14 +14,40 @@ import { ArrowDownRight, ArrowUpRight, ArrowLeftRight, Settings, Flame } from "l
 
 export default function InventoryLedgerIndex() {
     const { props } = usePage<any>();
-    const { ledgers } = props;
+    const { ledgers, serverStats } = props;
 
-    const [activeTab, setActiveTab] = useState("all");
+    const isPositive = (item: any) => {
+        const qty = typeof item === 'object' && item !== null ? Number(item.quantity) : NaN;
+        if (!isNaN(qty) && qty !== 0) return qty > 0;
+        const type = typeof item === 'string' ? item : item?.transaction_type;
+        return ['purchase', 'transfer_in', 'po_receipt', 'adjustment_up'].includes(type?.toLowerCase());
+    };
 
-    const isPositive = (type: string) => ['purchase', 'transfer_in', 'po_receipt', 'adjustment_up'].includes(type.toLowerCase());
-    const isNegative = (type: string) => ['transfer_out', 'consumption', 'adjustment_down', 'sale'].includes(type.toLowerCase());
+    const isNegative = (item: any) => {
+        const qty = typeof item === 'object' && item !== null ? Number(item.quantity) : NaN;
+        if (!isNaN(qty) && qty !== 0) return qty < 0;
+        const type = typeof item === 'string' ? item : item?.transaction_type;
+        return ['transfer_out', 'consumption', 'adjustment_down', 'sale'].includes(type?.toLowerCase());
+    };
 
     const searchParams = new URLSearchParams(window.location.search);
+    const activeTab = searchParams.get("movement") || "all";
+
+    const handleTabChange = (value: string) => {
+        const queryParams = { ...Object.fromEntries(new URLSearchParams(window.location.search)) };
+        if (value !== "all") {
+            queryParams.movement = value;
+        } else {
+            delete queryParams.movement;
+        }
+        queryParams.page = "1";
+        
+        router.get(window.location.pathname, queryParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
     const [hideSales, setHideSales] = useState(searchParams.get("hide_sales") === "1");
 
     const handleHideSalesToggle = (checked: boolean) => {
@@ -41,26 +67,19 @@ export default function InventoryLedgerIndex() {
     };
 
     const stats = useMemo(() => {
+        if (serverStats) {
+            return serverStats;
+        }
         const rows = ledgers.rows || [];
+        const totalCount = ledgers.total ?? ledgers.meta?.total ?? rows.length;
         return {
-            total: rows.length,
-            inwards: rows.filter((l: any) => isPositive(l.transaction_type)).length,
-            outwards: rows.filter((l: any) => isNegative(l.transaction_type)).length,
+            total: totalCount,
+            inwards: rows.filter((l: any) => isPositive(l)).length,
+            outwards: rows.filter((l: any) => isNegative(l)).length,
             adjustments: rows.filter((l: any) => l.transaction_type === 'adjustment_up' || l.transaction_type === 'adjustment_down').length,
             consumption: rows.filter((l: any) => l.transaction_type === 'consumption').length,
         };
-    }, [ledgers]);
-
-    const processedData = useMemo(() => {
-        let filteredRows = ledgers.rows || [];
-        if (activeTab === "inwards") {
-            filteredRows = filteredRows.filter((l: any) => isPositive(l.transaction_type));
-        } else if (activeTab === "outwards") {
-            filteredRows = filteredRows.filter((l: any) => isNegative(l.transaction_type));
-        }
-
-        return { ...ledgers, rows: filteredRows };
-    }, [ledgers, activeTab]);
+    }, [ledgers, serverStats]);
 
     const dateFilterValue = useMemo(() => {
         const filters = ledgers.filters || [];
@@ -88,6 +107,7 @@ export default function InventoryLedgerIndex() {
         filters = filters.filter((f: any) => f.id !== 'created_at');
         
         if (date?.from || date?.to) {
+            delete queryParams.all_dates;
             const format = (d: Date) => {
                 const pad = (n: number) => n.toString().padStart(2, '0');
                 return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -96,6 +116,8 @@ export default function InventoryLedgerIndex() {
                 id: 'created_at',
                 value: [date.from ? format(date.from) : null, date.to ? format(date.to) : (date.from ? format(date.from) : null)]
             });
+        } else {
+            queryParams.all_dates = "1";
         }
         
         if (filters.length > 0) {
@@ -169,28 +191,39 @@ export default function InventoryLedgerIndex() {
             header: "Reference",
             cell: ({ row }: any) => {
                 if (!row.original.reference_type) return "-";
-                const typeName = row.original.reference_type.split("\\").pop();
-                
-                let refDisplay = row.original.reference_id;
                 const ref = row.original.reference;
                 
+                let typeName = row.original.reference_type.split("\\").pop();
+                let refDisplay = "";
+
                 if (ref) {
-                    if (ref.order_number) refDisplay = ref.order_number;
-                    else if (ref.grn_number) refDisplay = ref.grn_number;
-                    else if (ref.po_number) refDisplay = ref.po_number;
-                    else if (ref.transfer_number) refDisplay = ref.transfer_number;
-                    else if (ref.reference_number) refDisplay = ref.reference_number;
+                    if (ref.order?.order_number) {
+                        typeName = "Order";
+                        refDisplay = ref.order.order_number;
+                    } else if (ref.order_number) {
+                        typeName = "Order";
+                        refDisplay = ref.order_number;
+                    } else if (ref.grn_number) {
+                        typeName = "GRN";
+                        refDisplay = ref.grn_number;
+                    } else if (ref.po_number) {
+                        typeName = "PO";
+                        refDisplay = ref.po_number;
+                    } else if (ref.transfer_number) {
+                        typeName = "Transfer";
+                        refDisplay = ref.transfer_number;
+                    } else if (ref.reference_number) {
+                        typeName = "Ref";
+                        refDisplay = ref.reference_number;
+                    }
                 }
 
-                if (typeof refDisplay === 'string') {
-                    // Strip UUIDs to keep the UI clean
-                    refDisplay = refDisplay.replace(/-?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/, '');
-                    
-                    if (!refDisplay || refDisplay === '-' || refDisplay.endsWith('-')) {
-                        refDisplay = typeof row.original.reference_id === 'string' 
-                            ? row.original.reference_id.substring(0, 8) 
-                            : row.original.reference_id;
-                    }
+                if (!refDisplay) {
+                    if (typeName === 'OrderItem') typeName = 'Order';
+                    const rawId = typeof row.original.reference_id === 'string' 
+                        ? row.original.reference_id.substring(0, 8) 
+                        : row.original.reference_id;
+                    refDisplay = rawId;
                 }
 
                 return <span className="text-muted-foreground text-xs font-mono">{typeName} #{refDisplay}</span>;
@@ -301,7 +334,7 @@ export default function InventoryLedgerIndex() {
             </div>
 
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full sm:w-auto">
                     <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
                         <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Movements</TabsTrigger>
                         <TabsTrigger value="inwards" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Inwards (+)</TabsTrigger>
@@ -320,7 +353,7 @@ export default function InventoryLedgerIndex() {
             <XDataTable
                 title="Inventory Transactions"
                 entity={Entity.InventoryLedger}
-                data={processedData}
+                data={ledgers}
                 columns={columns}
                 actions={[]}
             />

@@ -10,10 +10,16 @@ import { PackageOpen, AlertCircle, ShoppingCart, FileText, Lock, LayoutList } fr
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Button } from "@/components/shadcn/ui/button";
 
+import { StorageTransferDialog } from './StorageTransferDialog';
+import { ArrowRightLeft } from 'lucide-react';
+
 export default function InventoryBalancesIndex({
   inventoryBalances,
+  allInventoryBalances = [],
   serverCategories,
   totalItemsCount,
+  storageLocations = [],
+  ingredients = [],
 }: PageProps<{
   inventoryBalances: {
     rows: any[];
@@ -24,11 +30,16 @@ export default function InventoryBalancesIndex({
     links: any[];
     filters?: any[];
   };
+  allInventoryBalances?: any[];
   serverCategories?: Record<string, number>;
   totalItemsCount?: number;
+  storageLocations?: any[];
+  ingredients?: any[];
 }>) {
   const [activeTab, setActiveTab] = useState("all");
   const [showCategorySidebar, setShowCategorySidebar] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedRowForTransfer, setSelectedRowForTransfer] = useState<any>(null);
 
   // Derive selected category from server filters
   const selectedCategory = useMemo(() => {
@@ -60,10 +71,7 @@ export default function InventoryBalancesIndex({
 
     searchParams.set('page', '1');
 
-    router.get(window.location.pathname + '?' + searchParams.toString(), {}, { 
-        preserveState: true, 
-        preserveScroll: true 
-    });
+    router.get('/inventory/live-stock', { filters: searchParams.get('filters') }, { preserveState: true, preserveScroll: true });
   };
 
   // Auto-refresh the live stock data every 15 seconds
@@ -74,15 +82,23 @@ export default function InventoryBalancesIndex({
     return () => clearInterval(dataInterval);
   }, []);
 
+  // Compute overall stats
   const stats = useMemo(() => {
-      const rows = inventoryBalances.rows || [];
-      return {
-          total: totalItemsCount ?? inventoryBalances.total ?? rows.length,
-          inStock: rows.filter((item: any) => Number(item.available_qty) > 0).length,
-          outOfStock: rows.filter((item: any) => Number(item.available_qty) <= 0).length,
-          reserved: rows.filter((item: any) => Number(item.reserved_qty) > 0).length,
-          onOrder: rows.filter((item: any) => Number(item.on_order_qty) > 0).length,
-      };
+    const rows = inventoryBalances.rows || [];
+    let inStock = 0;
+    let outOfStock = 0;
+    let reserved = 0;
+    let onOrder = 0;
+
+    rows.forEach(item => {
+      const available = Number(item.available_qty) || 0;
+      if (available > 0) inStock++;
+      else outOfStock++;
+      if (Number(item.reserved_qty) > 0) reserved++;
+      if (Number(item.on_order_qty) > 0) onOrder++;
+    });
+
+    return { total: totalItemsCount ?? inventoryBalances.total ?? rows.length, inStock, outOfStock, reserved, onOrder };
   }, [inventoryBalances, totalItemsCount]);
 
   // Extract categories BEFORE filtering by tab, so the sidebar always shows all categories
@@ -113,12 +129,51 @@ export default function InventoryBalancesIndex({
     return { ...inventoryBalances, rows: filteredRows };
   }, [inventoryBalances, activeTab]);
 
+  const storageLocationOptions = useMemo(() => {
+    return storageLocations.map((loc: any) => ({
+      label: loc.storage_name,
+      value: loc.storage_name,
+    }));
+  }, [storageLocations]);
+
+  const ingredientOptions = useMemo(() => {
+    return ingredients.map((ing: any) => ({
+      label: ing.name,
+      value: ing.name,
+    }));
+  }, [ingredients]);
+
+  const categoryOptions = useMemo(() => {
+    if (!serverCategories) return [];
+    return Object.keys(serverCategories).map((cat) => ({
+      label: cat,
+      value: cat,
+    }));
+  }, [serverCategories]);
+
   return (
     <XPage 
       title="Live Stock" 
       fullWidth={true} 
       breadcrumbs={[{ label: 'Live Stock', href: '/inventory/live-stock' }]}
     >
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Live Stock Inventory</h1>
+          <p className="text-sm text-muted-foreground">Monitor real-time inventory balances and perform inter-storage transfers.</p>
+        </div>
+        <Button 
+          onClick={() => {
+            setSelectedRowForTransfer(null);
+            setTransferDialogOpen(true);
+          }} 
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md gap-2 shrink-0"
+        >
+          <ArrowRightLeft className="w-4 h-4" /> Transfer Stock
+        </Button>
+      </div>
+
       {/* Dashboard Summary Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-5 mb-6">
         <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
@@ -250,7 +305,7 @@ export default function InventoryBalancesIndex({
                     <button
                       key={cat}
                       onClick={() => handleCategoryClick(cat)}
-                      className={`group w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                      className={`group w-full text-left px-3 py-1.5 rounded-md text-sm flex items-center justify-between transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${
                         selectedCategory === cat 
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' 
                           : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -276,21 +331,21 @@ export default function InventoryBalancesIndex({
                 header: 'Ingredient',
                 accessorKey: 'ingredient.name',
                 enableColumnFilter: true,
-                meta: { label: 'Ingredient', variant: 'text' },
+                meta: { label: 'Ingredient', variant: 'select', options: ingredientOptions },
               },
               {
                 id: 'ingredient.category.name',
                 header: 'Category',
                 accessorKey: 'ingredient.category.name',
                 enableColumnFilter: true,
-                meta: { label: 'Category', variant: 'text' },
+                meta: { label: 'Category', variant: 'select', options: categoryOptions },
               },
               {
                 id: 'storage_location.storage_name',
                 header: 'Storage Location',
                 accessorKey: 'storage_location.storage_name',
                 enableColumnFilter: true,
-                meta: { label: 'Storage Location', variant: 'text' },
+                meta: { label: 'Storage Location', variant: 'select', options: storageLocationOptions },
               },
               {
                 id: 'branch',
@@ -327,6 +382,23 @@ export default function InventoryBalancesIndex({
                   </span>
                 ),
               },
+              {
+                id: 'actions',
+                header: 'Transfer',
+                cell: ({ row }) => (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
+                    onClick={() => {
+                      setSelectedRowForTransfer(row.original);
+                      setTransferDialogOpen(true);
+                    }}
+                  >
+                    <ArrowRightLeft className="w-3 h-3" /> Transfer
+                  </Button>
+                ),
+              },
             ]}
             data={processedData}
             entity={Entity.InventoryBalances}
@@ -334,6 +406,16 @@ export default function InventoryBalancesIndex({
           />
         </div>
       </div>
+
+      <StorageTransferDialog
+        open={transferDialogOpen}
+        onOpenChange={setTransferDialogOpen}
+        storageLocations={storageLocations}
+        inventoryBalances={inventoryBalances.rows || []}
+        allInventoryBalances={allInventoryBalances}
+        allIngredients={ingredients}
+        preselectedBalance={selectedRowForTransfer}
+      />
     </XPage>
   );
 }

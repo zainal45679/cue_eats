@@ -179,13 +179,17 @@ export default function InternalRequestsIndex({ internalRequests, locations }: {
                 const items = row.original.items || [];
                 if (items.length === 0) return <span className="text-muted-foreground">-</span>;
                 
-                const requested = items.reduce((acc: number, item: any) => acc + Number(item.requested_quantity || 0), 0);
-                const fulfilled = items.reduce((acc: number, item: any) => acc + Number(item.fulfilled_quantity || 0), 0);
+                const requested = items.reduce((acc: number, item: any) => acc + Number(item.quantity || 0), 0);
+                const dispatched = items.reduce((acc: number, item: any) => acc + Number(item.dispatched_quantity || 0), 0);
+                const rejected = items.reduce((acc: number, item: any) => acc + Number(item.rejected_quantity || 0), 0);
                 
                 return (
                     <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-blue-700">{requested} Requested</span>
-                        <span className="text-[11px] font-medium text-muted-foreground">{fulfilled} Fulfilled</span>
+                        <span className="text-xs font-bold text-foreground">{requested} Requested</span>
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="text-emerald-600 font-semibold">{dispatched} Sent</span>
+                            {rejected > 0 && <span className="text-red-500 font-medium">({rejected} Rejected)</span>}
+                        </div>
                     </div>
                 );
             }

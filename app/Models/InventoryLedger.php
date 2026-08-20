@@ -17,6 +17,7 @@ class InventoryLedger extends Model
 
     protected $fillable = [
         'business_location_id',
+        'storage_location_id',
         'ingredient_id',
         'transaction_type',
         'reference_type',
@@ -29,6 +30,11 @@ class InventoryLedger extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(BusinessLocation::class, 'business_location_id');
+    }
+
+    public function storageLocation(): BelongsTo
+    {
+        return $this->belongsTo(StorageLocation::class, 'storage_location_id');
     }
 
     public function ingredient(): BelongsTo

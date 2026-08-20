@@ -9,6 +9,7 @@ use App\Models\InventoryBalance;
 use App\Models\InventoryLedger;
 use App\Models\BusinessLocation;
 use App\Models\User;
+use App\Models\Ingredient;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -23,6 +24,14 @@ class DashboardController extends Controller
             : auth()->user()->business_location_id;
 
         $today = Carbon::today();
+
+        // Helper closure to apply optional location filter
+        $applyLocationFilter = function ($query) use ($locationId) {
+            if ($locationId) {
+                $query->where('business_location_id', $locationId);
+            }
+            return $query;
+        };
 
         // 1. KPI Metrics
         $completedOrdersToday = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
@@ -76,7 +85,7 @@ class DashboardController extends Controller
         // 5. Inventory: Top Consumed Today
         $topConsumed = InventoryLedger::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
-            ->where('transaction_type', 'sale') // Deductions
+            ->where('transaction_type', 'sale')
             ->select('ingredient_id', DB::raw('SUM(ABS(quantity)) as total_consumed'))
             ->groupBy('ingredient_id')
             ->with('ingredient.baseUom')
@@ -91,21 +100,33 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 6. Inventory: Detailed Low Stock Alerts
-        $lowStockItems = InventoryBalance::when($locationId, function($q) use ($locationId) {
-                $q->whereHas('storageLocation', fn($sq) => $sq->where('business_location_id', $locationId));
-            })
-            ->where('available_qty', '<=', 10) // Threshold can be dynamic later
-            ->with(['ingredient.baseUom', 'storageLocation'])
-            ->orderBy('available_qty', 'asc')
+        // 6. Inventory: Detailed Low Stock Alerts (Branch-Aggregated Purchasing Alert)
+        $lowStockItems = Ingredient::where('is_inventory_item', true)
+            ->with('baseUom')
+            ->select('id', 'name', 'base_uom_id')
+            ->selectSub(function ($query) use ($locationId) {
+                $query->from('inventory_balances')
+                    ->join('storage_locations', 'inventory_balances.storage_location_id', '=', 'storage_locations.id')
+                    ->whereColumn('inventory_balances.ingredient_id', 'ingredients.id')
+                    ->where('storage_locations.status', true);
+
+                if ($locationId) {
+                    $query->where('storage_locations.business_location_id', $locationId);
+                }
+
+                $query->select(DB::raw('COALESCE(SUM(inventory_balances.available_qty), 0)'));
+            }, 'total_available')
+            ->groupBy('ingredients.id')
+            ->having('total_available', '<=', 10)
+            ->orderBy('total_available', 'asc')
             ->take(10)
             ->get()
-            ->map(function($balance) {
+            ->map(function ($ingredient) {
                 return [
-                    'name' => $balance->ingredient ? $balance->ingredient->name : 'Unknown',
-                    'qty' => $balance->available_qty,
-                    'uom' => $balance->ingredient && $balance->ingredient->baseUom ? $balance->ingredient->baseUom->code : '',
-                    'location' => $balance->storageLocation ? $balance->storageLocation->storage_name : 'Main'
+                    'name' => $ingredient->name,
+                    'qty' => (float) $ingredient->total_available,
+                    'uom' => $ingredient->baseUom ? $ingredient->baseUom->code : '',
+                    'location' => 'Branch Total'
                 ];
             });
 

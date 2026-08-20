@@ -85,8 +85,28 @@ final class TableHelper
         if ($search && mb_trim((string) $search) !== '' && $this->searchColumns !== []) {
             $searchTerm = mb_trim((string) $search);
             $this->query->where(function ($q) use ($searchTerm): void {
-                foreach ($this->searchColumns as $column) {
-                    $q->orWhere($column, 'like', '%'.$searchTerm.'%');
+                foreach ($this->searchColumns as $index => $column) {
+                    if (str_contains($column, '.')) {
+                        $parts = explode('.', $column);
+                        $relationColumn = array_pop($parts);
+                        $relationName = collect($parts)->map(fn($part) => Str::camel($part))->implode('.');
+
+                        if ($index === 0) {
+                            $q->whereHas($relationName, function ($rq) use ($relationColumn, $searchTerm) {
+                                $rq->where($relationColumn, 'like', '%'.$searchTerm.'%');
+                            });
+                        } else {
+                            $q->orWhereHas($relationName, function ($rq) use ($relationColumn, $searchTerm) {
+                                $rq->where($relationColumn, 'like', '%'.$searchTerm.'%');
+                            });
+                        }
+                    } else {
+                        if ($index === 0) {
+                            $q->where($column, 'like', '%'.$searchTerm.'%');
+                        } else {
+                            $q->orWhere($column, 'like', '%'.$searchTerm.'%');
+                        }
+                    }
                 }
             });
         }
@@ -103,45 +123,55 @@ final class TableHelper
                 }
 
                 $applyCondition = function($query, $col) use ($value) {
+                    // Check if scalar string is a single date YYYY-MM-DD
+                    if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($value))) {
+                        $dateStr = trim($value);
+                        $start = $dateStr . ' 00:00:00';
+                        $nextDay = date('Y-m-d 00:00:00', strtotime($dateStr . ' +1 day'));
+                        $query->where($col, '>=', $start)->where($col, '<', $nextDay);
+                        return;
+                    }
+
                     if (is_array($value)) {
                         if ($value !== []) {
-                            // Check if it's a date range filter (array of 2 items, string dates or timestamps)
-                            $isDateRange = false;
+                            // Check if it's a date filter or date range
+                            $isDateFilter = false;
                             $start = null;
-                            $end = null;
-                            
-                            if (count($value) === 2) {
-                                // Support YYYY-MM-DD strings
-                                if ((isset($value[0]) && preg_match('/^\d{4}-\d{2}-\d{2}/', (string)$value[0])) || 
-                                    (isset($value[1]) && preg_match('/^\d{4}-\d{2}-\d{2}/', (string)$value[1]))) {
-                                    $isDateRange = true;
-                                    $start = isset($value[0]) && $value[0] ? substr((string)$value[0], 0, 10) . ' 00:00:00' : null;
-                                    $end = isset($value[1]) && $value[1] ? substr((string)$value[1], 0, 10) . ' 23:59:59' : null;
-                                } 
-                                // Support JS Timestamps
-                                else if ((isset($value[0]) && is_numeric($value[0]) && $value[0] > 100000000000) ||
-                                         (isset($value[1]) && is_numeric($value[1]) && $value[1] > 100000000000)) {
-                                    $isDateRange = true;
-                                    $start = isset($value[0]) && is_numeric($value[0]) ? date('Y-m-d H:i:s', intval($value[0] / 1000)) : null;
-                                    $end = isset($value[1]) && is_numeric($value[1]) ? date('Y-m-d 23:59:59', intval($value[1] / 1000)) : null;
+                            $nextDayEnd = null;
+
+                            if (count($value) === 1 && isset($value[0]) && preg_match('/^\d{4}-\d{2}-\d{2}/', (string)$value[0])) {
+                                $isDateFilter = true;
+                                $dateStr = substr((string)$value[0], 0, 10);
+                                $start = $dateStr . ' 00:00:00';
+                                $nextDayEnd = date('Y-m-d 00:00:00', strtotime($dateStr . ' +1 day'));
+                            } elseif (count($value) === 2) {
+                                $d1 = isset($value[0]) ? substr((string)$value[0], 0, 10) : null;
+                                $d2 = isset($value[1]) ? substr((string)$value[1], 0, 10) : null;
+
+                                if (($d1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d1)) || ($d2 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d2))) {
+                                    $isDateFilter = true;
+                                    $startDate = $d1 ?: $d2;
+                                    $endDate = $d2 ?: $d1;
+
+                                    $start = $startDate . ' 00:00:00';
+                                    $nextDayEnd = date('Y-m-d 00:00:00', strtotime($endDate . ' +1 day'));
                                 }
                             }
 
-                            if ($isDateRange) {
-                                if ($start && $end) {
-                                    $query->whereBetween($col, [$start, $end]);
+                            if ($isDateFilter) {
+                                if ($start && $nextDayEnd) {
+                                    $query->where($col, '>=', $start)->where($col, '<', $nextDayEnd);
                                 } elseif ($start) {
                                     $query->where($col, '>=', $start);
-                                } elseif ($end) {
-                                    $query->where($col, '<=', $end);
+                                } elseif ($nextDayEnd) {
+                                    $query->where($col, '<', $nextDayEnd);
                                 }
                             } else {
                                 $query->whereIn($col, $value);
                             }
                         }
-                    } elseif (is_numeric($value)) {
-                        $query->where($col, '=', (int) $value);
                     } else {
+                        // Keep string values as strings (including numeric-looking strings like "1002" or UUIDs)
                         $query->where($col, 'like', '%'.$value.'%');
                     }
                 };

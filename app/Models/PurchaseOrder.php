@@ -34,9 +34,9 @@ class PurchaseOrder extends Model
 
     protected $casts = [
         'expected_delivery_date' => 'date',
-        'business_location_id' => 'integer',
-        'delivery_location_id' => 'integer',
-        'supplier_id' => 'integer',
+        'subtotal' => 'decimal:2',
+        'tax_total' => 'decimal:2',
+        'grand_total' => 'decimal:2',
     ];
 
     protected static function booted(): void

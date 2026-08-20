@@ -223,6 +223,7 @@ export default function FormPage({ defaultValues }: { defaultValues?: any }) {
                                                 // Category mode
                                                 const globalCategoryId = form.watch("category_id");
                                                 const currentIngredientId = form.watch(`items.${index}.ingredient_id`);
+                                                const currentSupplierId = form.watch(`items.${index}.supplier_id`);
 
                                                 const availableIngredients = globalCategoryId && String(globalCategoryId) !== "0" && String(globalCategoryId) !== ""
                                                     ? ingredients.filter((i: any) => String(i.ingredient_category_id) === String(globalCategoryId))

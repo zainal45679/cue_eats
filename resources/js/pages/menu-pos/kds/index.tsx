@@ -132,67 +132,176 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     
                     const isPreparing = order.kitchen_status === 'preparing';
                     const isPending = order.kitchen_status === 'pending';
+                    const tableName = order.dining_table?.name || order.diningTable?.name;
+
+                    const updateKotStatus = (kotId: string, status: string) => {
+                        router.post(`/menu-pos/kds/kot/${kotId}/status`, { status }, { preserveScroll: true });
+                    };
 
                     return (
                         <div key={order.id} className={cn(
-                            "flex flex-col bg-card border shadow-sm rounded-sm overflow-hidden min-h-[250px]",
+                            "flex flex-col bg-card border shadow-sm rounded-lg overflow-hidden min-h-[260px]",
                             isPreparing ? "border-t-[6px] border-t-blue-600" : "border-t-[6px] border-t-amber-500",
                             isOverdue && isPending && "border-t-red-600 animate-pulse"
                         )}>
-                            <div className="flex flex-col p-2 border-b bg-muted/10">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xl font-bold leading-none tracking-tight">#{order.order_number}</span>
+                            {/* Card Header: Primary Order & Table Info */}
+                            <div className="flex flex-col p-3 border-b bg-muted/20 space-y-1.5">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="text-xl font-black leading-none tracking-tight text-foreground flex items-center gap-2">
+                                            <span>#{order.order_number}</span>
+                                            {tableName && (
+                                                <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                                                    {tableName}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                     <span className={cn(
-                                        "text-xs font-bold",
-                                        isOverdue ? "text-red-600" : "text-muted-foreground"
+                                        "text-xs font-bold shrink-0",
+                                        isOverdue ? "text-red-600 font-extrabold" : "text-muted-foreground"
                                     )}>
                                         {formatDistanceToNow(orderTime, { addSuffix: true })}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[11px] font-bold uppercase tracking-wider bg-foreground/10 px-1.5 py-0.5 rounded text-foreground">
+
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="font-bold uppercase tracking-wider bg-foreground/10 px-1.5 py-0.5 rounded text-foreground text-[10px]">
                                         {order.order_type}
                                     </span>
                                     <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
-                                        isPreparing ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                        "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
+                                        isPreparing ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                                     )}>
                                         {order.kitchen_status}
                                     </span>
                                 </div>
                             </div>
                             
-                            <div className="flex-1 p-0 overflow-y-auto max-h-[300px] custom-scrollbar">
-                                <ul className="py-1">
-                                    {order.items?.map((item: any) => (
-                                        <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
-                                            <div className="flex items-start">
-                                                <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-bold text-sm leading-tight text-foreground">
-                                                        {item.menu_item?.name}
+                            {/* Card Body: Round-by-Round Submissions */}
+                            <div className="flex-1 p-2.5 overflow-y-auto max-h-[340px] custom-scrollbar space-y-3">
+                                {order.kots && order.kots.length > 0 ? (
+                                    order.kots.map((kot: any) => {
+                                        const isKotReady = kot.status === 'ready';
+                                        const isKotPreparing = kot.status === 'preparing';
+
+                                        return (
+                                            <div 
+                                                key={kot.id} 
+                                                className={cn(
+                                                    "border rounded-lg overflow-hidden transition-all",
+                                                    isKotReady 
+                                                        ? "bg-muted/30 border-emerald-500/30 opacity-75" 
+                                                        : isKotPreparing 
+                                                            ? "bg-blue-500/5 border-blue-500/40 shadow-sm" 
+                                                            : "bg-amber-500/5 border-amber-500/40 shadow-sm"
+                                                )}
+                                            >
+                                                {/* Round Header */}
+                                                <div className={cn(
+                                                    "px-2.5 py-1.5 flex justify-between items-center border-b text-xs font-bold",
+                                                    isKotReady 
+                                                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" 
+                                                        : isKotPreparing 
+                                                            ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" 
+                                                            : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
+                                                )}>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-mono">Round #{kot.round_number}</span>
+                                                        <span className="text-[10px] opacity-75 font-normal">({kot.kot_number})</span>
                                                     </div>
-                                                    {item.modifiers && item.modifiers.length > 0 && (
-                                                        <div className="mt-0.5">
-                                                            {item.modifiers.map((mod: any) => (
-                                                                <div key={mod.id} className="text-xs text-muted-foreground font-medium">
-                                                                    - {mod.modifier?.name}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    {item.notes && (
-                                                        <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
-                                                            * {item.notes}
-                                                        </div>
-                                                    )}
+
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn(
+                                                            "text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border",
+                                                            isKotReady ? "bg-emerald-600 text-white border-emerald-600" :
+                                                            isKotPreparing ? "bg-blue-600 text-white border-blue-600" :
+                                                            "bg-amber-600 text-white border-amber-600"
+                                                        )}>
+                                                            {isKotReady ? '✓ PREPARED' : isKotPreparing ? '⚡ PREPARING' : '🔴 NEW'}
+                                                        </span>
+
+                                                        {!isKotReady && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-6 text-[10px] font-bold px-2 bg-background hover:bg-muted"
+                                                                onClick={() => updateKotStatus(kot.id, isKotPreparing ? 'ready' : 'preparing')}
+                                                            >
+                                                                {isKotPreparing ? 'Mark Ready' : 'Start Prep'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
+
+                                                {/* Round Items List */}
+                                                <ul className="py-1 divide-y divide-border/20">
+                                                    {kot.items?.map((item: any) => (
+                                                        <li key={item.id} className="px-2.5 py-1.5 hover:bg-muted/20">
+                                                            <div className="flex items-start">
+                                                                <span className="font-extrabold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className={cn(
+                                                                        "font-bold text-sm leading-tight",
+                                                                        isKotReady ? "text-muted-foreground line-through" : "text-foreground"
+                                                                    )}>
+                                                                        {item.menu_item?.name || item.menu_item_name}
+                                                                    </div>
+                                                                    {item.modifiers && item.modifiers.length > 0 && (
+                                                                        <div className="mt-0.5">
+                                                                            {item.modifiers.map((mod: any) => (
+                                                                                <div key={mod.id} className="text-xs text-muted-foreground font-medium">
+                                                                                    - {mod.modifier?.name || mod.modifier_name}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.notes && (
+                                                                        <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
+                                                                            * {item.notes}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
                                             </div>
-                                        </li>
-                                    ))}
-                                </ul>
+                                        );
+                                    })
+                                ) : (
+                                    <ul className="py-1">
+                                        {order.items?.map((item: any) => (
+                                            <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
+                                                <div className="flex items-start">
+                                                    <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-sm leading-tight text-foreground">
+                                                            {item.menu_item?.name}
+                                                        </div>
+                                                        {item.modifiers && item.modifiers.length > 0 && (
+                                                            <div className="mt-0.5">
+                                                                {item.modifiers.map((mod: any) => (
+                                                                    <div key={mod.id} className="text-xs text-muted-foreground font-medium">
+                                                                        - {mod.modifier?.name}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {item.notes && (
+                                                            <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
+                                                                * {item.notes}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                             
+                            {/* Card Footer: Overall Order Bump Controls */}
                             <div className="p-2 bg-muted/20 border-t mt-auto flex gap-2">
                                 {isPending ? (
                                     <>
@@ -209,7 +318,7 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                                             className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold px-0"
                                             onClick={() => updateStatus(order.id, 'preparing')}
                                         >
-                                            Start Prep
+                                            Start Prep All
                                         </Button>
                                     </>
                                 ) : (
@@ -218,7 +327,7 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm font-bold"
                                         onClick={() => updateStatus(order.id, 'ready')}
                                     >
-                                        Mark Ready
+                                        Mark All Ready
                                     </Button>
                                 )}
                             </div>

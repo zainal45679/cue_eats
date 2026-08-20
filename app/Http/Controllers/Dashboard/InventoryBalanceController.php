@@ -28,7 +28,57 @@ class InventoryBalanceController extends Controller
 
         // Clone query before TableHelper applies filters so categories remain global
         $globalQuery = clone $query;
-        $data = TableHelper::query($query)->get();
+        $data = TableHelper::query($query)
+            ->searchColumns(['ingredient.name', 'ingredient.code', 'storageLocation.storage_name', 'ingredient.category.name'])
+            ->addCustomFilter('ingredient.name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient', function ($iq) use ($vals, $val) {
+                    $iq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('ingredient', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient', function ($iq) use ($vals, $val) {
+                    $iq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('storage_location.storage_name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('storageLocation', function ($lq) use ($vals, $val) {
+                    $lq->whereIn('storage_name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('storage_name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('storageLocation', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('storageLocation', function ($lq) use ($vals, $val) {
+                    $lq->whereIn('storage_name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('storage_name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('ingredient.category.name', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient.category', function ($cq) use ($vals, $val) {
+                    $cq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->addCustomFilter('category', function ($q, $val) {
+                $vals = is_array($val) ? $val : [$val];
+                $q->whereHas('ingredient.category', function ($cq) use ($vals, $val) {
+                    $cq->whereIn('name', $vals)
+                       ->orWhereIn('id', $vals)
+                       ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
+                });
+            })
+            ->get();
 
         $allBalances = $globalQuery->with('ingredient.category')->get();
         $balanceCategories = $allBalances->groupBy(function($item) {
@@ -50,10 +100,26 @@ class InventoryBalanceController extends Controller
             }
         }
             
+        $storageLocationsQuery = \App\Models\StorageLocation::where('status', true);
+        if (!auth()->user()->hasRole('admin') || $activeLocationId) {
+            $locId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
+            if ($locId) {
+                $storageLocationsQuery->where('business_location_id', $locId);
+            }
+        }
+        $storageLocations = $storageLocationsQuery->get();
+
         return Inertia::render('inventory/live-stock/index', [
             'inventoryBalances' => $data,
+            'allInventoryBalances' => $allBalances->map(fn($b) => [
+                'storage_location_id' => $b->storage_location_id,
+                'ingredient_id' => $b->ingredient_id,
+                'available_qty' => (float) $b->available_qty,
+            ]),
             'serverCategories' => $cleanCategories,
-            'totalItemsCount' => $allBalances->count()
+            'totalItemsCount' => $allBalances->count(),
+            'storageLocations' => $storageLocations,
+            'ingredients' => \App\Models\Ingredient::with('baseUom')->select('id', 'name', 'base_uom_id')->get(),
         ]);
     }
 }

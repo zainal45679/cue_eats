@@ -23,6 +23,7 @@ final class DatabaseSeeder extends Seeder
             MenuPOSSeeder::class,
             DummyInventorySeeder::class,
             RecipeSeeder::class,
+            SupplierSeeder::class,
         ]);
     }
 }
