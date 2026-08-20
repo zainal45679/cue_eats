@@ -52,4 +52,14 @@ class Ingredient extends Model
     {
         return $this->belongsTo(Brand::class);
     }
+
+    public function ingredientSuppliers(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(IngredientSupplier::class);
+    }
+
+    public function purchaseOrderItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class);
+    }
 }

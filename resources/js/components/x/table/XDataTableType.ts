@@ -91,4 +91,5 @@ export type XDataTableProps<T extends { id: string | number }> = {
   }[];
 
   renderMobileCard?: (row: T) => React.ReactNode;
+  showFilterToggle?: boolean;
 };

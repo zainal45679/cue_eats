@@ -39,4 +39,9 @@ class PurchaseOrderItem extends Model
     {
         return $this->belongsTo(UnitOfMeasure::class, 'purchase_uom_id');
     }
+
+    public function purchaseUom()
+    {
+        return $this->belongsTo(UnitOfMeasure::class, 'purchase_uom_id');
+    }
 }

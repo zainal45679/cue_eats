@@ -113,8 +113,28 @@ class SupplierSeeder extends Seeder
 
             $primarySupplier = $suppliers[$primarySupplierKey];
 
-            // Standard realistic wholesale prices
-            $wholesalePrice = match ($primarySupplierKey) {
+            // Item-specific realistic wholesale pricing (overriding generic category defaults)
+            $itemPrices = [
+                'BEEF-01' => 1.35,  // $1.35 per 150g beef patty (EA)
+                'BUN-01'  => 0.40,  // $0.40 per burger bun (EA)
+                'CHS-AM'  => 0.20,  // $0.20 per American cheese slice (EA)
+                'CHS-SW'  => 0.20,  // $0.20 per Swiss cheese slice (EA)
+                'CHS-PJ'  => 0.22,  // $0.22 per Pepper Jack cheese slice (EA)
+                'FRZ-ONR' => 0.18,  // $0.18 per beer-battered onion ring (EA)
+                'FRZ-MST' => 0.40,  // $0.40 per mozzarella stick (EA)
+                'PRO-ON'  => 1.50,  // $1.50 per kg red onions
+                'PAN-PKL' => 2.20,  // $2.20 per kg pickles
+                'PRO-MSH' => 4.50,  // $4.50 per kg wild mushrooms
+                'PRO-ARG' => 3.50,  // $3.50 per kg arugula
+                'PAN-TAI' => 6.50,  // $6.50 per L truffle aioli
+                'PRO-JAL' => 2.50,  // $2.50 per kg jalapenos
+                'PAN-HBM' => 4.20,  // $4.20 per L habanero mayo
+                'BKT-PZD' => 0.60,  // $0.60 per pizza dough portion (EA)
+                'FRZ-FRS' => 2.50,  // $2.50 per kg shoestring fries
+                'BEV-CRB' => 0.30,  // $0.30 per L carbonated water
+            ];
+
+            $wholesalePrice = $itemPrices[$ing->code] ?? match ($primarySupplierKey) {
                 'meat' => 8.50,
                 'dairy' => 4.20,
                 'produce' => 2.50,

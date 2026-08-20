@@ -15,28 +15,80 @@ class InventoryConsumptionController extends Controller
         $activeLocationId = session('active_location_id');
         $locationId = !auth()->user()->hasRole('admin') ? auth()->user()->business_location_id : $activeLocationId;
 
-        $startDate = $request->input('start_date', now()->startOfDay()->toDateString());
-        $endDate = $request->input('end_date', now()->endOfDay()->toDateString());
+        $hasAllDates = $request->boolean('all_dates');
+        $startDate = null;
+        $endDate = null;
 
-        $query = InventoryLedger::query()
+        $baseQuery = InventoryLedger::query()
+            ->where('transaction_type', 'sale');
+
+        if (!$hasAllDates) {
+            $startDate = $request->input('start_date', now()->startOfDay()->toDateString());
+            $endDate = $request->input('end_date', now()->endOfDay()->toDateString());
+            $baseQuery->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+        }
+
+        if ($locationId) {
+            $baseQuery->where('business_location_id', $locationId);
+        }
+
+        $globalTotalOrders = (clone $baseQuery)->distinct('reference_id')->count('reference_id');
+
+        $query = (clone $baseQuery)
             ->select(
                 'ingredient_id',
                 DB::raw('ABS(SUM(quantity)) as total_consumed'),
                 DB::raw('COUNT(DISTINCT reference_id) as total_orders')
             )
-            ->with(['ingredient.baseUom', 'ingredient.category'])
-            ->where('transaction_type', 'sale')
-            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-
-        if ($locationId) {
-            $query->where('business_location_id', $locationId);
-        }
+            ->with([
+                'ingredient.baseUom',
+                'ingredient.category',
+                'ingredient.ingredientSuppliers.purchaseUom',
+                'ingredient.purchaseOrderItems.purchaseUom',
+            ]);
 
         $consumptions = $query->groupBy('ingredient_id')
             ->get()
             ->map(function ($item) {
-                $costPerUnit = $item->ingredient->cost_per_unit ?? 0;
-                $totalCost = $item->total_consumed * $costPerUnit;
+                $ingredient = $item->ingredient;
+                $baseUnitCost = 0.0;
+
+                if ($ingredient) {
+                    // Precedence 1: Active preferred supplier mapping
+                    $supplierMapping = $ingredient->ingredientSuppliers
+                        ->where('status', true)
+                        ->where('is_preferred', true)
+                        ->first();
+
+                    // Precedence 2: Active non-preferred supplier mapping fallback
+                    if (!$supplierMapping) {
+                        $supplierMapping = $ingredient->ingredientSuppliers
+                            ->where('status', true)
+                            ->first();
+                    }
+
+                    if ($supplierMapping) {
+                        $supplierPrice = (float) $supplierMapping->price;
+                        $purchaseUom = $supplierMapping->purchaseUom;
+                        $conversionFactor = ($purchaseUom && (float)$purchaseUom->conversion_factor > 0)
+                            ? (float)$purchaseUom->conversion_factor
+                            : 1.0;
+                        $baseUnitCost = $supplierPrice / $conversionFactor;
+                    } else {
+                        // Precedence 3: Latest purchase order item price history
+                        $poItem = $ingredient->purchaseOrderItems->sortByDesc('id')->first();
+                        if ($poItem && (float)$poItem->unit_price > 0) {
+                            $poUnitPrice = (float) $poItem->unit_price;
+                            $purchaseUom = $poItem->purchaseUom;
+                            $conversionFactor = ($purchaseUom && (float)$purchaseUom->conversion_factor > 0)
+                                ? (float)$purchaseUom->conversion_factor
+                                : 1.0;
+                            $baseUnitCost = $poUnitPrice / $conversionFactor;
+                        }
+                    }
+                }
+
+                $totalCost = (float) $item->total_consumed * $baseUnitCost;
 
                 return [
                     'id' => 'ing-' . $item->ingredient_id,
@@ -69,10 +121,12 @@ class InventoryConsumptionController extends Controller
 
         return Inertia::render('inventory/consumption/index', [
             'consumptions' => $consumptions,
+            'globalTotalOrders' => $globalTotalOrders,
             'serverCategories' => $cleanCategories,
             'filters' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'all_dates' => $hasAllDates,
             ]
         ]);
     }

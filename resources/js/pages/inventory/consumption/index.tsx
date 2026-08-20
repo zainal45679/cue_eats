@@ -8,15 +8,16 @@ import { XDateRangePicker } from "@/components/x/date-picker/XDateRangePicker";
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { DollarSign, Layers, ShoppingCart, TrendingUp, Calculator, LayoutList } from "lucide-react";
 import { Badge } from "@/components/shadcn/ui/badge";
+import { DataTableColumnHeader } from "@/components/shadcn/data-table/data-table-column-header";
 
 export default function InventoryConsumptionIndex() {
     const { props } = usePage<any>();
-    const { consumptions, serverCategories, filters } = props;
+    const { consumptions, serverCategories, filters, globalTotalOrders } = props;
 
     const [showCategorySidebar, setShowCategorySidebar] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-    const dateFilterValue = {
+    const dateFilterValue = filters?.all_dates ? undefined : {
         from: filters?.start_date ? new Date(filters.start_date) : undefined,
         to: filters?.end_date ? new Date(filters.end_date) : undefined,
     };
@@ -29,16 +30,24 @@ export default function InventoryConsumptionIndex() {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
         };
 
-        if (date?.from) {
-            queryParams.start_date = format(date.from);
+        if (date?.from || date?.to) {
+            delete queryParams.all_dates;
+
+            if (date?.from) {
+                queryParams.start_date = format(date.from);
+            } else {
+                delete queryParams.start_date;
+            }
+
+            if (date?.to) {
+                queryParams.end_date = format(date.to);
+            } else {
+                delete queryParams.end_date;
+            }
         } else {
             delete queryParams.start_date;
-        }
-
-        if (date?.to) {
-            queryParams.end_date = format(date.to);
-        } else {
             delete queryParams.end_date;
+            queryParams.all_dates = "1";
         }
         
         router.get(window.location.pathname, queryParams, {
@@ -46,6 +55,15 @@ export default function InventoryConsumptionIndex() {
             preserveScroll: true,
         });
     };
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const searchQuery = (searchParams.get('search') || '').toLowerCase().trim();
+    const rawPage = Number(searchParams.get('page') || 1);
+    const rawPerPage = Number(searchParams.get('perPage') || 10);
+    const currentPage = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+    const perPage = isNaN(rawPerPage) || rawPerPage < 1 ? 10 : rawPerPage;
+    const sortBy = searchParams.get('sortBy');
+    const sortDesc = searchParams.get('sortDesc') === 'true';
 
     const categories = useMemo(() => {
         if (serverCategories) {
@@ -62,8 +80,49 @@ export default function InventoryConsumptionIndex() {
                 return cat === selectedCategory;
             });
         }
+        if (searchQuery) {
+            rows = rows.filter((item: any) => {
+                const name = (item.ingredient?.name || '').toLowerCase();
+                const code = (item.ingredient?.code || '').toLowerCase();
+                const cat = (item.ingredient?.category?.name || '').toLowerCase();
+                return name.includes(searchQuery) || code.includes(searchQuery) || cat.includes(searchQuery);
+            });
+        }
+        if (sortBy) {
+            rows = [...rows].sort((a: any, b: any) => {
+                let valA: any = 0;
+                let valB: any = 0;
+
+                if (sortBy === 'ingredient') {
+                    valA = (a.ingredient?.name || '').toLowerCase();
+                    valB = (b.ingredient?.name || '').toLowerCase();
+                    return sortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
+                } else if (sortBy === 'total_orders') {
+                    valA = Number(a.total_orders || 0);
+                    valB = Number(b.total_orders || 0);
+                } else if (sortBy === 'total_consumed') {
+                    valA = Number(a.total_consumed || 0);
+                    valB = Number(b.total_consumed || 0);
+                } else if (sortBy === 'total_cost') {
+                    valA = Number(a.total_cost || 0);
+                    valB = Number(b.total_cost || 0);
+                }
+
+                if (valA < valB) return sortDesc ? 1 : -1;
+                if (valA > valB) return sortDesc ? -1 : 1;
+                return 0;
+            });
+        }
         return rows;
-    }, [consumptions, selectedCategory]);
+    }, [consumptions, selectedCategory, searchQuery, sortBy, sortDesc]);
+
+    const totalCount = processedRows.length;
+    const lastPage = Math.max(1, Math.ceil(totalCount / perPage));
+    const validCurrentPage = Math.min(currentPage, lastPage);
+    const startIndex = (validCurrentPage - 1) * perPage;
+    const paginatedRows = useMemo(() => {
+        return processedRows.slice(startIndex, startIndex + perPage);
+    }, [processedRows, startIndex, perPage]);
 
     const maxConsumed = useMemo(() => {
         return Math.max(...processedRows.map((r: any) => Number(r.total_consumed)), 1);
@@ -80,7 +139,7 @@ export default function InventoryConsumptionIndex() {
     const columns: XDataTableColumn<any>[] = [
         {
             id: "ingredient",
-            header: "Ingredient",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Ingredient" />,
             accessorFn: (row: any) => row.ingredient?.name || "-",
             cell: ({ row }: any) => {
                 const name = row.original.ingredient?.name || "-";
@@ -99,7 +158,7 @@ export default function InventoryConsumptionIndex() {
         },
         {
             id: "total_orders",
-            header: "Total POS Orders",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Order Items" />,
             accessorFn: (row: any) => row.total_orders,
             cell: ({ getValue }: any) => {
                 const val = Number(getValue());
@@ -116,7 +175,8 @@ export default function InventoryConsumptionIndex() {
         },
         {
             id: "total_consumed",
-            header: "Total Consumed",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Total Consumed" />,
+            accessorFn: (row: any) => row.total_consumed,
             cell: ({ row }: any) => {
                 const qty = Number(row.original.total_consumed);
                 const uom = row.original.ingredient?.base_uom?.code || '';
@@ -138,7 +198,8 @@ export default function InventoryConsumptionIndex() {
         },
         {
             id: "total_cost",
-            header: "Est. Cost Value",
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Est. Cost Value" />,
+            accessorFn: (row: any) => row.total_cost,
             cell: ({ row }: any) => {
                 const cost = Number(row.original.total_cost);
                 const pct = Math.round((cost / maxCost) * 100);
@@ -159,18 +220,21 @@ export default function InventoryConsumptionIndex() {
     ];
 
     const data = {
-        rows: processedRows,
+        rows: paginatedRows,
         meta: {
-            total: processedRows.length,
-            per_page: processedRows.length,
-            current_page: 1,
-            last_page: 1,
-        }
+            total: totalCount,
+            perPage: perPage,
+            currentPage: validCurrentPage,
+            lastPage: lastPage,
+        },
+        search: searchParams.get('search') || undefined,
+        sortBy: sortBy || undefined,
+        sortDesc: sortBy ? sortDesc : undefined,
     };
 
     const totalIngredients = processedRows.length;
     const totalCost = processedRows.reduce((sum: number, row: any) => sum + Number(row.total_cost || 0), 0);
-    const totalOrders = processedRows.reduce((sum: number, row: any) => sum + Number(row.total_orders || 0), 0);
+    const totalOrders = Number(globalTotalOrders ?? 0);
     
     let topIngredient = "-";
     if (processedRows.length > 0) {
@@ -200,7 +264,7 @@ export default function InventoryConsumptionIndex() {
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total POS Orders</p>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Order Items</p>
                             <h3 className="text-2xl font-bold leading-none">{totalOrders}</h3>
                         </div>
                         <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg shrink-0">
@@ -212,7 +276,7 @@ export default function InventoryConsumptionIndex() {
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
                     <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
                         <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Avg Cost / Order</p>
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Avg Cost / Order Item</p>
                             <h3 className="text-2xl font-bold leading-none">${avgCostPerOrder.toFixed(2)}</h3>
                         </div>
                         <div className="p-2 bg-amber-500/10 text-amber-500 rounded-lg shrink-0">
@@ -331,6 +395,7 @@ export default function InventoryConsumptionIndex() {
                         data={data}
                         columns={columns}
                         actions={[]}
+                        showFilterToggle={false}
                     />
                 </div>
             </div>

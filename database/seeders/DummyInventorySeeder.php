@@ -112,6 +112,8 @@ class DummyInventorySeeder extends Seeder
 
             $poItems = [];
             foreach ($insertedIngredients as $ingredient) {
+                $supplierIng = \App\Models\IngredientSupplier::where('ingredient_id', $ingredient->id)->first();
+                $poPrice = $supplierIng ? (float)$supplierIng->price : 3.00;
                 $qty = rand(100, 500);
                 $poItems[] = PurchaseOrderItem::create([
                     'purchase_order_id' => $po->id,
@@ -119,7 +121,7 @@ class DummyInventorySeeder extends Seeder
                     'purchase_uom_id' => $ingredient->base_uom_id,
                     'quantity' => $qty,
                     'received_quantity' => $qty,
-                    'unit_price' => rand(2, 20),
+                    'unit_price' => $poPrice,
                 ]);
             }
 

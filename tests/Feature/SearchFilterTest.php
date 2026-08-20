@@ -1510,4 +1510,630 @@ class SearchFilterTest extends TestCase
                 ->where('ledgers.meta.total', 15)
         );
     }
+
+    /** @test */
+    public function test_daily_consumption_defaults_to_todays_sales_consumption()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $ing = Ingredient::create(['name' => 'Sugar', 'code' => 'ING-SGR', 'ingredient_category_id' => $cat->id]);
+
+        $today = now()->format('Y-m-d');
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        $lToday = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -10,
+            'running_balance' => 90,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-today-1',
+            'created_by' => $this->admin->id,
+        ]);
+        $lToday->created_at = $today . ' 10:00:00';
+        $lToday->save();
+
+        $lYesterday = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -5,
+            'running_balance' => 95,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-yesterday-1',
+            'created_by' => $this->admin->id,
+        ]);
+        $lYesterday->created_at = $yesterday . ' 10:00:00';
+        $lYesterday->save();
+
+        // Default GET /inventory/consumption -> returns today's record (quantity 10) and excludes yesterday
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 10)
+                ->where('filters.start_date', $today)
+                ->where('filters.all_dates', false)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_explicit_date_and_date_range()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $ing = Ingredient::create(['name' => 'Flour', 'code' => 'ING-FLR', 'ingredient_category_id' => $cat->id]);
+
+        $pastDate = now()->subDays(5)->format('Y-m-d');
+
+        $lPast = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -20,
+            'running_balance' => 80,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-past-1',
+            'created_by' => $this->admin->id,
+        ]);
+        $lPast->created_at = $pastDate . ' 12:00:00';
+        $lPast->save();
+
+        // Explicit date query start_date=pastDate & end_date=pastDate
+        $res = $this->actingAs($this->admin)->get(route('consumption.index', [
+            'start_date' => $pastDate,
+            'end_date' => $pastDate,
+        ]));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 20)
+                ->where('filters.start_date', $pastDate)
+                ->where('filters.end_date', $pastDate)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_all_dates_cleared_returns_historical_records()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $ing = Ingredient::create(['name' => 'Salt', 'code' => 'ING-SLT', 'ingredient_category_id' => $cat->id]);
+
+        $today = now()->format('Y-m-d');
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        $lToday = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -10,
+            'running_balance' => 90,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-today-salt',
+            'created_by' => $this->admin->id,
+        ]);
+        $lToday->created_at = $today . ' 10:00:00';
+        $lToday->save();
+
+        $lYesterday = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -15,
+            'running_balance' => 75,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-yesterday-salt',
+            'created_by' => $this->admin->id,
+        ]);
+        $lYesterday->created_at = $yesterday . ' 10:00:00';
+        $lYesterday->save();
+
+        // GET /inventory/consumption?all_dates=1 -> returns total_consumed = 25 (10 + 15)
+        $res = $this->actingAs($this->admin)->get(route('consumption.index', ['all_dates' => '1']));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 25)
+                ->where('filters.all_dates', true)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_all_dates_respects_branch_isolation()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $ing = Ingredient::create(['name' => 'Pepper', 'code' => 'ING-PPR', 'ingredient_category_id' => $cat->id]);
+
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        // Location 1 record
+        $lLoc1 = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -8,
+            'running_balance' => 92,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-loc1',
+            'created_by' => $this->admin->id,
+        ]);
+        $lLoc1->created_at = $yesterday . ' 10:00:00';
+        $lLoc1->save();
+
+        // Location 2 record
+        $lLoc2 = InventoryLedger::create([
+            'business_location_id' => $this->locFrom->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -50,
+            'running_balance' => 50,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-loc2',
+            'created_by' => $this->admin->id,
+        ]);
+        $lLoc2->created_at = $yesterday . ' 10:00:00';
+        $lLoc2->save();
+
+        // Non-admin user assigned to locTo requesting all_dates=1
+        $manager = \App\Models\User::factory()->create([
+            'business_location_id' => $this->locTo->id,
+        ]);
+
+        $res = $this->actingAs($manager)->get(route('consumption.index', ['all_dates' => '1']));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 8)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_preferred_supplier_cost_calculation()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uomEA = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $ing = Ingredient::create(['name' => 'Steak', 'code' => 'ING-STK', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uomEA->id]);
+        $supplier = \App\Models\Supplier::create(['name' => 'Prime Meat Co', 'status' => 1]);
+
+        \App\Models\IngredientSupplier::create([
+            'ingredient_id' => $ing->id,
+            'supplier_id' => $supplier->id,
+            'purchase_uom_id' => $uomEA->id,
+            'price' => 15.00,
+            'is_preferred' => true,
+            'status' => true,
+        ]);
+
+        $today = now()->format('Y-m-d');
+        $l = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -4,
+            'running_balance' => 96,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-cost-1',
+            'created_by' => $this->admin->id,
+        ]);
+        $l->created_at = $today . ' 10:00:00';
+        $l->save();
+
+        // 4 EA consumed * $15.00/EA = $60.00 total_cost
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 4)
+                ->where('consumptions.0.total_cost', 60)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_uom_conversion_cost_calculation()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uomEA = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $uomBox = \App\Models\UnitOfMeasure::create([
+            'name' => 'Box 10x',
+            'code' => 'BX',
+            'type' => 'Unit',
+            'base_unit_id' => $uomEA->id,
+            'conversion_factor' => 10.0,
+            'status' => 1,
+        ]);
+
+        $ing = Ingredient::create(['name' => 'Burger Patty', 'code' => 'ING-PTY', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uomEA->id]);
+        $supplier = \App\Models\Supplier::create(['name' => 'Patty Wholesale', 'status' => 1]);
+
+        // Purchase price: $20.00 per Box (10 EA) -> $2.00 per EA base cost
+        \App\Models\IngredientSupplier::create([
+            'ingredient_id' => $ing->id,
+            'supplier_id' => $supplier->id,
+            'purchase_uom_id' => $uomBox->id,
+            'price' => 20.00,
+            'is_preferred' => true,
+            'status' => true,
+        ]);
+
+        $today = now()->format('Y-m-d');
+        $l = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -3, // 3 EA consumed
+            'running_balance' => 97,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ord-cost-uom',
+            'created_by' => $this->admin->id,
+        ]);
+        $l->created_at = $today . ' 10:00:00';
+        $l->save();
+
+        // 3 EA consumed * ($20.00 / 10) = 3 * 2.00 = $6.00 total_cost
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_consumed', 3)
+                ->where('consumptions.0.total_cost', 6)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_fallback_to_non_preferred_supplier_and_po_history()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uomEA = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+
+        // Ingredient 1: Non-preferred supplier fallback ($5.00/EA)
+        $ing1 = Ingredient::create(['name' => 'Cheese', 'code' => 'ING-CHS', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uomEA->id]);
+        $supplier1 = \App\Models\Supplier::create(['name' => 'Dairy Co', 'status' => 1]);
+        \App\Models\IngredientSupplier::create([
+            'ingredient_id' => $ing1->id,
+            'supplier_id' => $supplier1->id,
+            'purchase_uom_id' => $uomEA->id,
+            'price' => 5.00,
+            'is_preferred' => false,
+            'status' => true,
+        ]);
+
+        // Ingredient 2: PO Item history fallback ($8.00/EA)
+        $ing2 = Ingredient::create(['name' => 'Bacon', 'code' => 'ING-BCN', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uomEA->id]);
+        $po = \App\Models\PurchaseOrder::create([
+            'po_number' => 'PO-TEST-1',
+            'supplier_id' => $supplier1->id,
+            'business_location_id' => $this->locTo->id,
+            'status' => 'received',
+            'subtotal' => 100,
+            'tax_total' => 0,
+            'grand_total' => 100,
+            'created_by' => $this->admin->id,
+        ]);
+        \App\Models\PurchaseOrderItem::create([
+            'purchase_order_id' => $po->id,
+            'ingredient_id' => $ing2->id,
+            'purchase_uom_id' => $uomEA->id,
+            'quantity' => 10,
+            'received_quantity' => 10,
+            'unit_price' => 8.00,
+        ]);
+
+        // Ingredient 3: No cost data (safely 0.00)
+        $ing3 = Ingredient::create(['name' => 'Water', 'code' => 'ING-WTR', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uomEA->id]);
+
+        $today = now()->format('Y-m-d');
+        foreach ([[$ing1, -2], [$ing2, -5], [$ing3, -10]] as [$ing, $qty]) {
+            $l = InventoryLedger::create([
+                'business_location_id' => $this->locTo->id,
+                'storage_location_id' => $this->storageMain->id,
+                'ingredient_id' => $ing->id,
+                'transaction_type' => 'sale',
+                'quantity' => $qty,
+                'running_balance' => 90,
+                'reference_type' => 'App\Models\Order',
+                'reference_id' => 'ord-fallback-' . $ing->id,
+                'created_by' => $this->admin->id,
+            ]);
+            $l->created_at = $today . ' 10:00:00';
+            $l->save();
+        }
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+
+        // Ing1: 2 * $5.00 = $10.00
+        // Ing2: 5 * $8.00 = $40.00
+        // Ing3: 10 * $0.00 = $0.00
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('consumptions.0.total_cost', 10)
+                ->where('consumptions.1.total_cost', 40)
+                ->where('consumptions.2.total_cost', 0)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_one_order_multiple_ingredients()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+
+        $bun = Ingredient::create(['name' => 'Bun', 'code' => 'ING-BN1', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+        $patty = Ingredient::create(['name' => 'Patty', 'code' => 'ING-PT1', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+        $cheese = Ingredient::create(['name' => 'Cheese', 'code' => 'ING-CH1', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+
+        $today = now()->format('Y-m-d');
+        // Single order (ORD-MULT-1) containing 3 ingredients
+        foreach ([$bun, $patty, $cheese] as $ing) {
+            $l = InventoryLedger::create([
+                'business_location_id' => $this->locTo->id,
+                'storage_location_id' => $this->storageMain->id,
+                'ingredient_id' => $ing->id,
+                'transaction_type' => 'sale',
+                'quantity' => -1,
+                'running_balance' => 99,
+                'reference_type' => 'App\Models\Order',
+                'reference_id' => 'ORD-MULT-1',
+                'created_by' => $this->admin->id,
+            ]);
+            $l->created_at = $today . ' 10:00:00';
+            $l->save();
+        }
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 1)
+                ->where('consumptions.0.total_orders', 1)
+                ->where('consumptions.1.total_orders', 1)
+                ->where('consumptions.2.total_orders', 1)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_multiple_orders_overlapping_ingredients()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+
+        $bun = Ingredient::create(['name' => 'Bun', 'code' => 'ING-BN2', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+        $patty = Ingredient::create(['name' => 'Patty', 'code' => 'ING-PT2', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+        $cheese = Ingredient::create(['name' => 'Cheese', 'code' => 'ING-CH2', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+
+        $today = now()->format('Y-m-d');
+        // Order 1: Bun, Patty, Cheese
+        // Order 2: Bun, Patty
+        // Order 3: Bun, Patty, Cheese
+        $orderSpecs = [
+            'ORD-OVR-1' => [$bun, $patty, $cheese],
+            'ORD-OVR-2' => [$bun, $patty],
+            'ORD-OVR-3' => [$bun, $patty, $cheese],
+        ];
+
+        foreach ($orderSpecs as $ordId => $ings) {
+            foreach ($ings as $ing) {
+                $l = InventoryLedger::create([
+                    'business_location_id' => $this->locTo->id,
+                    'storage_location_id' => $this->storageMain->id,
+                    'ingredient_id' => $ing->id,
+                    'transaction_type' => 'sale',
+                    'quantity' => -1,
+                    'running_balance' => 95,
+                    'reference_type' => 'App\Models\Order',
+                    'reference_id' => $ordId,
+                    'created_by' => $this->admin->id,
+                ]);
+                $l->created_at = $today . ' 11:00:00';
+                $l->save();
+            }
+        }
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 3)
+                ->where('consumptions.0.total_orders', 3) // Bun: 3 orders
+                ->where('consumptions.1.total_orders', 3) // Patty: 3 orders
+                ->where('consumptions.2.total_orders', 2) // Cheese: 2 orders
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_date_filter()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $ing = Ingredient::create(['name' => 'Sauce', 'code' => 'ING-SCE', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+
+        $today = now()->format('Y-m-d');
+        $yesterday = now()->subDay()->format('Y-m-d');
+
+        // Order today
+        $lToday = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -1,
+            'running_balance' => 99,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ORD-DATE-TODAY',
+            'created_by' => $this->admin->id,
+        ]);
+        $lToday->created_at = $today . ' 12:00:00';
+        $lToday->save();
+
+        // Order yesterday
+        $lYest = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -1,
+            'running_balance' => 98,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ORD-DATE-YEST',
+            'created_by' => $this->admin->id,
+        ]);
+        $lYest->created_at = $yesterday . ' 12:00:00';
+        $lYest->save();
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 1)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_all_dates()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $ing = Ingredient::create(['name' => 'Fries', 'code' => 'ING-FRS', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+
+        $today = now()->format('Y-m-d');
+        $oldDate = now()->subDays(10)->format('Y-m-d');
+
+        foreach ([['ORD-ALL-1', $today], ['ORD-ALL-2', $oldDate]] as [$ordId, $dt]) {
+            $l = InventoryLedger::create([
+                'business_location_id' => $this->locTo->id,
+                'storage_location_id' => $this->storageMain->id,
+                'ingredient_id' => $ing->id,
+                'transaction_type' => 'sale',
+                'quantity' => -1,
+                'running_balance' => 90,
+                'reference_type' => 'App\Models\Order',
+                'reference_id' => $ordId,
+                'created_by' => $this->admin->id,
+            ]);
+            $l->created_at = $dt . ' 14:00:00';
+            $l->save();
+        }
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index', ['all_dates' => 1]));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 2)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_business_location_isolation()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $ing = Ingredient::create(['name' => 'Drink', 'code' => 'ING-DRK', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+
+        $today = now()->format('Y-m-d');
+
+        // Order at target location ($this->locTo)
+        $lTarget = InventoryLedger::create([
+            'business_location_id' => $this->locTo->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -1,
+            'running_balance' => 99,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ORD-LOC-TARGET',
+            'created_by' => $this->admin->id,
+        ]);
+        $lTarget->created_at = $today . ' 15:00:00';
+        $lTarget->save();
+
+        // Order at other location ($this->locFrom)
+        $lOther = InventoryLedger::create([
+            'business_location_id' => $this->locFrom->id,
+            'storage_location_id' => $this->storageMain->id,
+            'ingredient_id' => $ing->id,
+            'transaction_type' => 'sale',
+            'quantity' => -1,
+            'running_balance' => 99,
+            'reference_type' => 'App\Models\Order',
+            'reference_id' => 'ORD-LOC-OTHER',
+            'created_by' => $this->admin->id,
+        ]);
+        $lOther->created_at = $today . ' 15:00:00';
+        $lOther->save();
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 1)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_global_total_orders_cost_calculation_regression_safety()
+    {
+        $cat = IngredientCategory::create(['name' => 'General']);
+        $uom = \App\Models\UnitOfMeasure::create(['name' => 'Each', 'code' => 'EA', 'type' => 'Unit', 'status' => 1]);
+        $ing = Ingredient::create(['name' => 'Steak', 'code' => 'ING-STK', 'ingredient_category_id' => $cat->id, 'base_uom_id' => $uom->id]);
+        $supplier = \App\Models\Supplier::create(['name' => 'Meat Corp', 'status' => 1]);
+
+        \App\Models\IngredientSupplier::create([
+            'ingredient_id' => $ing->id,
+            'supplier_id' => $supplier->id,
+            'purchase_uom_id' => $uom->id,
+            'price' => 10.00,
+            'is_preferred' => true,
+            'status' => true,
+        ]);
+
+        $today = now()->format('Y-m-d');
+        // 2 orders consuming 5 EA total (3 EA in Order 1, 2 EA in Order 2)
+        foreach ([['ORD-STK-1', -3], ['ORD-STK-2', -2]] as [$ordId, $qty]) {
+            $l = InventoryLedger::create([
+                'business_location_id' => $this->locTo->id,
+                'storage_location_id' => $this->storageMain->id,
+                'ingredient_id' => $ing->id,
+                'transaction_type' => 'sale',
+                'quantity' => $qty,
+                'running_balance' => 90,
+                'reference_type' => 'App\Models\Order',
+                'reference_id' => $ordId,
+                'created_by' => $this->admin->id,
+            ]);
+            $l->created_at = $today . ' 16:00:00';
+            $l->save();
+        }
+
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->where('globalTotalOrders', 2)
+                ->where('consumptions.0.total_consumed', 5)
+                ->where('consumptions.0.total_cost', 50)
+        );
+    }
+
+    /** @test */
+    public function test_daily_consumption_index_renders_cleanly_with_inertia_props()
+    {
+        $res = $this->actingAs($this->admin)->get(route('consumption.index'));
+        $res->assertStatus(200);
+        $res->assertInertia(fn ($page) => 
+            $page->component('inventory/consumption/index')
+                ->has('consumptions')
+                ->has('globalTotalOrders')
+                ->has('serverCategories')
+                ->has('filters')
+        );
+    }
 }
+

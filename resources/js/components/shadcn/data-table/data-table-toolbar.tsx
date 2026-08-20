@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
   activeFilterCount?: number;
+  showFilterToggle?: boolean;
 }
 
 export function DataTableToolbar<TData>({
@@ -23,6 +24,7 @@ export function DataTableToolbar<TData>({
   children,
   className,
   activeFilterCount: propActiveFilterCount,
+  showFilterToggle = true,
   ...props
 }: DataTableToolbarProps<TData>) {
   const [showFilters, setShowFilters] = React.useState(false);
@@ -109,28 +111,30 @@ export function DataTableToolbar<TData>({
 
         <div className="ml-auto flex items-center gap-2">
           {children}
-          <Button
-            className={cn("relative h-8", showFilters && "bg-accent")}
-            onClick={() => setShowFilters(!showFilters)}
-            size="sm"
-            variant="outline"
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 && (
-              <Badge
-                className="-top-2 -right-2 absolute h-5 border-1 border-zinc-400 bg-background px-1.5 text-foreground text-xs dark:border-zinc-400"
-                variant="destructive"
-              >
-                {activeFilterCount}
-              </Badge>
-            )}
-            {showFilters ? (
-              <ChevronUp className="ml-2 h-4 w-4" />
-            ) : (
-              <ChevronDown className="ml-2 h-4 w-4" />
-            )}
-          </Button>
+          {showFilterToggle && (
+            <Button
+              className={cn("relative h-8", showFilters && "bg-accent")}
+              onClick={() => setShowFilters(!showFilters)}
+              size="sm"
+              variant="outline"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <Badge
+                  className="-top-2 -right-2 absolute h-5 border-1 border-zinc-400 bg-background px-1.5 text-foreground text-xs dark:border-zinc-400"
+                  variant="destructive"
+                >
+                  {activeFilterCount}
+                </Badge>
+              )}
+              {showFilters ? (
+                <ChevronUp className="ml-2 h-4 w-4" />
+              ) : (
+                <ChevronDown className="ml-2 h-4 w-4" />
+              )}
+            </Button>
+          )}
           {(isFiltered || globalFilter) && (
             <Button
               aria-label="Reset filters"

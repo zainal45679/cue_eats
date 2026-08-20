@@ -53,6 +53,7 @@ export function XDataTable<T extends { id: string | number }>({
   title,
   titleButtons = [],
   renderMobileCard,
+  showFilterToggle = true,
 }: XDataTableProps<T>) {
   const isSelectable = actionBarButtons.length > 0;
 
@@ -603,7 +604,7 @@ export function XDataTable<T extends { id: string | number }>({
         totalCount={data.meta.total}
         renderMobileCard={renderMobileCard}
       >
-        <DataTableToolbar activeFilterCount={activeFilterCount} table={table}>
+        <DataTableToolbar activeFilterCount={activeFilterCount} showFilterToggle={showFilterToggle} table={table}>
           <DataTableViewOptions table={table} />
         </DataTableToolbar>
       </DataTable>
