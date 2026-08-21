@@ -6,11 +6,17 @@ import { Badge } from "@/components/shadcn/ui/badge";
 import { MapPin, Printer, ClipboardCheck } from "lucide-react";
 
 export default function ShowGrnPage({ grn }: { grn: any }) {
+    const docStatus = grn.stock_transfer_order?.status || grn.purchase_order?.status || grn.status;
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft': return <Badge variant="secondary" className="bg-slate-100 text-slate-700">Draft</Badge>;
             case 'submitted': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Submitted</Badge>;
-            default: return <Badge variant="outline">{status}</Badge>;
+            case 'partially_received': return <Badge className="bg-amber-100 text-amber-800 border-amber-300">Partially Received</Badge>;
+            case 'received': return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Received</Badge>;
+            case 'completed': return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Completed</Badge>;
+            case 'cancelled': return <Badge className="bg-red-100 text-red-800 border-red-300">Cancelled</Badge>;
+            default: return <Badge variant="outline">{status.replace('_', ' ').toUpperCase()}</Badge>;
         }
     };
 
@@ -28,10 +34,21 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                             <span className="font-semibold text-slate-700">Receipt Date</span>
                             <span className="text-slate-900 font-medium">{new Date(grn.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
 
-                            {grn.stock_transfer_order?.sto_number && (
+                            {grn.purchase_order && (
                                 <>
-                                    <span className="font-semibold text-slate-700">Source STO</span>
-                                    <span className="text-slate-900 font-medium">{grn.stock_transfer_order.sto_number}</span>
+                                    <span className="font-semibold text-slate-700">Source</span>
+                                    <span className="text-slate-900 font-medium">
+                                        {grn.purchase_order.supplier?.name} <span className="text-slate-500 font-normal">(PO: {grn.purchase_order.po_number})</span>
+                                    </span>
+                                </>
+                            )}
+
+                            {grn.stock_transfer_order && (
+                                <>
+                                    <span className="font-semibold text-slate-700">Source</span>
+                                    <span className="text-slate-900 font-medium">
+                                        {grn.stock_transfer_order.from_location?.location_name} <span className="text-slate-500 font-normal">(STO: {grn.stock_transfer_order.sto_number})</span>
+                                    </span>
                                 </>
                             )}
                         </div>
@@ -63,8 +80,18 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                     <div className="bg-emerald-50/50 p-5 rounded-md border border-emerald-100 print:bg-emerald-50 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact] print:border-emerald-100">
                         <h3 className="text-lg text-emerald-800 mb-3 font-medium">Receipt Details</h3>
                         <div className="text-sm text-slate-700 space-y-2">
+                            {grn.purchase_order && (
+                                <div>
+                                    <span className="font-semibold">Source:</span> {grn.purchase_order.supplier?.name} (PO: {grn.purchase_order.po_number})
+                                </div>
+                            )}
+                            {grn.stock_transfer_order && (
+                                <div>
+                                    <span className="font-semibold">Source:</span> {grn.stock_transfer_order.from_location?.location_name} (STO: {grn.stock_transfer_order.sto_number})
+                                </div>
+                            )}
                             <div><span className="font-semibold">Received By:</span> {grn.received_by?.name || '-'}</div>
-                            <div><span className="font-semibold">Status:</span> {grn.status.replace('_', ' ').toUpperCase()}</div>
+                            <div><span className="font-semibold">Status:</span> {docStatus.replace('_', ' ').toUpperCase()}</div>
                         </div>
                     </div>
                 </div>
@@ -113,7 +140,7 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold tracking-tight truncate">{grn.grn_number}</h1>
                             <div className="shrink-0">
-                                {getStatusBadge(grn.status)}
+                                {getStatusBadge(docStatus)}
                             </div>
                         </div>
                     </div>
@@ -139,8 +166,22 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                             <h3 className="text-xs font-bold uppercase tracking-wider">Receipt Details</h3>
                         </div>
                         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-3">
-                            <span className="text-muted-foreground">Source STO:</span>
-                            <span className="font-semibold text-right">{grn.stock_transfer_order?.sto_number || '-'}</span>
+                            <span className="text-muted-foreground">Source:</span>
+                            <div className="text-right">
+                                {grn.purchase_order ? (
+                                    <>
+                                        <div className="font-semibold text-foreground">{grn.purchase_order.supplier?.name || '-'}</div>
+                                        <div className="text-xs text-muted-foreground">PO: {grn.purchase_order.po_number}</div>
+                                    </>
+                                ) : grn.stock_transfer_order ? (
+                                    <>
+                                        <div className="font-semibold text-foreground">{grn.stock_transfer_order.from_location?.location_name || '-'}</div>
+                                        <div className="text-xs text-muted-foreground">STO: {grn.stock_transfer_order.sto_number}</div>
+                                    </>
+                                ) : (
+                                    <span className="font-semibold text-foreground">-</span>
+                                )}
+                            </div>
                             
                             <span className="text-muted-foreground">Received By:</span>
                             <span className="font-semibold text-right">{grn.received_by?.name || '-'}</span>

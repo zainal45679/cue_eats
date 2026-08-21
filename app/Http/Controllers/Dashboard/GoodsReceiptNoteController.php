@@ -15,7 +15,7 @@ class GoodsReceiptNoteController extends Controller
 {
     public function index()
     {
-        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder.internalRequest.requestedBy', 'purchaseOrder.createdBy', 'items']);
+        $query = GoodsReceiptNote::with(['location', 'receivedBy', 'stockTransferOrder.fromLocation', 'stockTransferOrder.internalRequest.requestedBy', 'purchaseOrder.createdBy', 'purchaseOrder.supplier', 'items']);
         
         $activeLocationId = session('active_location_id');
         if (!auth()->user()->hasRole('admin') || $activeLocationId) {
@@ -23,11 +23,35 @@ class GoodsReceiptNoteController extends Controller
             $query->where('location_id', $locationId);
         }
         
+        $statsQuery = (clone $query);
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'draft' => (clone $statsQuery)->where('status', 'draft')->count(),
+            'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+            'internal' => (clone $statsQuery)->whereNotNull('stock_transfer_order_id')->count(),
+            'external' => (clone $statsQuery)->whereNotNull('purchase_order_id')->count(),
+        ];
+
+        $sourceType = request()->input('source_type');
+        if ($sourceType === 'internal') {
+            $query->whereNotNull('stock_transfer_order_id');
+        } elseif ($sourceType === 'external') {
+            $query->whereNotNull('purchase_order_id');
+        }
+
         $query->latest();
             
         return Inertia::render('purchasing/grns/index', [
+            'stats' => $stats,
             'grns' => \App\Helpers\TableHelper::query($query)
-                ->searchColumns(['grn_number'])
+                ->searchColumns([
+                    'grn_number',
+                    'location.location_name',
+                    'purchaseOrder.po_number',
+                    'purchaseOrder.supplier.name',
+                    'stockTransferOrder.sto_number',
+                    'stockTransferOrder.fromLocation.location_name',
+                ])
                 ->addCustomFilter('source_type', function ($q, $value) {
                     if ($value === 'internal') {
                         $q->whereNotNull('stock_transfer_order_id');
@@ -130,6 +154,17 @@ class GoodsReceiptNoteController extends Controller
             $stoLocked = StockTransferOrder::where('id', $sto->id)->lockForUpdate()->first();
             if (!in_array($stoLocked->status, ['dispatched', 'partially_received'])) {
                 abort(403, 'STO must be dispatched before receiving.');
+            }
+
+            foreach ($data['items'] as $itemData) {
+                $stoItem = $stoLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
+                if ($stoItem) {
+                    $remainingQty = max(0, (float)$stoItem->dispatched_quantity - (float)$stoItem->received_quantity - (float)$stoItem->rejected_quantity);
+                    $requestedQty = (float)$itemData['received_quantity'] + (float)$itemData['rejected_quantity'];
+                    if ($requestedQty > $remainingQty + 0.0001) {
+                        abort(422, "Total processed quantity cannot exceed remaining quantity ({$remainingQty}).");
+                    }
+                }
             }
 
             $nextId = \App\Models\GoodsReceiptNote::count() + 1;
@@ -242,6 +277,17 @@ class GoodsReceiptNoteController extends Controller
             $poLocked = \App\Models\PurchaseOrder::where('id', $po->id)->lockForUpdate()->first();
             if (!in_array($poLocked->status, ['approved', 'partially_received'])) {
                 abort(403, 'PO must be approved before receiving.');
+            }
+
+            foreach ($data['items'] as $itemData) {
+                $poItem = $poLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
+                if ($poItem) {
+                    $remainingQty = max(0, (float)$poItem->quantity - (float)$poItem->received_quantity - (float)$poItem->rejected_quantity);
+                    $requestedQty = (float)$itemData['received_quantity'] + (float)$itemData['rejected_quantity'];
+                    if ($requestedQty > $remainingQty + 0.0001) {
+                        abort(422, "Total processed quantity cannot exceed remaining quantity ({$remainingQty}).");
+                    }
+                }
             }
 
             $nextId = \App\Models\GoodsReceiptNote::count() + 1;

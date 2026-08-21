@@ -12,30 +12,50 @@ import { Package, Truck, Factory, FileText, Clock, CheckCircle, ShoppingCart } f
 
 export default function GoodsReceiptNotesIndex() {
     const { props } = usePage<any>();
-    const { grns } = props;
+    const { grns, stats: serverStats } = props;
 
-    const [activeTab, setActiveTab] = useState("all");
+    const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const currentSourceType = searchParams.get('source_type');
+    const activeTab = currentSourceType === 'internal' ? 'internal' : (currentSourceType === 'external' ? 'external' : 'all');
+
+    const handleTabSelect = (tabValue: string) => {
+        const queryParams = { ...Object.fromEntries(new URLSearchParams(window.location.search)) };
+        
+        if (tabValue === 'internal') {
+            queryParams.source_type = 'internal';
+        } else if (tabValue === 'external') {
+            queryParams.source_type = 'external';
+        } else {
+            delete queryParams.source_type;
+        }
+
+        queryParams.page = "1";
+
+        router.get(window.location.pathname, queryParams, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     const stats = useMemo(() => {
-        const rows = grns.rows || [];
+        if (serverStats) {
+            return {
+                total: Number(serverStats.total || 0),
+                draft: Number(serverStats.draft || 0),
+                processed: Number(serverStats.completed || 0),
+                internal: Number(serverStats.internal || 0),
+                external: Number(serverStats.external || 0),
+            };
+        }
+        const rows = grns?.rows || [];
         return {
-            total: rows.length,
+            total: grns?.meta?.total ?? rows.length,
             draft: rows.filter((grn: any) => grn.status === 'draft').length,
-            processed: rows.filter((grn: any) => grn.status === 'submitted').length,
+            processed: rows.filter((grn: any) => grn.status === 'completed').length,
             internal: rows.filter((grn: any) => grn.stock_transfer_order).length,
             external: rows.filter((grn: any) => grn.purchase_order).length,
         };
-    }, [grns]);
-
-    const processedData = useMemo(() => {
-        let filteredRows = grns.rows || [];
-        if (activeTab === "internal") {
-            filteredRows = filteredRows.filter((grn: any) => grn.stock_transfer_order);
-        } else if (activeTab === "external") {
-            filteredRows = filteredRows.filter((grn: any) => grn.purchase_order);
-        }
-        return { ...grns, rows: filteredRows };
-    }, [grns, activeTab]);
+    }, [grns, serverStats]);
 
     const dateFilterValue = useMemo(() => {
         const filters = grns.filters || [];
@@ -99,6 +119,33 @@ export default function GoodsReceiptNotesIndex() {
             ),
         },
         {
+            id: "source",
+            header: "Source / Origin",
+            cell: ({ row }: any) => {
+                if (row.original.purchase_order) {
+                    const supplierName = row.original.purchase_order.supplier?.name || "External Supplier";
+                    const poNumber = row.original.purchase_order.po_number || "-";
+                    return (
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{supplierName}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">PO: {poNumber}</span>
+                        </div>
+                    );
+                }
+                if (row.original.stock_transfer_order) {
+                    const sendingLocation = row.original.stock_transfer_order.from_location?.location_name || "Sending Location";
+                    const stoNumber = row.original.stock_transfer_order.sto_number || "-";
+                    return (
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{sendingLocation}</span>
+                            <span className="text-[11px] font-medium text-muted-foreground">STO: {stoNumber}</span>
+                        </div>
+                    );
+                }
+                return <span className="text-muted-foreground">-</span>;
+            }
+        },
+        {
             id: "location",
             header: "Receiving Location",
             accessorFn: (row: any) => row.location?.location_name || "-",
@@ -130,12 +177,17 @@ export default function GoodsReceiptNotesIndex() {
                 label: "Status",
                 variant: "select",
                 options: [
-                    { label: "Draft", value: "draft" },
-                    { label: "Submitted", value: "submitted" },
+                    { label: "Partially Received", value: "partially_received" },
+                    { label: "Received", value: "received" },
+                    { label: "Completed", value: "completed" },
+                    { label: "Cancelled", value: "cancelled" },
                 ],
             },
             cell: ({ row }: any) => {
-                const status = row.original.status || "submitted";
+                const status = row.original.stock_transfer_order?.status
+                    || row.original.purchase_order?.status
+                    || row.original.status
+                    || "completed";
                 const colors: Record<string, string> = {
                     draft: "bg-gray-100 text-gray-800",
                     submitted: "bg-blue-100 text-blue-800",
@@ -144,14 +196,14 @@ export default function GoodsReceiptNotesIndex() {
                     pending_dispatch: "bg-yellow-100 text-yellow-800",
                     approved: "bg-blue-100 text-blue-800",
                     dispatched: "bg-blue-100 text-blue-800",
-                    partially_received: "bg-amber-100 text-amber-800",
-                    partially_fulfilled: "bg-amber-100 text-amber-800",
-                    received: "bg-emerald-100 text-emerald-800",
-                    fully_received: "bg-emerald-100 text-emerald-800",
-                    fulfilled: "bg-emerald-100 text-emerald-800",
-                    completed: "bg-emerald-100 text-emerald-800",
-                    rejected: "bg-red-100 text-red-800",
-                    cancelled: "bg-red-100 text-red-800",
+                    partially_received: "bg-amber-100 text-amber-800 border-amber-300",
+                    partially_fulfilled: "bg-amber-100 text-amber-800 border-amber-300",
+                    received: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                    fully_received: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                    fulfilled: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                    completed: "bg-emerald-100 text-emerald-800 border-emerald-300",
+                    rejected: "bg-red-100 text-red-800 border-red-300",
+                    cancelled: "bg-red-100 text-red-800 border-red-300",
                     converted_to_sto: "bg-purple-100 text-purple-800",
                 };
                 return (
@@ -267,7 +319,7 @@ export default function GoodsReceiptNotesIndex() {
 
             {/* Quick Filter Tabs & Date Range */}
             <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+                <Tabs value={activeTab} onValueChange={handleTabSelect} className="w-full sm:w-auto">
                     <TabsList className="grid w-full sm:w-[500px] grid-cols-3 h-11 bg-muted/50 p-1">
                         <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Receipts</TabsTrigger>
                         <TabsTrigger value="internal" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Internal (STO)</TabsTrigger>
@@ -282,7 +334,7 @@ export default function GoodsReceiptNotesIndex() {
             <XDataTable
                 title="Receive Stock"
                 entity={Entity.InternalRequests}
-                data={processedData}
+                data={grns}
                 columns={columns}
                 actions={[
                     {
