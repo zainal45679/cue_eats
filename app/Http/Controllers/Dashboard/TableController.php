@@ -13,13 +13,19 @@ class TableController extends Controller
 {
     public function index(Request $request)
     {
-        $locationId = auth()->user()->hasRole('admin') 
-            ? (session('active_location_id') ?: (auth()->user()->business_location_id ?: \App\Models\BusinessLocation::first()?->id)) 
-            : auth()->user()->business_location_id;
+        $query = DiningZone::with(['tables' => function ($q) {
+            $q->with(['activeOrder.items', 'activeOrder.waiter', 'children']);
+        }]);
 
-        $zones = DiningZone::with(['tables' => function ($query) {
-            $query->with(['activeOrder.items', 'activeOrder.waiter', 'children']);
-        }])->where('business_location_id', $locationId)->get();
+        if (auth()->user()->hasRole('admin')) {
+            if (session('active_location_id')) {
+                $query->where('business_location_id', session('active_location_id'));
+            }
+        } else {
+            $query->where('business_location_id', auth()->user()->business_location_id);
+        }
+
+        $zones = $query->get();
 
         // Process tables to hide children and append their names/capacities to the parent
         $zones->transform(function ($zone) {

@@ -34,6 +34,12 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                                     <span className="text-slate-900 font-medium">{grn.stock_transfer_order.sto_number}</span>
                                 </>
                             )}
+                            {grn.purchase_order?.po_number && (
+                                <>
+                                    <span className="font-semibold text-slate-700">Source PO</span>
+                                    <span className="text-slate-900 font-medium">{grn.purchase_order.po_number}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
@@ -139,8 +145,18 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                             <h3 className="text-xs font-bold uppercase tracking-wider">Receipt Details</h3>
                         </div>
                         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-3">
-                            <span className="text-muted-foreground">Source STO:</span>
-                            <span className="font-semibold text-right">{grn.stock_transfer_order?.sto_number || '-'}</span>
+                            {grn.stock_transfer_order && (
+                                <>
+                                    <span className="text-muted-foreground">Source STO:</span>
+                                    <span className="font-semibold text-right">{grn.stock_transfer_order.sto_number}</span>
+                                </>
+                            )}
+                            {grn.purchase_order && (
+                                <>
+                                    <span className="text-muted-foreground">Source PO:</span>
+                                    <span className="font-semibold text-right">{grn.purchase_order.po_number || grn.purchase_order.id}</span>
+                                </>
+                            )}
                             
                             <span className="text-muted-foreground">Received By:</span>
                             <span className="font-semibold text-right">{grn.received_by?.name || '-'}</span>
