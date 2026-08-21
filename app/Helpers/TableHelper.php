@@ -20,6 +20,10 @@ final class TableHelper
 
     private ?Closure $transform = null;
 
+    private string $defaultSortColumn = 'id';
+
+    private bool $defaultSortDesc = true;
+
     public static function query($query): self
     {
         $instance = new self();
@@ -42,6 +46,14 @@ final class TableHelper
         return $this;
     }
 
+    public function defaultSort(string $column, bool $desc = true): self
+    {
+        $this->defaultSortColumn = $column;
+        $this->defaultSortDesc = $desc;
+
+        return $this;
+    }
+
     public function addCustomFilter(string $column, Closure $callback): self
     {
         $this->customFilters[$column] = $callback;
@@ -60,8 +72,8 @@ final class TableHelper
     {
         $perPage = request()->input('perPage', 10);
         $page = request()->input('page', 1);
-        $sortBy = request()->input('sortBy', 'id');
-        $sortDesc = request()->boolean('sortDesc', true);
+        $sortBy = request()->input('sortBy', $this->defaultSortColumn);
+        $sortDesc = request()->has('sortDesc') ? request()->boolean('sortDesc') : $this->defaultSortDesc;
         $filtersJson = request()->input('filters');
         $search = request()->input('search');
         $filters = [];
