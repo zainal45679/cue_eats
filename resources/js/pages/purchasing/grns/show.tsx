@@ -51,6 +51,12 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                                     </span>
                                 </>
                             )}
+                            {grn.purchase_order?.po_number && (
+                                <>
+                                    <span className="font-semibold text-slate-700">Source PO</span>
+                                    <span className="text-slate-900 font-medium">{grn.purchase_order.po_number}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                     <div className="text-right flex flex-col items-end">
@@ -168,15 +174,20 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-3">
                             <span className="text-muted-foreground">Source:</span>
                             <div className="text-right">
-                                {grn.purchase_order ? (
+                                {grn.purchase_order || grn.stock_transfer_order ? (
                                     <>
-                                        <div className="font-semibold text-foreground">{grn.purchase_order.supplier?.name || '-'}</div>
-                                        <div className="text-xs text-muted-foreground">PO: {grn.purchase_order.po_number}</div>
-                                    </>
-                                ) : grn.stock_transfer_order ? (
-                                    <>
-                                        <div className="font-semibold text-foreground">{grn.stock_transfer_order.from_location?.location_name || '-'}</div>
-                                        <div className="text-xs text-muted-foreground">STO: {grn.stock_transfer_order.sto_number}</div>
+                                        {grn.purchase_order && (
+                                            <>
+                                                <div className="font-semibold text-foreground">{grn.purchase_order.supplier?.name || '-'}</div>
+                                                <div className="text-xs text-muted-foreground">PO: {grn.purchase_order.po_number || grn.purchase_order.id}</div>
+                                            </>
+                                        )}
+                                        {grn.stock_transfer_order && (
+                                            <>
+                                                <div className="font-semibold text-foreground mt-1">{grn.stock_transfer_order.from_location?.location_name || '-'}</div>
+                                                <div className="text-xs text-muted-foreground">STO: {grn.stock_transfer_order.sto_number}</div>
+                                            </>
+                                        )}
                                     </>
                                 ) : (
                                     <span className="font-semibold text-foreground">-</span>
