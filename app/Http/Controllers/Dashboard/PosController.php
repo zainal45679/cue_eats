@@ -180,6 +180,7 @@ class PosController extends Controller
             'dining_table_id' => 'nullable|exists:dining_tables,id',
             'waiter_id' => 'nullable|exists:users,id',
             'pax' => 'nullable|integer|min:1',
+            'discount_amount' => 'nullable|numeric|min:0',
             'cart' => 'nullable|array',
             'cart.*.menu_item_id' => 'required|exists:menu_items,id',
             'cart.*.quantity' => 'required|integer|min:1',
@@ -389,7 +390,12 @@ class PosController extends Controller
                     $tax_total = 0; // Hardcoded 0 for now
                     $order->subtotal = $subtotal;
                     $order->tax_total = $tax_total;
-                    $order->grand_total = $subtotal + $tax_total;
+                    
+                    if (isset($validated['discount_amount'])) {
+                        $order->discount_total = (float) $validated['discount_amount'];
+                    }
+                    
+                    $order->grand_total = max(0, $subtotal + $tax_total - $order->discount_total);
                 }
 
                 // Update Status based on action

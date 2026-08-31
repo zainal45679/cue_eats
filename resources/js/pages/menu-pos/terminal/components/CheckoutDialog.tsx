@@ -24,6 +24,8 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
     const [stockWarningOpen, setStockWarningOpen] = useState(false);
     const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
     const [checkingStock, setCheckingStock] = useState(false);
+    const [discountType, setDiscountType] = useState<'fixed' | 'percentage'>('fixed');
+    const [discountInput, setDiscountInput] = useState<string>('');
 
     const { data, setData, post, processing, errors, reset, transform } = useForm({
         action: 'settle',
@@ -35,9 +37,32 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
         order_type: tableId ? 'Dine-in' : 'Takeaway',
         payment_method: 'Cash',
         tendered_amount: '' as string | number,
+        discount_amount: '' as string | number,
         allow_override: false,
         cart: [],
     });
+
+    
+    useEffect(() => {
+        const val = parseFloat(discountInput) || 0;
+        let newDiscount = 0;
+        if (discountType === 'percentage') {
+            newDiscount = subtotal * (val / 100);
+        } else {
+            newDiscount = val;
+        }
+        
+        const currentTendered = parseFloat(String(data.tendered_amount)) || 0;
+        const oldGrandTotal = Math.max(0, subtotal - (parseFloat(String(data.discount_amount)) || 0));
+        const newGrandTotal = Math.max(0, subtotal - newDiscount);
+        
+        setData(prev => ({
+            ...prev,
+            discount_amount: newDiscount.toFixed(2),
+            // If they were paying exact cash before, auto-adjust to new exact cash
+            tendered_amount: (Math.abs(currentTendered - oldGrandTotal) < 0.01) ? newGrandTotal.toFixed(2) : prev.tendered_amount
+        }));
+    }, [discountInput, discountType, subtotal]);
 
     useEffect(() => {
         if (isOpen) {
@@ -56,8 +81,10 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
     }, [isOpen, subtotal, orderId, tableId, waiterId, pax]);
 
     const tenderedVal = parseFloat(String(data.tendered_amount)) || 0;
-    const changeVal = Math.max(0, tenderedVal - subtotal);
-    const isInsufficient = data.payment_method === 'Cash' && tenderedVal < subtotal;
+    const currentDiscount = parseFloat(String(data.discount_amount)) || 0;
+    const grandTotal = Math.max(0, subtotal - currentDiscount);
+    const changeVal = Math.max(0, tenderedVal - grandTotal);
+    const isInsufficient = data.payment_method === 'Cash' && tenderedVal < grandTotal;
 
     transform((currentData) => ({
         ...currentData,
@@ -232,28 +259,58 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                                             type="button"
                                             variant="outline" 
                                             size="sm"
-                                            onClick={() => handleQuickCash(subtotal)}
+                                            onClick={() => handleQuickCash(grandTotal)}
                                             className="font-bold text-xs"
                                         >
-                                            Exact (${subtotal.toFixed(2)})
+                                            Exact (${grandTotal.toFixed(2)})
                                         </Button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
+
+                        {/* Discount Section */}
+                        <div className="bg-muted/30 p-3 rounded-lg border space-y-3 mb-2">
+                            <Label className="text-xs uppercase text-muted-foreground font-bold">Apply Discount</Label>
+                            <div className="flex gap-2">
+                                <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
+                                    <SelectTrigger className="w-[130px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="fixed">Fixed</SelectItem>
+                                        <SelectItem value="percentage">Percentage</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input 
+                                    type="number" 
+                                    min="0"
+                                    placeholder={discountType === 'percentage' ? '10' : '5.00'}
+                                    value={discountInput}
+                                    onChange={e => setDiscountInput(e.target.value)}
+                                    className="flex-1"
+                                />
+                            </div>
+                        </div>
                         <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Subtotal</span>
                                 <span>${subtotal.toFixed(2)}</span>
                             </div>
+                            {parseFloat(data.discount_amount as string) > 0 && (
+                                <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                                    <span>Discount</span>
+                                    <span>-${parseFloat(data.discount_amount as string).toFixed(2)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Tax</span>
                                 <span>$0.00</span>
                             </div>
                             <div className="flex justify-between font-bold text-lg pt-2 border-t">
                                 <span>Total Due</span>
-                                <span>${subtotal.toFixed(2)}</span>
+                                <span>${Math.max(0, subtotal - parseFloat((data.discount_amount as string) || '0')).toFixed(2)}</span>
                             </div>
 
                             {data.payment_method === 'Cash' && (
@@ -272,7 +329,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                                     {isInsufficient && (
                                         <div className="flex items-center gap-2 text-xs font-medium text-red-500 bg-red-500/10 p-2 rounded-md mt-2">
                                             <AlertCircle className="w-4 h-4 shrink-0" />
-                                            <span>Insufficient cash. Short by ${(subtotal - tenderedVal).toFixed(2)}</span>
+                                            <span>Insufficient cash. Short by ${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0")) - tenderedVal).toFixed(2)}</span>
                                         </div>
                                     )}
                                 </>
@@ -289,11 +346,11 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                         >
                             {data.payment_method === 'Cash' ? (
                                 <>
-                                    <Banknote className="w-4 h-4 mr-2" /> Complete Cash Payment (${subtotal.toFixed(2)})
+                                    <Banknote className="w-4 h-4 mr-2" /> Complete Cash Payment (${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)})
                                 </>
                             ) : (
                                 <>
-                                    <CreditCard className="w-4 h-4 mr-2" /> Pay ${subtotal.toFixed(2)}
+                                    <CreditCard className="w-4 h-4 mr-2" /> Pay ${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)}
                                 </>
                             )}
                         </Button>
