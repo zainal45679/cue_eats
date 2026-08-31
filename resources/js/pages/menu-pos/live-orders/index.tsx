@@ -15,6 +15,10 @@ import { Entity } from '@/lib/permissions';
 
 export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
     const [viewOrder, setViewOrder] = useState<any | null>(null);
+    const [cancelReason, setCancelReason] = useState('');
+    const [showCancelPrompt, setShowCancelPrompt] = useState(false);
+    const [isWasted, setIsWasted] = useState(false);
+    const [cancelItemId, setCancelItemId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState('all');
 
     // Auto-refresh every 30 seconds
@@ -86,15 +90,21 @@ export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
         },
         {
             id: 'total',
-            header: 'Total',
+            header: () => <div className="text-right">Total</div>,
+            meta: { label: 'Total' },
             accessorKey: 'grand_total',
-            cell: ({ row }: any) => `$${parseFloat(row.original.grand_total || '0').toFixed(2)}`
+            cell: ({ row }: any) => (
+                <div className="text-right font-medium">
+                    ${parseFloat(row.original.grand_total || '0').toFixed(2)}
+                </div>
+            )
         },
         {
             id: 'actions',
-            header: 'Actions',
+            header: () => <div className="text-center">Actions</div>,
+            meta: { label: 'Actions' },
             cell: ({ row }: any) => (
-                <div className="flex justify-end">
+                <div className="flex justify-center">
                     <Button variant="ghost" size="sm" className="h-6 py-0 px-2 text-xs" onClick={() => setViewOrder(row.original)}>
                         <Eye className="w-3.5 h-3.5 mr-1.5" />
                         View
@@ -223,7 +233,7 @@ export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
             />
 
             {/* View Order Dialog */}
-            <Dialog open={!!viewOrder} onOpenChange={(open) => !open && setViewOrder(null)}>
+            <Dialog open={!!viewOrder} onOpenChange={(open) => { if (!open) { setViewOrder(null); setShowCancelPrompt(false); setCancelReason(''); setIsWasted(false); setCancelItemId(null); } }}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                         <DialogTitle>Order Details: {viewOrder?.order_number}</DialogTitle>
@@ -255,7 +265,7 @@ export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
                             <ScrollArea className="max-h-[300px]">
                                 <ul className="space-y-3">
                                     {viewOrder.items?.map((item: any) => (
-                                        <li key={item.id} className="flex justify-between items-start">
+                                        <li key={item.id} className="flex justify-between items-start group">
                                             <div>
                                                 <span className="font-medium">{item.quantity}x {item.menu_item?.name}</span>
                                                 {item.modifiers?.length > 0 && (
@@ -269,16 +279,116 @@ export default function LiveOrdersScreen({ orders = [] }: { orders: any[] }) {
                                                     <div className="text-sm text-muted-foreground pl-4 italic">Note: {item.notes}</div>
                                                 )}
                                             </div>
-                                            <span className="font-medium">${parseFloat(item.subtotal).toFixed(2)}</span>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className="font-medium">${parseFloat(item.subtotal).toFixed(2)}</span>
+                                                {viewOrder.status !== 'cancelled' && viewOrder.kitchen_status !== 'rejected' && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        className="h-5 px-2 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                        onClick={() => {
+                                                            setCancelItemId(item.id);
+                                                            setIsWasted(viewOrder.kitchen_status === 'preparing' || viewOrder.kitchen_status === 'ready');
+                                                        }}
+                                                    >
+                                                        Cancel Item
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>
                             </ScrollArea>
 
-                            <div className="mt-4 pt-4 border-t flex justify-between font-bold text-lg">
-                                <span>Total</span>
-                                <span>${parseFloat(viewOrder.grand_total).toFixed(2)}</span>
-                            </div>
+                            
+                            {showCancelPrompt ? (
+                                <div className="mt-4 pt-4 border-t">
+                                    <h4 className="font-semibold mb-2 text-red-500">Cancel Order</h4>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <input 
+                                                type="checkbox" 
+                                                id="waste-order"
+                                                checked={isWasted}
+                                                onChange={(e) => setIsWasted(e.target.checked)}
+                                                className="rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                            />
+                                            <label htmlFor="waste-order">Log as Wastage? (Do not return ingredients to stock)</label>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Reason for cancellation..." 
+                                                className="flex-1 h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                value={cancelReason}
+                                                onChange={(e) => setCancelReason(e.target.value)}
+                                            />
+                                            <Button 
+                                                variant="destructive" 
+                                                size="sm"
+                                                disabled={!cancelReason.trim()}
+                                                onClick={() => {
+                                                    router.post(`/menu-pos/live-orders/${viewOrder.id}/cancel`, { reason: cancelReason, is_wasted: isWasted }, {
+                                                        onSuccess: () => {
+                                                            setShowCancelPrompt(false);
+                                                            setCancelReason('');
+                                                            setViewOrder(null);
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                Confirm Cancel
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => setShowCancelPrompt(false)}>Back</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : cancelItemId ? (
+                                <div className="mt-4 pt-4 border-t">
+                                    <h4 className="font-semibold mb-2 text-red-500">Cancel Specific Item</h4>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <input 
+                                                type="checkbox" 
+                                                id="waste-item"
+                                                checked={isWasted}
+                                                onChange={(e) => setIsWasted(e.target.checked)}
+                                                className="rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                            />
+                                            <label htmlFor="waste-item">Log as Wastage? (Do not return ingredients to stock)</label>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button 
+                                                variant="destructive" 
+                                                size="sm"
+                                                onClick={() => {
+                                                    router.post(`/menu-pos/live-orders/items/${cancelItemId}/cancel`, { is_wasted: isWasted }, {
+                                                        onSuccess: () => {
+                                                            setCancelItemId(null);
+                                                            setIsWasted(false);
+                                                            setViewOrder(null);
+                                                        }
+                                                    });
+                                                }}
+                                            >
+                                                Confirm Cancel Item
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => { setCancelItemId(null); setIsWasted(false); }}>Back</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                                    {viewOrder.status !== 'cancelled' && viewOrder.kitchen_status !== 'rejected' && (
+                                        <Button variant="destructive" size="sm" onClick={() => { setShowCancelPrompt(true); setIsWasted(viewOrder.kitchen_status === 'preparing' || viewOrder.kitchen_status === 'ready'); }}>
+                                            Cancel Order
+                                        </Button>
+                                    )}
+                                    <div className="flex-1"></div>
+                                    <span className="font-bold text-lg mr-4">Total</span>
+                                    <span className="font-bold text-lg">${parseFloat(viewOrder.grand_total).toFixed(2)}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </DialogContent>

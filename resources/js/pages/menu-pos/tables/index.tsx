@@ -121,7 +121,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             <Button 
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => router.visit('/menu-pos')} 
+                                onClick={() => window.history.back()} 
                                 className="h-8 px-2 text-muted-foreground"
                             >
                                 <ArrowLeft className="w-4 h-4 mr-1" /> Back

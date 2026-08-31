@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 
 import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/shadcn/ui/dialog';
 import { Input } from '@/components/shadcn/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { Search, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
@@ -18,6 +19,9 @@ import { toast } from 'sonner';
 export default function PosTerminal({ categories, inventoryBalances, waiters, table, activeOrder }: { categories: any[], inventoryBalances: Record<string, number>, waiters?: any[], table?: any, activeOrder?: any }) {
     const [cart, setCart] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [voidItem, setVoidItem] = useState<any>(null);
+    const [voidReason, setVoidReason] = useState('');
+    const [isWasted, setIsWasted] = useState(false);
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
     
     // Support auto-print from flash
@@ -314,6 +318,50 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                     
                     <ScrollArea className="flex-1 p-4 bg-muted/20 min-h-0">
                         <div className="space-y-3">
+
+                            {/* Sent Items */}
+                            {activeOrder && activeOrder.items && activeOrder.items.length > 0 && (
+                                <div className="mb-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Sent to Kitchen</h3>
+                                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">KOT Printed</span>
+                                    </div>
+                                    {activeOrder.items.map((item: any) => (
+                                        <div key={item.id} className="bg-muted/40 p-3 rounded-lg border border-border/40 shadow-sm text-sm mb-2 opacity-90 relative overflow-hidden">
+                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                                            <div className="flex justify-between items-start mb-1 gap-2 pl-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium leading-tight truncate text-foreground/80">{item.quantity}x {item.menu_item?.name}</p>
+                                                    {item.modifiers?.length > 0 && item.modifiers.map((mod: any, idx: number) => (
+                                                        <p key={idx} className="text-[11px] text-muted-foreground flex justify-between mt-0.5">
+                                                            <span className="truncate pr-1">+ {mod.modifier?.name}</span>
+                                                        </p>
+                                                    ))}
+                                                    {item.notes && <p className="text-[11px] text-muted-foreground italic mt-0.5">Note: {item.notes}</p>}
+                                                </div>
+                                                <p className="font-semibold whitespace-nowrap text-foreground/80">${parseFloat(item.subtotal).toFixed(2)}</p>
+                                            </div>
+                                            <div className="flex justify-end mt-1">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="h-6 px-2 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                    onClick={() => {
+                                                        setVoidItem(item);
+                                                        setIsWasted(activeOrder.kitchen_status === 'preparing' || activeOrder.kitchen_status === 'ready');
+                                                    }}
+                                                >
+                                                    Void Item
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {cart.length > 0 && (
+                                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">New Items</h3>
+                            )}
                             {cart.map(item => (
                                     <div key={item.cart_id} className="bg-background p-3 rounded-lg border border-border/40 shadow-sm text-sm">
                                         <div className="flex justify-between items-start mb-2 gap-2">
@@ -466,6 +514,67 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                     // Let the page reload or handle the flash to print
                 }}
             />
+
+
+            {/* Void Item Dialog */}
+            <Dialog open={!!voidItem} onOpenChange={(open) => { if (!open) { setVoidItem(null); setVoidReason(''); setIsWasted(false); } }}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-500">Void Sent Item</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to void this item? It has already been sent to the kitchen.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {voidItem && (
+                        <div className="flex flex-col gap-4 py-4">
+                            <div className="bg-muted p-3 rounded-md">
+                                <p className="font-semibold">{voidItem.quantity}x {voidItem.menu_item?.name}</p>
+                                <p className="text-sm text-muted-foreground">Subtotal: ${parseFloat(voidItem.subtotal).toFixed(2)}</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="term-waste-item"
+                                    checked={isWasted}
+                                    onChange={(e) => setIsWasted(e.target.checked)}
+                                    className="rounded border-gray-300 text-red-500 focus:ring-red-500"
+                                />
+                                <label htmlFor="term-waste-item" className="text-sm">Log as Wastage? (Do not return to stock)</label>
+                            </div>
+
+                            <input 
+                                type="text" 
+                                placeholder="Reason for voiding (e.g. Guest changed mind)..." 
+                                className="flex-1 h-10 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                                value={voidReason}
+                                onChange={(e) => setVoidReason(e.target.value)}
+                            />
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setVoidItem(null)}>Cancel</Button>
+                        <Button 
+                            variant="destructive"
+                            disabled={!voidReason.trim()}
+                            onClick={() => {
+                                router.post(`/menu-pos/live-orders/items/${voidItem.id}/cancel`, { 
+                                    reason: voidReason,
+                                    is_wasted: isWasted 
+                                }, {
+                                    onSuccess: () => {
+                                        setVoidItem(null);
+                                        setVoidReason('');
+                                        setIsWasted(false);
+                                    }
+                                });
+                            }}
+                        >
+                            Confirm Void
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Print Components - Render only ONE at a time */}
             {kotToPrint ? (

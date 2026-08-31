@@ -113,4 +113,69 @@ class InventoryDeductionService
             self::deductOrderItem($orderItem, $order->business_location_id, $allowOverride);
         }
     }
+
+    /**
+     * Revert inventory for all items in an entire Order.
+     */
+    public static function revertOrder(Order $order, bool $isWasted = false): void
+    {
+        $order->load(['items']);
+
+        foreach ($order->items as $orderItem) {
+            self::revertOrderItem($orderItem, $isWasted);
+        }
+    }
+
+    /**
+     * Revert inventory for an individual order item.
+     */
+    public static function revertOrderItem(OrderItem $orderItem, bool $isWasted = false): void
+    {
+        $deductions = InventoryLedger::where('reference_type', OrderItem::class)
+            ->where('reference_id', $orderItem->id)
+            ->where('transaction_type', 'sale')
+            ->get();
+
+        foreach ($deductions as $deduction) {
+            $qtyToRevert = abs((float)$deduction->quantity);
+
+            $balance = InventoryBalance::where('storage_location_id', $deduction->storage_location_id)
+                ->where('ingredient_id', $deduction->ingredient_id)
+                ->first();
+
+            if ($balance) {
+                // 1. Refund the sale
+                $balance->increment('available_qty', $qtyToRevert);
+
+                InventoryLedger::create([
+                    'business_location_id' => $deduction->business_location_id,
+                    'storage_location_id' => $deduction->storage_location_id,
+                    'ingredient_id' => $deduction->ingredient_id,
+                    'transaction_type' => 'sale_refund',
+                    'reference_type' => OrderItem::class,
+                    'reference_id' => $orderItem->id,
+                    'quantity' => $qtyToRevert,
+                    'running_balance' => $balance->fresh()->available_qty,
+                    'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
+                ]);
+
+                // 2. Log as wastage if applicable
+                if ($isWasted) {
+                    $balance->decrement('available_qty', $qtyToRevert);
+
+                    InventoryLedger::create([
+                        'business_location_id' => $deduction->business_location_id,
+                        'storage_location_id' => $deduction->storage_location_id,
+                        'ingredient_id' => $deduction->ingredient_id,
+                        'transaction_type' => 'wastage',
+                        'reference_type' => OrderItem::class,
+                        'reference_id' => $orderItem->id,
+                        'quantity' => -$qtyToRevert,
+                        'running_balance' => $balance->fresh()->available_qty,
+                        'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
+                    ]);
+                }
+            }
+        }
+    }
 }

@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
@@ -16,15 +16,45 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
     const [rejectionReason, setRejectionReason] = useState('');
     const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id.toString())));
     const [isSoundReady, setIsSoundReady] = useState(false);
+    
+    // Use a persistent reference for the audio element
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            audioRef.current = new Audio('/audio/new-order.mp3');
+        }
+    }, []);
 
     const playKdsBeep = () => {
-        try {
-            const audio = new Audio('/audio/new-order.mp3');
-            audio.play().catch(e => console.warn('Audio playback blocked by browser', e));
-        } catch (e) {
-            console.warn('Audio playback failed', e);
+        if (audioRef.current) {
+            try {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(e => console.warn('Audio playback blocked by browser', e));
+            } catch (e) {
+                console.warn('Audio playback failed', e);
+            }
         }
     };
+
+    // Unlock audio context on first user interaction
+    useEffect(() => {
+        const handleInteraction = () => {
+            if (!isSoundReady) {
+                setIsSoundReady(true);
+            }
+        };
+
+        document.addEventListener('click', handleInteraction);
+        document.addEventListener('touchstart', handleInteraction);
+        document.addEventListener('keydown', handleInteraction);
+
+        return () => {
+            document.removeEventListener('click', handleInteraction);
+            document.removeEventListener('touchstart', handleInteraction);
+            document.removeEventListener('keydown', handleInteraction);
+        };
+    }, [isSoundReady]);
 
     useEffect(() => {
         const currentIds = new Set(orders.map(o => o.id.toString()));
@@ -37,12 +67,12 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
             }
         }
 
-        if (hasNewOrder) {
+        if (hasNewOrder && isSoundReady) {
             playKdsBeep();
         }
 
         setPreviousOrderIds(currentIds);
-    }, [orders]);
+    }, [orders, isSoundReady]);
 
     // Update timers every minute
     useEffect(() => {
@@ -60,10 +90,10 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
         return () => {
             clearInterval(timerInterval);
             if (window.Echo) {
-                window.Echo.leaveChannel('orders');
+                window.Echo.leaveChannel(`orders.${locationId}`);
             }
         };
-    }, []);
+    }, [locationId]);
 
     const updateStatus = (orderId: string, status: string, reason?: string) => {
         router.post(`/menu-pos/kds/${orderId}/status`, {
