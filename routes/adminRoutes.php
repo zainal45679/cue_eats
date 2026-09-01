@@ -136,6 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Live Orders (Manager)
         Route::get('live-orders', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'index'])->name('live-orders.index');
+        Route::get('reports', [\App\Http\Controllers\Dashboard\ReportsController::class, 'index'])->name('reports.index');
         Route::post('live-orders/items/{item}/cancel', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'cancelOrderItem'])->name('live-orders.cancel-item');
         Route::post('live-orders/{order}/cancel', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'cancelOrder'])->name('live-orders.cancel');
 

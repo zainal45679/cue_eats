@@ -109,6 +109,12 @@ export const Configs: TConfigs = {
       icon: ClipboardList,
     },
     {
+      title: "EOD Reports",
+      href: "/menu-pos/reports",
+      icon: ClipboardList,
+      adminOnly: true,
+    },
+    {
       title: "Menu Management",
       href: "/menu-pos",
       icon: Utensils,
