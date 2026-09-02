@@ -180,7 +180,17 @@ class PosController extends Controller
             'dining_table_id' => 'nullable|exists:dining_tables,id',
             'waiter_id' => 'nullable|exists:users,id',
             'pax' => 'nullable|integer|min:1',
-            'discount_amount' => 'nullable|numeric|min:0',
+            'discount_type' => 'nullable|string|in:Fixed,Percentage',
+            'discount_amount' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->input('discount_type') === 'Percentage' && $value > 100) {
+                        $fail('The discount percentage cannot exceed 100%.');
+                    }
+                },
+            ],
             'cart' => 'nullable|array',
             'cart.*.menu_item_id' => 'required|exists:menu_items,id',
             'cart.*.quantity' => 'required|integer|min:1',
@@ -392,7 +402,11 @@ class PosController extends Controller
                     $order->tax_total = $tax_total;
                     
                     if (isset($validated['discount_amount'])) {
-                        $order->discount_total = (float) $validated['discount_amount'];
+                        if (($validated['discount_type'] ?? 'Fixed') === 'Percentage') {
+                            $order->discount_total = $subtotal * ((float) $validated['discount_amount'] / 100);
+                        } else {
+                            $order->discount_total = (float) $validated['discount_amount'];
+                        }
                     }
                     
                     $order->grand_total = max(0, $subtotal + $tax_total - $order->discount_total);

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { Users, ReceiptText, Clock, User, ArrowLeft, Lock } from 'lucide-react';
+
+import { ZoneFormDialog } from './ZoneFormDialog';
+import { TableFormDialog } from './TableFormDialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/shadcn/ui/dropdown-menu';
+import { Settings, Plus, Pencil, Trash2, Edit, ArrowRight, Users, ReceiptText, Clock, User, ArrowLeft, Lock } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -37,6 +41,13 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
 
     const [mergeMode, setMergeMode] = useState(false);
     const [selectedTablesToMerge, setSelectedTablesToMerge] = useState<string[]>([]);
+
+    const [zoneDialogOpen, setZoneDialogOpen] = useState(false);
+    const [editingZone, setEditingZone] = useState<any>(null);
+    const [tableDialogOpen, setTableDialogOpen] = useState(false);
+    const [editingTable, setEditingTable] = useState<any>(null);
+    const [selectedZoneForTable, setSelectedZoneForTable] = useState<string>('');
+
 
     useEffect(() => {
         if (visibleZones.length > 0 && !visibleZones.find((z: any) => z.id === activeZone)) {
@@ -149,6 +160,45 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                 </div>
                             </div>
                             
+                            
+                            {/* Manage Controls (Admin) */}
+                            
+                                
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-8 border-dashed">
+                                            <Settings className="w-4 h-4 mr-2" /> Manage Floor
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-56">
+                                        <DropdownMenuLabel>Floor Management</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditingZone(null); setZoneDialogOpen(true); }}>
+                                            <Plus className="w-4 h-4 mr-2" /> Add New Zone
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            disabled={!activeZoneData}
+                                            onSelect={(e) => { e.preventDefault(); setEditingZone(activeZoneData); setZoneDialogOpen(true); }}
+                                        >
+                                            <Pencil className="w-4 h-4 mr-2" /> Edit Current Zone
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem 
+                                            disabled={!activeZoneData}
+                                            onSelect={(e) => { 
+                                                e.preventDefault();
+                                                setEditingTable(null); 
+                                                setSelectedZoneForTable(activeZone || '');
+                                                setTableDialogOpen(true); 
+                                            }}
+                                        >
+                                            <Plus className="w-4 h-4 mr-2" /> Add Table (Current Zone)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+
+
                             {/* Merge Controls */}
                             <div className="flex items-center gap-2">
                                 {mergeMode ? (
@@ -275,7 +325,21 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
 
                                         <div className="flex justify-between items-start mb-1 relative z-0">
                                             <div className="flex flex-col gap-0.5">
-                                                <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
+                                                    <button 
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setEditingTable(table); 
+                                                            setSelectedZoneForTable(activeZone || ''); 
+                                                            setTableDialogOpen(true); 
+                                                        }} 
+                                                        className="text-muted-foreground hover:text-primary transition-colors p-1 rounded hover:bg-muted"
+                                                        title="Edit Table"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                                 {table.is_merged && (
                                                     <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 mt-0.5">
                                                         <span>🔗 Merged</span>
@@ -343,6 +407,21 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     ) : null}
                 </ScrollArea>
             </div>
+
+            <ZoneFormDialog 
+                open={zoneDialogOpen} 
+                onOpenChange={setZoneDialogOpen} 
+                zone={editingZone} 
+            />
+            
+            <TableFormDialog 
+                open={tableDialogOpen} 
+                onOpenChange={setTableDialogOpen} 
+                table={editingTable}
+                zones={visibleZones}
+                defaultZoneId={selectedZoneForTable}
+            />
+
         </>
     );
 }

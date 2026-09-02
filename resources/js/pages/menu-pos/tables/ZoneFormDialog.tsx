@@ -8,6 +8,7 @@ import {
     DialogFooter,
 } from '@/components/shadcn/ui/dialog';
 import { Button } from '@/components/shadcn/ui/button';
+import { Trash2 } from 'lucide-react';
 import { Input } from '@/components/shadcn/ui/input';
 import { Label } from '@/components/shadcn/ui/label';
 
@@ -33,7 +34,21 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
         }
     }, [zone, open]);
 
+
+    const handleDelete = () => {
+        if (!confirm('Are you sure you want to delete this dining zone? All tables inside it will also be removed.')) return;
+        setSubmitting(true);
+        router.delete(`/menu-pos/zones/${zone.id}`, {
+            onSuccess: () => {
+                setSubmitting(false);
+                onOpenChange(false);
+            },
+            onError: () => setSubmitting(false),
+        });
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
+
         e.preventDefault();
         setSubmitting(true);
 
@@ -92,13 +107,20 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={submitting}>
-                            {isEditing ? 'Save Changes' : 'Create Zone'}
-                        </Button>
+                    <DialogFooter className="gap-2 sm:justify-between w-full mt-4">
+                        {isEditing ? (
+                            <Button type="button" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 px-3 w-full sm:w-auto" onClick={handleDelete} disabled={submitting}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </Button>
+                        ) : <div className="hidden sm:block"></div>}
+                        <div className="flex gap-2 w-full sm:w-auto sm:justify-end">
+                            <Button type="button" variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" className="flex-1 sm:flex-none" disabled={submitting}>
+                                {isEditing ? 'Save Changes' : 'Create Zone'}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>
