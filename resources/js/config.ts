@@ -19,7 +19,8 @@ import {
   Building2,
   Utensils,
   MonitorSmartphone,
-  Flame
+  Flame,
+  FileText
 } from "lucide-react";
 import { dashboard } from "@/generated/routes";
 import brands from "@/generated/routes/brands";
@@ -87,158 +88,110 @@ export const AppSettings: AppConfig = {
 
 export const Configs: TConfigs = {
   mainNavItems: [
+    // --- OPERATIONS ---
     {
       title: "Dashboard",
       href: dashboard().url,
       icon: LayoutGrid,
+      group: "OPERATIONS",
       adminOnly: true,
     },
     {
       title: "POS Terminal",
       href: "/menu-pos/terminal",
       icon: MonitorSmartphone,
+      group: "OPERATIONS",
     },
     {
       title: "Dine-In Tables",
       href: "/menu-pos/tables",
       icon: LayoutGrid,
+      group: "OPERATIONS",
     },
     {
       title: "Live Orders",
       href: "/menu-pos/live-orders",
       icon: ClipboardList,
+      group: "OPERATIONS",
     },
+    
+    // --- MANAGEMENT ---
+    {
+      title: "Menu Management",
+      icon: Utensils,
+      group: "MANAGEMENT",
+      adminOnly: true,
+      children: [
+        { title: "Menu & Discounts", href: "/menu-pos" },
+        { title: "Online Menu on/off", href: "/menu-pos?tab=availability" },
+        { title: "Outlet Menu", href: "/menu-pos?tab=outlet-menu" },
+      ]
+    },
+    {
+      title: "Inventory Operations",
+      icon: Archive,
+      group: "MANAGEMENT",
+      permission: "inventory-balances",
+      children: [
+        { title: "Live Stock", href: "/inventory/live-stock" },
+        { title: "Inventory Ledger", href: "/inventory/ledger" },
+        { title: "Daily Consumption", href: "/inventory/consumption" },
+        { title: "Received Goods", href: "/purchasing/grns" },
+      ]
+    },
+    {
+      title: "Internal Transfers",
+      icon: ArrowRightLeft,
+      group: "MANAGEMENT",
+      permission: "internal-requests",
+      children: [
+        { title: "Request Stock", href: "/purchasing/internal-requests" },
+        { title: "Receive Stock", href: "/purchasing/stos?type=incoming" },
+        { title: "Dispatch Stock", href: "/purchasing/stos?type=outgoing" },
+      ]
+    },
+    {
+      title: "External Purchasing",
+      icon: Truck,
+      group: "MANAGEMENT",
+      permission: "purchase-orders",
+      children: [
+        { title: "Purchase Orders", href: "/purchasing/purchase-orders" },
+        { title: "Receive Stock", href: "/purchasing/purchase-orders?type=incoming" },
+      ]
+    },
+
+    // --- ADMINISTRATION ---
     {
       title: "EOD Reports",
       href: "/menu-pos/reports",
-      icon: ClipboardList,
+      icon: FileText,
+      group: "ADMINISTRATION",
       adminOnly: true,
     },
     {
-      title: "Menu Management",
-      href: "/menu-pos",
-      icon: Utensils,
-      adminOnly: true,
-    },
-    {
-      title: "Live Stock",
-      href: "/inventory/live-stock",
-      icon: Archive,
-      group: "Inventory Operations",
-      permission: "inventory-balances",
-    },
-    {
-      title: "Inventory Ledger",
-      href: "/inventory/ledger",
-      icon: History,
-      group: "Inventory Operations",
-      permission: "inventory-balances",
-    },
-    {
-      title: "Daily Consumption",
-      href: "/inventory/consumption",
-      icon: Flame,
-      group: "Inventory Operations",
-      permission: "inventory-balances",
-    },
-    {
-      title: "Received Goods",
-      href: "/purchasing/grns",
-      icon: PackageCheck,
-      group: "Inventory Operations",
-      permission: "purchase-orders",
-    },
-    {
-      title: "Request Stock",
-      href: "/purchasing/internal-requests",
-      icon: ArrowRightLeft,
-      group: "Internal Transfers",
-      permission: "internal-requests",
-    },
-    {
-      title: "Receive Stock",
-      href: "/purchasing/stos?type=incoming",
-      icon: PackageCheck,
-      group: "Internal Transfers",
-      permission: "internal-requests",
-    },
-    {
-      title: "Dispatch Stock",
-      href: "/purchasing/stos?type=outgoing",
-      icon: Boxes,
-      group: "Internal Transfers",
-      permission: "internal-requests",
-    },
-    {
-      title: "Purchase Orders",
-      href: "/purchasing/purchase-orders",
-      icon: Truck,
-      group: "External Purchasing",
-      permission: "purchase-orders",
-    },
-    {
-      title: "Receive Stock",
-      href: "/purchasing/purchase-orders?type=incoming",
-      icon: PackageCheck,
-      group: "External Purchasing",
-      permission: "purchase-orders",
-    },
-    {
-      title: "Supply Chain Setup",
-      href: brands.index().url,
-      icon: Network,
-      group: "Setup & Config",
-      permission: "brands",
-    },
-    {
-      title: "Inventory Setup",
-      href: countries.index().url,
+      title: "Setup & Config",
       icon: Settings2,
-      group: "Setup & Config",
-      permission: "countries",
-    },
-    {
-      title: "Organization",
-      href: "/settings/organization",
-      icon: Building2,
-      group: "Settings",
+      group: "ADMINISTRATION",
       adminOnly: true,
+      children: [
+        { title: "Supply Chain Setup", href: brands.index().url },
+        { title: "Inventory Setup", href: countries.index().url },
+      ]
     },
     {
-      title: "Roles and Permissions",
-      href: roles.index().url,
-      icon: ShieldCheck,
-      group: "Settings",
-      permission: "roles",
+      title: "Settings",
+      icon: Settings,
+      group: "ADMINISTRATION",
       adminOnly: true,
-    },
-    {
-      title: "Users",
-      href: users.index().url,
-      icon: Users,
-      group: "Settings",
-      permission: "users",
-    },
-    {
-      title: "Profile",
-      href: "/settings/profile",
-      icon: User,
-      group: "Settings",
-      adminOnly: true,
-    },
-    {
-      title: "Password",
-      href: "/settings/password",
-      icon: Lock,
-      group: "Settings",
-      adminOnly: true,
-    },
-    {
-      title: "Appearance",
-      href: "/settings/appearance",
-      icon: Palette,
-      group: "Settings",
-      adminOnly: true,
+      children: [
+        { title: "Organization", href: "/settings/organization" },
+        { title: "Roles and Permissions", href: roles.index().url },
+        { title: "Users", href: users.index().url },
+        { title: "Profile", href: "/settings/profile" },
+        { title: "Password", href: "/settings/password" },
+        { title: "Appearance", href: "/settings/appearance" },
+      ]
     },
   ],
 };

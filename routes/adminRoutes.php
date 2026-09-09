@@ -117,6 +117,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('tables/unmerge', [\App\Http\Controllers\Dashboard\TableController::class, 'unmerge'])->name('pos.tables.unmerge');
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
+        Route::post('items/outlet-overrides', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'saveOutletOverride'])->name('items.outlet-overrides');
+        Route::post('items/bulk-update', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'bulkUpdate'])->name('items.bulk-update');
+        Route::get('items/export-csv', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'exportCsv'])->name('items.export-csv');
+
         // Resource routes for form actions (except index)
         Route::resource('categories', \App\Http\Controllers\Dashboard\MenuCategoryController::class)->except('index');
         Route::resource('items', \App\Http\Controllers\Dashboard\MenuItemController::class)->except('index');

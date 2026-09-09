@@ -1,6 +1,6 @@
+import { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
-import { ChevronRight, Package, Truck, ShoppingCart, Settings, Shield, ArrowRightLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -16,181 +16,242 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/shadcn/ui/sidebar";
+import { cn } from "@/lib/utils";
 import type { NavItem } from "@/types";
 
-// Group items by their `group` property
-function groupBy<T>(arr: T[], key: keyof T) {
-  return arr.reduce((acc: Record<string, T[]>, item: T) => {
-    const group = String(item[key] ?? "");
+function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
+  return array.reduce((acc, item) => {
+    const group = String(item[key]);
     if (!acc[group]) acc[group] = [];
     acc[group].push(item);
     return acc;
-  }, {});
+  }, {} as Record<string, T[]>);
 }
 
-// Helper to check if any child or the item itself is active
-function isItemActive(item: NavItem, currentUrl: string): boolean {
+function cleanUrlPath(path: string): string {
+  if (path.length > 1 && path.endsWith("/")) {
+    return path.slice(0, -1);
+  }
+  return path;
+}
+
+function getItemScore(item: NavItem, currentUrl: string): number {
+  if (!currentUrl) return 0;
+
+  let maxScore = 0;
+
   if (item.href) {
-    const href = typeof item.href === "object" ? (item.href as any).url : item.href;
-    if (href && typeof href === "string") {
-      if (currentUrl === href) return true;
-      
-      // Special case: prevent "/menu-pos" from matching sub-routes like "/menu-pos/terminal" or "/menu-pos/live-orders"
-      if (href === "/menu-pos" && currentUrl !== "/menu-pos" && currentUrl.startsWith("/menu-pos/")) return false;
-      
-      if (currentUrl.startsWith(href + '/')) return true;
-      if (currentUrl.startsWith(href + '&')) return true;
-      
-      if (currentUrl.startsWith(href + '?')) {
-        // Prevent base menus from being active when viewing specific 'type' tabs
-        if (currentUrl.includes('type=') && !href.includes('type=')) {
-            return false;
+    const href = item.href as string;
+
+    if (currentUrl === href) {
+      maxScore = Math.max(maxScore, href.length + 1000);
+    } else {
+      const [rawCurrentPath] = currentUrl.split("?");
+      const [rawHrefPath, hrefQuery] = href.split("?");
+
+      const currentPath = cleanUrlPath(rawCurrentPath);
+      const hrefPath = cleanUrlPath(rawHrefPath);
+
+      if (hrefQuery) {
+        if (currentPath === hrefPath && currentUrl.includes(hrefQuery)) {
+          maxScore = Math.max(maxScore, href.length + 500);
+        } else if (currentPath === hrefPath && !currentUrl.includes("?") && hrefQuery === "tab=items") {
+          maxScore = Math.max(maxScore, href.length + 450);
         }
-        return true;
+      } else {
+        if (currentPath === hrefPath) {
+          maxScore = Math.max(maxScore, hrefPath.length + 100);
+        } else if (
+          hrefPath !== "/" &&
+          hrefPath !== "/dashboard" &&
+          currentPath.startsWith(hrefPath + "/")
+        ) {
+          maxScore = Math.max(maxScore, hrefPath.length);
+        }
       }
     }
   }
+
   if (item.children) {
-    return item.children.some((child) => isItemActive(child, currentUrl));
+    for (const child of item.children) {
+      maxScore = Math.max(maxScore, getItemScore(child, currentUrl));
+    }
   }
-  return false;
+
+  return maxScore;
 }
 
-const getGroupIcon = (groupName: string) => {
-  switch (groupName) {
-    case "Point of Sale": return <ShoppingCart className="h-5 w-5 text-primary" />;
-    case "Inventory Operations": return <Package className="h-5 w-5 text-primary" />;
-    case "Internal Transfers": return <ArrowRightLeft className="h-5 w-5 text-primary" />;
-    case "External Purchasing": return <Truck className="h-5 w-5 text-primary" />;
-    case "Setup & Config": return <Shield className="h-5 w-5 text-primary" />;
-    case "Settings": return <Settings className="h-5 w-5 text-primary" />;
-    default: return null;
-  }
-};
+function CollapsibleNavItem({
+  item,
+  checkIsActive,
+}: {
+  item: NavItem;
+  checkIsActive: (item: NavItem) => boolean;
+}) {
+  const isActive = checkIsActive(item);
+  const [isOpen, setIsOpen] = useState(isActive);
+
+  useEffect(() => {
+    setIsOpen(isActive);
+  }, [isActive]);
+
+  const firstChild = item.children && item.children.length > 0 ? item.children[0] : null;
+  const firstHref = firstChild?.href as string | undefined;
+
+  const handleHeaderClick = (e: React.MouseEvent) => {
+    if (isOpen) {
+      e.preventDefault();
+      setIsOpen(false);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} key={item.title}>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          className={cn(
+            "group cursor-pointer !text-[13px] !font-medium !h-10 px-3 transition-colors border",
+            isActive 
+              ? "bg-[#f97316]/10 border-[#f97316]/30 text-[#f97316] hover:bg-[#f97316]/20 hover:text-[#f97316]" 
+              : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white border-transparent"
+          )}
+          tooltip={{ children: item.title }}
+        >
+          {firstHref ? (
+            <Link href={firstHref} prefetch onClick={handleHeaderClick}>
+              {item.icon && (
+                <item.icon
+                  className={cn(
+                    "mr-3 h-4 w-4 transition-colors",
+                    isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                  )}
+                />
+              )}
+              <span className="flex-1">{item.title}</span>
+              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-[#f97316]" : "opacity-50")} />
+            </Link>
+          ) : (
+            <CollapsibleTrigger className="w-full flex items-center">
+              {item.icon && (
+                <item.icon
+                  className={cn(
+                    "mr-3 h-4 w-4 transition-colors",
+                    isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                  )}
+                />
+              )}
+              <span className="flex-1">{item.title}</span>
+              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-[#f97316]" : "opacity-50")} />
+            </CollapsibleTrigger>
+          )}
+        </SidebarMenuButton>
+        <CollapsibleContent>
+          <SidebarMenuSub className="mr-0 pr-0 border-l border-zinc-200 dark:border-zinc-800 ml-5 pl-2 mt-1 gap-1">
+            {item.children?.map((child) => {
+              const isChildActive = checkIsActive(child);
+              return (
+                <SidebarMenuSubItem key={child.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={isChildActive}
+                    className={cn(
+                      "!text-[13px] !h-9 px-3 transition-colors rounded-md flex items-center bg-transparent border-transparent",
+                      isChildActive
+                        ? "!text-[#f97316] font-semibold !bg-transparent !border-transparent"
+                        : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white"
+                    )}
+                  >
+                    <Link href={child.href as string} prefetch>
+                      {child.title}
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
 
 export function NavMain({ items = [] }: { items: NavItem[] }) {
   const page = usePage();
   const groupedItems = groupBy(items, "group");
 
+  let bestScore = 0;
+  for (const item of items) {
+    const score = getItemScore(item, page.url);
+    if (score > bestScore) {
+      bestScore = score;
+    }
+  }
+
+  const checkIsActive = (item: NavItem): boolean => {
+    if (bestScore === 0) return false;
+    const score = getItemScore(item, page.url);
+    return score === bestScore;
+  };
+
   return (
     <>
       {Object.entries(groupedItems).map(([groupName, groupItems]) => {
-        const isGroupActive = groupItems.some((item) => isItemActive(item, page.url));
-
-        if (!groupName) {
-          return (
-            <SidebarGroup className="px-2 py-0" key="root-items">
-              <SidebarMenu>
-                {groupItems.map((item) => {
-                  const isActive = isItemActive(item, page.url);
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        className={cn(
-                          "!text-[14px] !font-normal !h-10 px-3",
-                          isActive && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
-                        )}
-                        isActive={isActive}
-                        tooltip={{ children: item.title }}
-                      >
-                        <Link href={item.href as string} prefetch>
-                          {item.icon && <item.icon className={cn("mr-2 h-5 w-5 text-primary", isActive ? "" : "opacity-80")} />}
-                          <span className="pl-[3px] pr-[6px]">{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          );
+        if (!groupName || groupName === "undefined") {
+          return null;
         }
 
         return (
-          <SidebarGroup className="px-2 py-0" key={groupName}>
-            <SidebarMenu>
-              <Collapsible asChild defaultOpen={isGroupActive} className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton 
-                      className="!text-[14px] !font-normal !h-10 px-3 group-data-[collapsible=icon]:!px-2"
-                      tooltip={{ children: groupName }}
+          <SidebarGroup className="px-2 py-0 mt-4 mb-1" key={groupName}>
+            {/* Group Header */}
+            <SidebarGroupLabel className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-3 mb-2">
+              {groupName}
+            </SidebarGroupLabel>
+
+            <SidebarMenu className="gap-1">
+              {groupItems.map((item) => {
+                const isActive = checkIsActive(item);
+
+                if (item.children && item.children.length > 0) {
+                  return (
+                    <CollapsibleNavItem
+                      key={item.title}
+                      item={item}
+                      checkIsActive={checkIsActive}
+                    />
+                  );
+                }
+
+                // Normal Item
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "!text-[13px] !font-medium !h-10 px-3 transition-colors",
+                        isActive 
+                          ? "bg-[#f97316]/10 border border-[#f97316]/30 text-[#f97316] hover:bg-[#f97316]/20 hover:text-[#f97316]" 
+                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white border border-transparent"
+                      )}
+                      tooltip={{ children: item.title }}
                     >
-                      {getGroupIcon(groupName)}
-                      <span className="pl-[3px] pr-[6px]">{groupName}</span>
-                      <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90 opacity-50" />
+                      <Link href={item.href as string} prefetch>
+                        {item.icon && (
+                          <item.icon
+                            className={cn(
+                              "mr-3 h-4 w-4 transition-colors",
+                              isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                            )}
+                          />
+                        )}
+                        <span>{item.title}</span>
+                      </Link>
                     </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenu className="pt-2 gap-1.5">
-                      {groupItems.map((item) => {
-                        const isActive = isItemActive(item, page.url);
-                    if (item.children && item.children.length > 0) {
-                      return (
-                        <Collapsible asChild defaultOpen={isActive} key={item.title}>
-                          <SidebarMenuItem>
-                            <CollapsibleTrigger asChild>
-                              <SidebarMenuButton
-                                className="group cursor-pointer pl-9 text-[14px]"
-                                isActive={isActive}
-                                tooltip={{ children: item.title }}
-                              >
-                                {item.icon && <item.icon className="mr-2 h-4 w-4 text-primary" />}
-                                <span className="pl-[3px] pr-[6px]">{item.title}</span>
-                                <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-90 opacity-50" />
-                              </SidebarMenuButton>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <SidebarMenuSub className="mr-0 pr-0">
-                                {item.children.map((child) => (
-                                  <SidebarMenuSubItem key={child.title}>
-                                    <SidebarMenuSubButton
-                                      asChild
-                                      className={cn(
-                                        "text-[14px]",
-                                        isItemActive(child, page.url) && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
-                                      )}
-                                      isActive={isItemActive(child, page.url)}
-                                    >
-                                      <Link href={child.href as string} prefetch>
-                                        {child.icon && (
-                                          <child.icon className="mr-2 h-4 w-4 text-primary" />
-                                        )}
-                                        <span className="pl-[3px] pr-[6px]">{child.title}</span>
-                                      </Link>
-                                    </SidebarMenuSubButton>
-                                  </SidebarMenuSubItem>
-                                ))}
-                              </SidebarMenuSub>
-                            </CollapsibleContent>
-                          </SidebarMenuItem>
-                        </Collapsible>
-                      );
-                    }
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          asChild
-                          className={cn(
-                            !groupName ? "!text-[14px] !font-normal !h-10 px-3" : "group cursor-pointer pl-9 text-[14px]",
-                            isActive && "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
-                          )}
-                          isActive={isActive}
-                          tooltip={{ children: item.title }}
-                        >
-                          <Link href={item.href as string} prefetch>
-                            {item.icon && <item.icon className={cn("text-primary", !groupName ? "mr-2 h-5 w-5" : "mr-2 h-4 w-4")} />}
-                            <span className="pl-[3px] pr-[6px]">{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroup>
         );
