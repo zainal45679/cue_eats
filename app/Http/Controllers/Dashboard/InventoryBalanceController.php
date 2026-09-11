@@ -78,6 +78,19 @@ class InventoryBalanceController extends Controller
                        ->orWhere('name', 'like', '%'.(is_array($val) ? ($val[0] ?? '') : $val).'%');
                 });
             })
+            ->addCustomFilter('expiry_status', function ($q, $val) {
+                $today = now()->toDateString();
+                $nearExpiry = now()->addDays(2)->toDateString();
+                if ($val === 'expired') {
+                    $q->whereNotNull('nearest_expiry_date')->where('nearest_expiry_date', '<', $today);
+                } elseif ($val === 'expiring_soon') {
+                    $q->whereNotNull('nearest_expiry_date')
+                      ->where('nearest_expiry_date', '>=', $today)
+                      ->where('nearest_expiry_date', '<=', $nearExpiry);
+                } elseif ($val === 'fresh') {
+                    $q->whereNotNull('nearest_expiry_date')->where('nearest_expiry_date', '>', $nearExpiry);
+                }
+            })
             ->get();
 
         $allBalances = $globalQuery->with('ingredient.category')->get();

@@ -22,12 +22,14 @@ class InventoryBalance extends Model
         'available_qty',
         'reserved_qty',
         'on_order_qty',
+        'nearest_expiry_date',
     ];
 
     protected $casts = [
         'available_qty' => 'decimal:3',
         'reserved_qty' => 'decimal:3',
         'on_order_qty' => 'decimal:3',
+        'nearest_expiry_date' => 'date',
     ];
 
     public function ingredient(): BelongsTo

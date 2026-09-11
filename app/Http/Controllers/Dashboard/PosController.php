@@ -159,7 +159,11 @@ class PosController extends Controller
                 'grand_total' => 0,
             ]);
             
-            event(new \App\Events\TableStatusUpdated($table->id, $locationId));
+            try {
+                event(new \App\Events\TableStatusUpdated($table->id, $locationId));
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
+            }
         }
 
         return redirect()->route('pos.terminal', ['table_id' => $table->id]);
@@ -173,7 +177,7 @@ class PosController extends Controller
 
         $validated = $request->validate([
             'order_id' => 'nullable|exists:pos_orders,id',
-            'action' => 'required|in:save_kot,print_bill,settle,cancel_draft',
+            'action' => 'required|in:save_kot,print_bill,settle,cancel_draft,kot_and_print_bill',
             'customer_name' => 'nullable|string',
             'order_type' => 'required|string',
             'payment_method' => 'nullable|string',
@@ -226,7 +230,11 @@ class PosController extends Controller
                                 $tbl->save();
                             }
                             DB::afterCommit(function () use ($tableId, $locationId) {
-                                event(new \App\Events\TableStatusUpdated($tableId, $locationId));
+                                try {
+                                    event(new \App\Events\TableStatusUpdated($tableId, $locationId));
+                                } catch (\Throwable $e) {
+                                    \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
+                                }
                             });
                         }
                         return redirect()->route('pos.tables')->with('success', 'Table released.');
@@ -259,6 +267,7 @@ class PosController extends Controller
                     if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
                     if (isset($validated['dining_table_id'])) $order->dining_table_id = $validated['dining_table_id'];
                     if ($validated['action'] === 'save_kot') $order->status = 'running';
+                    if ($validated['action'] === 'kot_and_print_bill' || $validated['action'] === 'print_bill') $order->status = 'billed';
                     $order->save();
                 } else {
                     // Generate sequential order number
@@ -424,7 +433,7 @@ class PosController extends Controller
                     }
                     $order->status = 'Completed';
                     $order->payment_method = $validated['payment_method'];
-                } else if ($validated['action'] === 'print_bill') {
+                } else if ($validated['action'] === 'print_bill' || $validated['action'] === 'kot_and_print_bill') {
                     $order->status = 'billed';
                 } else {
                     $order->status = 'running';
@@ -465,7 +474,11 @@ class PosController extends Controller
             
             // Broadcast KOT only if there were new items
             if (!empty($validated['cart'])) {
-                event(new \App\Events\OrderCreated($order));
+                try {
+                    event(new \App\Events\OrderCreated($order));
+                } catch (\Throwable $e) {
+                    \Log::warning('Broadcast failed for OrderCreated: ' . $e->getMessage());
+                }
             }
             
             // Redirect based on action and order type
@@ -473,6 +486,16 @@ class PosController extends Controller
                 return back()->with([
                     'success' => "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent to kitchen.",
                     'recent_kot' => $recentKot
+                ]);
+            }
+
+            if ($validated['action'] === 'kot_and_print_bill') {
+                $roundText = $recentKot ? "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent & " : "";
+                return back()->with([
+                    'success' => "{$roundText}Bill generated for {$order->order_number}.",
+                    'recent_kot' => $recentKot,
+                    'recent_order' => $order,
+                    'is_bill_only' => true
                 ]);
             }
 

@@ -81,6 +81,8 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                         <thead className="bg-emerald-100 text-emerald-900 print:bg-emerald-100 print:text-emerald-900 print:[color-adjust:exact] print:[-webkit-print-color-adjust:exact]">
                             <tr>
                                 <th className="py-3 px-4 font-semibold">Ingredient</th>
+                                <th className="py-3 px-4 font-semibold text-center">Batch #</th>
+                                <th className="py-3 px-4 font-semibold text-center">Expiry Date</th>
                                 <th className="py-3 px-4 font-semibold text-center">UOM</th>
                                 <th className="py-3 px-4 font-semibold text-right">Expected Qty</th>
                                 <th className="py-3 px-4 font-semibold text-right">Received Qty</th>
@@ -90,7 +92,9 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                         <tbody className="divide-y divide-emerald-100">
                             {grn.items?.map((item: any, index: number) => (
                                 <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-emerald-50/30 print:bg-emerald-50/50 print:[color-adjust:exact]"}>
-                                    <td className="py-3 px-4 text-slate-900">{item.ingredient?.name}</td>
+                                    <td className="py-3 px-4 text-slate-900 font-medium">{item.ingredient?.name}</td>
+                                    <td className="py-3 px-4 text-slate-600 text-center text-xs">{item.batch_number || '-'}</td>
+                                    <td className="py-3 px-4 text-slate-600 text-center text-xs font-semibold">{item.expiry_date || '-'}</td>
                                     <td className="py-3 px-4 text-slate-600 text-center">{item.unit_of_measure?.name || '-'}</td>
                                     <td className="py-3 px-4 text-slate-600 text-right">{Number(item.expected_quantity).toFixed(2)}</td>
                                     <td className="py-3 px-4 text-emerald-700 font-medium text-right">{Number(item.received_quantity).toFixed(2)}</td>
@@ -138,34 +142,36 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                             <ClipboardCheck className="w-4 h-4" />
                             <h3 className="text-xs font-bold uppercase tracking-wider">Receipt Details</h3>
                         </div>
-                        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm mt-3">
-                            <span className="text-muted-foreground">Source STO:</span>
-                            <span className="font-semibold text-right">{grn.stock_transfer_order?.sto_number || '-'}</span>
-                            
-                            <span className="text-muted-foreground">Received By:</span>
-                            <span className="font-semibold text-right">{grn.received_by?.name || '-'}</span>
-                            
-                            <span className="text-muted-foreground">Date:</span>
-                            <span className="font-semibold text-right">{new Date(grn.created_at).toLocaleDateString()}</span>
+                        <div className="grid grid-cols-2 gap-3 text-sm mt-3">
+                            <div>
+                                <span className="text-muted-foreground text-xs block">Source:</span>
+                                <span className="font-semibold">{grn.stock_transfer_order ? `STO: ${grn.stock_transfer_order.sto_number}` : `PO: ${grn.purchase_order?.po_number}`}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground text-xs block">Received By:</span>
+                                <span className="font-semibold">{grn.received_by?.name || '-'}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground text-xs block">Date:</span>
+                                <span className="font-semibold">{new Date(grn.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground text-xs block">Location:</span>
+                                <span className="font-semibold">{grn.location?.location_name || '-'}</span>
+                            </div>
                         </div>
                     </div>
 
                     <div className="p-4">
                         <div className="flex items-center gap-2 mb-2 text-muted-foreground">
-                            <MapPin className="w-4 h-4" />
-                            <h3 className="text-xs font-bold uppercase tracking-wider">Receiving Location</h3>
+                            <Package className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider">Remarks</h3>
                         </div>
-                        <div className="font-semibold text-foreground text-base mb-1 mt-3">{grn.location?.location_name}</div>
-                        {grn.location?.address && <div className="text-sm text-muted-foreground">{grn.location.address}</div>}
+                        <p className="text-sm mt-3 text-muted-foreground italic">
+                            {grn.remarks || 'No remarks recorded.'}
+                        </p>
                     </div>
                 </div>
-
-                {grn.remarks && (
-                    <div className="mb-6 bg-muted/20 border border-border/50 rounded-xl p-4">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Remarks</h4>
-                        <p className="text-sm text-foreground">{grn.remarks}</p>
-                    </div>
-                )}
 
                 <div className="mb-8 mt-8">
                     <h3 className="text-lg font-semibold mb-4">Received Items</h3>
@@ -175,6 +181,8 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                                 <thead className="bg-muted/50 text-muted-foreground whitespace-nowrap">
                                     <tr>
                                         <th className="h-10 px-4 text-left font-medium">Ingredient</th>
+                                        <th className="h-10 px-4 text-center font-medium">Batch #</th>
+                                        <th className="h-10 px-4 text-center font-medium">Expiry Date</th>
                                         <th className="h-10 px-4 text-right font-medium">Expected Qty</th>
                                         <th className="h-10 px-4 text-right font-medium text-emerald-700">Received Qty</th>
                                         <th className="h-10 px-4 text-right font-medium text-red-700">Rejected Qty</th>
@@ -185,6 +193,14 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                                     {grn.items?.map((item: any) => (
                                         <tr key={item.id} className="border-t hover:bg-muted/30 transition-colors whitespace-nowrap">
                                             <td className="p-4 font-medium">{item.ingredient?.name}</td>
+                                            <td className="p-4 text-center text-xs text-muted-foreground">{item.batch_number || '-'}</td>
+                                            <td className="p-4 text-center text-xs font-semibold">
+                                                {item.expiry_date ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                                                        📅 {item.expiry_date}
+                                                    </span>
+                                                ) : '-'}
+                                            </td>
                                             <td className="p-4 text-right font-semibold text-muted-foreground">{Number(item.expected_quantity).toFixed(2)}</td>
                                             <td className="p-4 text-right font-bold text-emerald-600">{Number(item.received_quantity).toFixed(2)}</td>
                                             <td className="p-4 text-right font-bold text-red-600">{Number(item.rejected_quantity).toFixed(2)}</td>

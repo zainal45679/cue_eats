@@ -24,12 +24,18 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
             return {
                 ingredient_id: item.ingredient_id,
                 ingredient_name: item.ingredient?.name,
+                is_perishable: !!item.ingredient?.is_perishable,
+                shelf_life_days: item.ingredient?.shelf_life_days || null,
+                storage_condition: item.ingredient?.storage_condition || null,
                 uom_id: isPO ? item.purchase_uom_id : item.uom_id,
                 uom_name: item.unit_of_measure?.name,
                 expected_quantity: expectedQty,
                 received_quantity: expectedQty,
                 rejected_quantity: 0,
                 pending_quantity: 0,
+                batch_number: "",
+                mfg_date: "",
+                expiry_date: "",
             };
         }).filter((item: any) => item.expected_quantity > 0)
     );
@@ -45,6 +51,22 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
 
         setItems(newItems);
         setError(null);
+    };
+
+    const handleFieldChange = (index: number, field: 'batch_number' | 'mfg_date' | 'expiry_date', value: string) => {
+        const newItems = [...items];
+        newItems[index][field] = value;
+
+        // Auto-calculate expiry date if mfg_date is changed and item has shelf_life_days
+        if (field === 'mfg_date' && value && newItems[index].shelf_life_days) {
+            const mfg = new Date(value);
+            if (!isNaN(mfg.getTime())) {
+                mfg.setDate(mfg.getDate() + Number(newItems[index].shelf_life_days));
+                newItems[index].expiry_date = mfg.toISOString().split('T')[0];
+            }
+        }
+
+        setItems(newItems);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -66,6 +88,9 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                     expected_quantity: item.expected_quantity,
                     received_quantity: item.received_quantity,
                     rejected_quantity: item.rejected_quantity,
+                    batch_number: item.batch_number || null,
+                    mfg_date: item.mfg_date || null,
+                    expiry_date: item.expiry_date || null,
                     uom_id: item.uom_id,
                 }))
             });
@@ -128,14 +153,24 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                             <TableHead className="text-right">Expected Qty</TableHead>
                                             <TableHead className="text-center">Received Qty</TableHead>
                                             <TableHead className="text-center">Rejected Qty</TableHead>
-                                            <TableHead className="text-center">Pending Qty</TableHead>
+                                            <TableHead className="text-center">Batch / Lot #</TableHead>
+                                            <TableHead className="text-center">Mfg &amp; Expiry Dates</TableHead>
                                             <TableHead className="text-right">UOM</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {items.map((item: any, index: number) => (
                                             <TableRow key={index}>
-                                                <TableCell className="font-medium">{item.ingredient_name}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex flex-col">
+                                                        <span>{item.ingredient_name}</span>
+                                                        {item.is_perishable && (
+                                                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                                                                ⏳ Perishable {item.shelf_life_days ? `(${item.shelf_life_days}d shelf life)` : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <span className="font-bold text-base text-primary/80">{item.expected_quantity.toFixed(2)}</span>
                                                 </TableCell>
@@ -144,7 +179,7 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                         type="number" 
                                                         step="0.01" 
                                                         min="0"
-                                                        className="w-28 text-center mx-auto focus-visible:ring-emerald-500" 
+                                                        className="w-24 text-center mx-auto focus-visible:ring-emerald-500" 
                                                         value={item.received_quantity}
                                                         onChange={(e) => handleQuantityChange(index, 'received_quantity', e.target.value)}
                                                     />
@@ -154,13 +189,41 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                         type="number" 
                                                         step="0.01" 
                                                         min="0"
-                                                        className="w-28 text-center mx-auto focus-visible:ring-red-500" 
+                                                        className="w-24 text-center mx-auto focus-visible:ring-red-500" 
                                                         value={item.rejected_quantity}
                                                         onChange={(e) => handleQuantityChange(index, 'rejected_quantity', e.target.value)}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <span className="font-bold text-base text-amber-500">{item.pending_quantity.toFixed(2)}</span>
+                                                    <Input 
+                                                        type="text" 
+                                                        placeholder="Batch #" 
+                                                        className="w-28 text-xs text-center mx-auto" 
+                                                        value={item.batch_number}
+                                                        onChange={(e) => handleFieldChange(index, 'batch_number', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <div className="flex items-center gap-2 justify-center">
+                                                        <div className="flex flex-col items-start">
+                                                            <span className="text-[9px] text-muted-foreground uppercase font-semibold">Mfg</span>
+                                                            <Input 
+                                                                type="date" 
+                                                                className="w-32 h-8 text-xs px-2" 
+                                                                value={item.mfg_date}
+                                                                onChange={(e) => handleFieldChange(index, 'mfg_date', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col items-start">
+                                                            <span className="text-[9px] text-amber-600 dark:text-amber-400 uppercase font-semibold">Expiry</span>
+                                                            <Input 
+                                                                type="date" 
+                                                                className="w-32 h-8 text-xs px-2 border-amber-300 focus-visible:ring-amber-500" 
+                                                                value={item.expiry_date}
+                                                                onChange={(e) => handleFieldChange(index, 'expiry_date', e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="text-right text-muted-foreground">{item.uom_name || '-'}</TableCell>
                                             </TableRow>

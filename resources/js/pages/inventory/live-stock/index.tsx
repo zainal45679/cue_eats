@@ -6,7 +6,7 @@ import { XPage } from '@/components/x/page/XPage';
 import type { PageProps } from '@/types';
 import { Card, CardContent } from "@/components/shadcn/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/shadcn/ui/tabs";
-import { PackageOpen, AlertCircle, ShoppingCart, FileText, Lock, LayoutList } from "lucide-react";
+import { PackageOpen, AlertCircle, ShoppingCart, FileText, Lock, LayoutList, Clock } from "lucide-react";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Button } from "@/components/shadcn/ui/button";
 
@@ -89,6 +89,11 @@ export default function InventoryBalancesIndex({
     let outOfStock = 0;
     let reserved = 0;
     let onOrder = 0;
+    let expiringSoon = 0;
+    let expired = 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     rows.forEach(item => {
       const available = Number(item.available_qty) || 0;
@@ -96,9 +101,28 @@ export default function InventoryBalancesIndex({
       else outOfStock++;
       if (Number(item.reserved_qty) > 0) reserved++;
       if (Number(item.on_order_qty) > 0) onOrder++;
+
+      if (item.nearest_expiry_date && available > 0) {
+        const exp = new Date(item.nearest_expiry_date);
+        exp.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          expired++;
+        } else if (diffDays <= 2) {
+          expiringSoon++;
+        }
+      }
     });
 
-    return { total: totalItemsCount ?? inventoryBalances.total ?? rows.length, inStock, outOfStock, reserved, onOrder };
+    return { 
+      total: totalItemsCount ?? inventoryBalances.total ?? rows.length, 
+      inStock, 
+      outOfStock, 
+      reserved, 
+      onOrder,
+      expiringSoon,
+      expired,
+    };
   }, [inventoryBalances, totalItemsCount]);
 
   // Extract categories BEFORE filtering by tab, so the sidebar always shows all categories
@@ -124,6 +148,16 @@ export default function InventoryBalancesIndex({
       filteredRows = filteredRows.filter((item: any) => Number(item.available_qty) <= 0);
     } else if (activeTab === "on_order") {
       filteredRows = filteredRows.filter((item: any) => Number(item.on_order_qty) > 0);
+    } else if (activeTab === "expiring_soon") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      filteredRows = filteredRows.filter((item: any) => {
+        if (!item.nearest_expiry_date || Number(item.available_qty) <= 0) return false;
+        const exp = new Date(item.nearest_expiry_date);
+        exp.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return diffDays <= 2;
+      });
     }
 
     return { ...inventoryBalances, rows: filteredRows };
@@ -175,7 +209,7 @@ export default function InventoryBalancesIndex({
       </div>
 
       {/* Dashboard Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5 mb-6">
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-6">
         <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
             <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
             <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
@@ -240,16 +274,37 @@ export default function InventoryBalancesIndex({
                 </div>
             </CardContent>
         </Card>
+
+        <Card className="rounded-xl border border-sidebar-border/70 bg-card text-card-foreground shadow-sm relative overflow-hidden transition-all hover:shadow-md py-0">
+            <div className={`absolute top-0 left-0 w-1.5 h-full ${stats.expiringSoon > 0 ? 'bg-amber-500' : 'bg-slate-300'}`} />
+            <CardContent className="p-3 pl-5 flex items-center justify-between h-full">
+                <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Expiring &lt;48h</p>
+                    <h3 className={`text-2xl font-bold leading-none ${stats.expiringSoon > 0 ? 'text-amber-600' : ''}`}>{stats.expiringSoon}</h3>
+                </div>
+                <div className={`p-2 rounded-xl shrink-0 ${stats.expiringSoon > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-muted text-muted-foreground'}`}>
+                    <Clock className="size-5" />
+                </div>
+            </CardContent>
+        </Card>
       </div>
 
       {/* Quick Filter Tabs */}
       <div className="mb-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full sm:w-[600px] grid-cols-4 h-11 bg-muted/50 p-1">
+          <TabsList className="grid w-full sm:w-[750px] grid-cols-5 h-11 bg-muted/50 p-1">
             <TabsTrigger value="all" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">All Stock</TabsTrigger>
             <TabsTrigger value="in_stock" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">In Stock</TabsTrigger>
             <TabsTrigger value="out_of_stock" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">Out of Stock</TabsTrigger>
             <TabsTrigger value="on_order" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-background data-[state=active]:shadow-sm h-full">On Order</TabsTrigger>
+            <TabsTrigger value="expiring_soon" className="rounded-md font-medium text-sm transition-all data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900 dark:data-[state=active]:bg-amber-950 dark:data-[state=active]:text-amber-200 h-full flex items-center gap-1.5 justify-center">
+              <span>Expiring Soon</span>
+              {stats.expiringSoon > 0 && (
+                <span className="px-1.5 py-0.5 bg-amber-500 text-white rounded-full text-[10px] font-bold">
+                  {stats.expiringSoon}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -361,6 +416,52 @@ export default function InventoryBalancesIndex({
                     {row.original.available_qty} <span className="text-xs opacity-70 font-normal">{row.original.ingredient?.base_uom?.code || ''}</span>
                   </span>
                 ),
+              },
+              {
+                id: 'expiry_status',
+                header: 'Shelf Life / Expiry',
+                cell: ({ row }) => {
+                  const expiryDate = row.original.nearest_expiry_date;
+                  const isPerishable = row.original.ingredient?.is_perishable;
+
+                  if (!expiryDate) {
+                    if (isPerishable) {
+                      return (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                          ⏳ Perishable {row.original.ingredient?.shelf_life_days ? `(${row.original.ingredient.shelf_life_days}d)` : ''}
+                        </span>
+                      );
+                    }
+                    return <span className="text-xs text-muted-foreground">Standard</span>;
+                  }
+
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const exp = new Date(expiryDate);
+                  exp.setHours(0, 0, 0, 0);
+                  const diffTime = exp.getTime() - today.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                  if (diffDays < 0) {
+                    return (
+                      <Badge variant="destructive" className="text-[11px] font-semibold gap-1">
+                        🔴 Expired ({Math.abs(diffDays)}d ago)
+                      </Badge>
+                    );
+                  } else if (diffDays <= 2) {
+                    return (
+                      <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 text-[11px] font-semibold gap-1">
+                        🟡 Expiring ({diffDays === 0 ? 'Today' : `${diffDays}d left`})
+                      </Badge>
+                    );
+                  } else {
+                    return (
+                      <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 text-[11px] font-medium gap-1">
+                        🟢 Fresh ({diffDays}d left)
+                      </Badge>
+                    );
+                  }
+                },
               },
               {
                 id: 'reserved',

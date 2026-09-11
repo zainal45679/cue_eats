@@ -60,6 +60,27 @@ export default function IngredientsIndex({
                 ),
               },
               {
+                accessorKey: "shelf_life",
+                header: "Shelf Life",
+                cell: ({ row }) => {
+                  if (row.original.is_perishable) {
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 text-[11px] font-medium">
+                          ⏳ {row.original.shelf_life_days ? `${row.original.shelf_life_days}d` : 'Perishable'}
+                        </Badge>
+                        {row.original.storage_condition && (
+                          <span className="text-[10px] text-muted-foreground capitalize">
+                            ({row.original.storage_condition})
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+                  return <span className="text-xs text-muted-foreground">Standard</span>;
+                },
+              },
+              {
                 accessorKey: "status",
                 header: "Status",
                 cell: ({ row }) => (

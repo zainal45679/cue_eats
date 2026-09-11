@@ -85,6 +85,9 @@ class GoodsReceiptNoteController extends Controller
             'items.*.expected_quantity' => 'required|numeric',
             'items.*.received_quantity' => 'required|numeric|min:0',
             'items.*.rejected_quantity' => 'required|numeric|min:0',
+            'items.*.batch_number' => 'nullable|string|max:100',
+            'items.*.mfg_date' => 'nullable|date',
+            'items.*.expiry_date' => 'nullable|date',
             'items.*.uom_id' => 'required|exists:units_of_measure,id',
         ]);
         
@@ -152,6 +155,9 @@ class GoodsReceiptNoteController extends Controller
                     'expected_quantity' => $itemData['expected_quantity'],
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
+                    'batch_number' => $itemData['batch_number'] ?? null,
+                    'mfg_date' => $itemData['mfg_date'] ?? null,
+                    'expiry_date' => $itemData['expiry_date'] ?? null,
                     'uom_id' => $itemData['uom_id'],
                 ]);
 
@@ -187,6 +193,13 @@ class GoodsReceiptNoteController extends Controller
                     );
                     
                     $balance->increment('available_qty', $convertedReceivedQty);
+
+                    if (!empty($itemData['expiry_date'])) {
+                        $incomingExpiry = $itemData['expiry_date'];
+                        if (is_null($balance->nearest_expiry_date) || $incomingExpiry < $balance->nearest_expiry_date) {
+                            $balance->update(['nearest_expiry_date' => $incomingExpiry]);
+                        }
+                    }
 
                     InventoryLedger::create([
                         'business_location_id' => $targetLocationId,
@@ -264,6 +277,9 @@ class GoodsReceiptNoteController extends Controller
                     'expected_quantity' => $itemData['expected_quantity'],
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
+                    'batch_number' => $itemData['batch_number'] ?? null,
+                    'mfg_date' => $itemData['mfg_date'] ?? null,
+                    'expiry_date' => $itemData['expiry_date'] ?? null,
                     'uom_id' => $itemData['uom_id'],
                 ]);
 
@@ -318,6 +334,13 @@ class GoodsReceiptNoteController extends Controller
                     // Add to available qty if received
                     if ($convertedReceivedQty > 0) {
                         $balance->increment('available_qty', $convertedReceivedQty);
+
+                        if (!empty($itemData['expiry_date'])) {
+                            $incomingExpiry = $itemData['expiry_date'];
+                            if (is_null($balance->nearest_expiry_date) || $incomingExpiry < $balance->nearest_expiry_date) {
+                                $balance->update(['nearest_expiry_date' => $incomingExpiry]);
+                            }
+                        }
 
                         InventoryLedger::create([
                             'business_location_id' => $targetLocationId,

@@ -54,6 +54,9 @@ final class IngredientController extends Controller
             'is_inventory_item' => 'boolean',
             'is_purchasable' => 'boolean',
             'is_recipe_item' => 'boolean',
+            'is_perishable' => 'boolean',
+            'shelf_life_days' => 'nullable|integer|min:1',
+            'storage_condition' => 'nullable|string|max:50',
             'status' => 'boolean',
         ]);
 
@@ -92,6 +95,9 @@ final class IngredientController extends Controller
             'is_inventory_item' => 'boolean',
             'is_purchasable' => 'boolean',
             'is_recipe_item' => 'boolean',
+            'is_perishable' => 'boolean',
+            'shelf_life_days' => 'nullable|integer|min:1',
+            'storage_condition' => 'nullable|string|max:50',
             'status' => 'boolean',
         ]);
 

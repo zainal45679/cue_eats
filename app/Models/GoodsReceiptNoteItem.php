@@ -20,7 +20,15 @@ class GoodsReceiptNoteItem extends Model
         'expected_quantity',
         'received_quantity',
         'rejected_quantity',
+        'batch_number',
+        'mfg_date',
+        'expiry_date',
         'uom_id',
+    ];
+
+    protected $casts = [
+        'mfg_date' => 'date',
+        'expiry_date' => 'date',
     ];
 
     public function goodsReceiptNote(): BelongsTo

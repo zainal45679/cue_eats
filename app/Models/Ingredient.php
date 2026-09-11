@@ -28,6 +28,9 @@ class Ingredient extends Model
         'is_inventory_item',
         'is_purchasable',
         'is_recipe_item',
+        'is_perishable',
+        'shelf_life_days',
+        'storage_condition',
         'status',
     ];
 
@@ -35,6 +38,8 @@ class Ingredient extends Model
         'is_inventory_item' => 'boolean',
         'is_purchasable' => 'boolean',
         'is_recipe_item' => 'boolean',
+        'is_perishable' => 'boolean',
+        'shelf_life_days' => 'integer',
         'status' => 'boolean',
     ];
 

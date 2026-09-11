@@ -60,7 +60,11 @@ class LiveOrdersController extends Controller
         \App\Services\InventoryDeductionService::revertOrder($order, $isWasted);
 
         // 3. Inform KDS
-        event(new \App\Events\OrderCreated($order));
+        try {
+            event(new \App\Events\OrderCreated($order));
+        } catch (\Throwable $e) {
+            \Log::warning('Broadcast failed for OrderCreated: ' . $e->getMessage());
+        }
 
         return back()->with('success', 'Order cancelled successfully and inventory restored.');
     }
@@ -114,7 +118,11 @@ class LiveOrdersController extends Controller
         }
 
         // 6. Inform KDS
-        event(new \App\Events\OrderCreated($order));
+        try {
+            event(new \App\Events\OrderCreated($order));
+        } catch (\Throwable $e) {
+            \Log::warning('Broadcast failed for OrderCreated: ' . $e->getMessage());
+        }
 
         return back()->with('success', 'Item cancelled successfully and inventory restored.');
     }

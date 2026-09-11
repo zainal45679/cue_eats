@@ -161,7 +161,11 @@ class TableController extends Controller
         $parentTable = \App\Models\DiningTable::find($parentTableId);
         if ($parentTable) {
             $locationId = $parentTable->diningZone?->business_location_id ?? 1;
-            event(new \App\Events\TableStatusUpdated($parentTableId, $locationId));
+            try {
+                event(new \App\Events\TableStatusUpdated($parentTableId, $locationId));
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
+            }
         }
 
         return back()->with('success', 'Tables merged successfully.');
@@ -178,7 +182,11 @@ class TableController extends Controller
 
         if ($parentTable) {
             $locationId = $parentTable->diningZone?->business_location_id ?? 1;
-            event(new \App\Events\TableStatusUpdated($parentTable->id, $locationId));
+            try {
+                event(new \App\Events\TableStatusUpdated($parentTable->id, $locationId));
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
+            }
         }
 
         return back()->with('success', 'Tables unmerged successfully.');

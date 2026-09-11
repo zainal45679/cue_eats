@@ -6,7 +6,7 @@ import { Button } from '@/components/shadcn/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/shadcn/ui/dialog';
 import { Input } from '@/components/shadcn/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
-import { Search, Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, Utensils, Receipt, CreditCard, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
@@ -204,6 +204,102 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
 
     const subtotal = cart.reduce((sum, item) => sum + (getItemUnitPrice(item) * item.quantity), 0);
 
+    const handleKotAction = (actionType: 'save_kot' | 'kot_and_print_bill') => {
+        if (cart.length === 0) return;
+        if (table && !waiterId) {
+            toast.error('Please assign a waiter before sending KOT');
+            return;
+        }
+
+        router.post('/menu-pos/terminal/checkout', {
+            action: actionType,
+            order_id: activeOrder?.id,
+            dining_table_id: table?.id || null,
+            waiter_id: waiterId || null,
+            pax: pax || 1,
+            order_type: table ? 'Dine-in' : 'Takeaway',
+            cart: cart.map(item => ({
+                menu_item_id: item.id,
+                quantity: item.quantity,
+                price: item.price,
+                modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
+                    modifier_id: mod.id,
+                    price_adjustment: mod.price_adjustment
+                })) : []
+            }))
+        }, { 
+            onSuccess: (page: any) => {
+                clearCart();
+                const recentKot = page?.props?.flash?.recent_kot;
+                const recentOrder = page?.props?.flash?.recent_order;
+                if (recentKot) {
+                    triggerKotPrint(recentKot);
+                }
+                if (recentOrder) {
+                    triggerOrderPrint(recentOrder);
+                }
+            },
+            onError: (errors) => {
+                console.error(errors);
+                const firstError = Object.values(errors)[0];
+                toast.error(firstError as string || 'Failed to process order action');
+            }
+        });
+    };
+
+    const handlePrintBill = () => {
+        if (!activeOrder) return;
+        router.post('/menu-pos/terminal/checkout', {
+            action: 'print_bill',
+            order_id: activeOrder.id,
+            order_type: activeOrder.order_type || (table ? 'Dine-in' : 'Takeaway')
+        }, {
+            onSuccess: (page: any) => {
+                const recentOrder = page?.props?.flash?.recent_order;
+                if (recentOrder) {
+                    triggerOrderPrint(recentOrder);
+                }
+            },
+            onError: (errors) => {
+                console.error(errors);
+                const firstError = Object.values(errors)[0];
+                toast.error(firstError as string || 'Failed to generate bill');
+            }
+        });
+    };
+
+    // Keyboard Shortcuts (matching Petpooja POS: F6 = KOT, F7 = KOT & Bill / Print Bill, F8 = Settle)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            if (e.key === 'F6') {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    handleKotAction('save_kot');
+                }
+            } else if (e.key === 'F7') {
+                e.preventDefault();
+                if (cart.length > 0) {
+                    handleKotAction('kot_and_print_bill');
+                } else if (activeOrder) {
+                    handlePrintBill();
+                }
+            } else if (e.key === 'F8') {
+                e.preventDefault();
+                if (cart.length > 0 || activeOrder) {
+                    setIsCheckoutOpen(true);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cart, activeOrder, table, waiterId, pax]);
+
     return (
         <>
             <Head title="POS Terminal" />
@@ -393,97 +489,92 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                         </div>
                     </ScrollArea>
                     
-                    <div className="p-5 border-t bg-card shrink-0">
+                    <div className="p-4 border-t bg-card shrink-0 space-y-3">
                         {activeOrder && (
-                            <div className="flex justify-between items-center mb-2 pb-2 border-b">
-                                <span className="text-muted-foreground text-sm">Previous Total</span>
+                            <div className="flex justify-between items-center text-xs pb-1 border-b border-dashed">
+                                <span className="text-muted-foreground">Previous KOT Total</span>
                                 <span className="font-semibold">${parseFloat(activeOrder.grand_total).toFixed(2)}</span>
                             </div>
                         )}
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="text-muted-foreground text-sm font-medium">New Subtotal</span>
+                        <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground text-sm font-medium">
+                                {activeOrder ? 'New Items Subtotal' : 'Subtotal'}
+                            </span>
                             <span className="font-bold text-xl">${subtotal.toFixed(2)}</span>
                         </div>
+                        {activeOrder && cart.length > 0 && (
+                            <div className="flex justify-between items-center text-xs pt-1 border-t text-muted-foreground font-medium">
+                                <span>Estimated Total</span>
+                                <span className="font-bold text-sm text-foreground">
+                                    ${(parseFloat(activeOrder.grand_total) + subtotal).toFixed(2)}
+                                </span>
+                            </div>
+                        )}
                         
-                        {table ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                {cart.length > 0 ? (
+                        {cart.length > 0 ? (
+                            <div className="space-y-2 pt-1">
+                                <div className="grid grid-cols-2 gap-2">
                                     <Button 
-                                        className="col-span-2 h-12 text-base font-bold bg-orange-600 hover:bg-orange-700" 
-                                        onClick={() => {
-                                            if (table && !waiterId) {
-                                                toast.error('Please assign a waiter before saving KOT');
-                                                return;
-                                            }
-                                            router.post('/menu-pos/terminal/checkout', {
-                                                action: 'save_kot',
-                                                order_id: activeOrder?.id,
-                                                dining_table_id: table.id,
-                                                waiter_id: waiterId,
-                                                pax: pax,
-                                                order_type: 'Dine-in',
-                                                cart: cart.map(item => ({
-                                                    menu_item_id: item.id,
-                                                    quantity: item.quantity,
-                                                    price: item.price,
-                                                    modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
-                                                        modifier_id: mod.id,
-                                                        price_adjustment: mod.price_adjustment
-                                                    })) : []
-                                                }))
-                                            }, { 
-                                                onSuccess: (page: any) => {
-                                                    clearCart();
-                                                    const recentKot = page?.props?.flash?.recent_kot;
-                                                    if (recentKot) {
-                                                        triggerKotPrint(recentKot);
-                                                    }
-                                                },
-                                                onError: (errors) => {
-                                                    console.error(errors);
-                                                    const firstError = Object.values(errors)[0];
-                                                    toast.error(firstError as string || 'Failed to save KOT');
-                                                }
-                                            });
-                                        }}
+                                        className="h-12 bg-amber-600 hover:bg-amber-700 text-white font-bold flex flex-col items-center justify-center p-1 rounded-lg shadow-sm transition-all"
+                                        onClick={() => handleKotAction('save_kot')}
                                     >
-                                        Save KOT
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                            <Utensils className="w-3.5 h-3.5" />
+                                            <span>Send KOT</span>
+                                        </div>
+                                        <span className="text-[10px] font-normal opacity-85">[F6] Kitchen</span>
                                     </Button>
-                                ) : (
-                                    activeOrder && (
-                                        <>
-                                            <Button 
-                                                variant="outline" 
-                                                className="h-12 border-blue-600 text-blue-600 hover:bg-blue-50"
-                                                onClick={() => {
-                                                    router.post('/menu-pos/terminal/checkout', {
-                                                        action: 'print_bill',
-                                                        order_id: activeOrder.id,
-                                                        order_type: 'Dine-in'
-                                                    });
-                                                }}
-                                            >
-                                                Print Bill
-                                            </Button>
-                                            <Button 
-                                                className="h-12 bg-green-600 hover:bg-green-700"
-                                                onClick={() => setIsCheckoutOpen(true)}
-                                            >
-                                                Settle
-                                            </Button>
-                                        </>
-                                    )
-                                )}
+
+                                    <Button 
+                                        className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold flex flex-col items-center justify-center p-1 rounded-lg shadow-sm transition-all"
+                                        onClick={() => handleKotAction('kot_and_print_bill')}
+                                    >
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                            <Receipt className="w-3.5 h-3.5" />
+                                            <span>KOT &amp; Bill</span>
+                                        </div>
+                                        <span className="text-[10px] font-normal opacity-85">[F7] Print Both</span>
+                                    </Button>
+                                </div>
+
+                                <Button 
+                                    className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center justify-between px-4 rounded-lg shadow-sm text-sm transition-all"
+                                    onClick={() => setIsCheckoutOpen(true)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <CreditCard className="w-4 h-4" />
+                                        <span>Pay / Settle Order</span>
+                                    </div>
+                                    <span className="text-xs font-normal bg-black/20 px-2 py-0.5 rounded">[F8]</span>
+                                </Button>
                             </div>
                         ) : (
-                            <Button 
-                                className="w-full h-12 text-base font-bold rounded-lg shadow-sm" 
-                                size="lg"
-                                disabled={cart.length === 0}
-                                onClick={() => setIsCheckoutOpen(true)}
-                            >
-                                Checkout
-                            </Button>
+                            activeOrder && (
+                                <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-12 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 font-bold flex flex-col items-center justify-center p-1 rounded-lg transition-all"
+                                        onClick={handlePrintBill}
+                                    >
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                            <Printer className="w-3.5 h-3.5" />
+                                            <span>Print Bill</span>
+                                        </div>
+                                        <span className="text-[10px] font-normal opacity-80">[F7]</span>
+                                    </Button>
+
+                                    <Button 
+                                        className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex flex-col items-center justify-center p-1 rounded-lg shadow-sm transition-all"
+                                        onClick={() => setIsCheckoutOpen(true)}
+                                    >
+                                        <div className="flex items-center gap-1.5 text-xs">
+                                            <CreditCard className="w-3.5 h-3.5" />
+                                            <span>Settle</span>
+                                        </div>
+                                        <span className="text-[10px] font-normal opacity-80">[F8]</span>
+                                    </Button>
+                                </div>
+                            )
                         )}
                     </div>
                 </div>
