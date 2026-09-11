@@ -73,7 +73,7 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                 <div className="p-6 pb-2 border-b">
                     <DialogHeader>
                         <DialogTitle className="text-2xl font-bold">{item.name}</DialogTitle>
-                        <DialogDescription className="text-base">${parseFloat(item.price).toFixed(2)}</DialogDescription>
+                        <DialogDescription className="text-base font-semibold text-primary">₹{parseFloat(item.price).toFixed(2)}</DialogDescription>
                     </DialogHeader>
                 </div>
                 
@@ -111,8 +111,8 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                                                         </div>
                                                         <span className="cursor-pointer flex-1 font-medium">{modifier.name}</span>
                                                     </div>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {parseFloat(modifier.price_adjustment) > 0 ? `+$${parseFloat(modifier.price_adjustment).toFixed(2)}` : ''}
+                                                    <span className="text-sm font-medium text-muted-foreground">
+                                                        {parseFloat(modifier.price_adjustment) > 0 ? `+₹${parseFloat(modifier.price_adjustment).toFixed(2)}` : ''}
                                                     </span>
                                                 </div>
                                             ))}
@@ -136,8 +136,8 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                                                             />
                                                             <Label className="flex-1 font-medium cursor-pointer">{modifier.name}</Label>
                                                         </div>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {parseFloat(modifier.price_adjustment) > 0 ? `+$${parseFloat(modifier.price_adjustment).toFixed(2)}` : ''}
+                                                        <span className="text-sm font-medium text-muted-foreground">
+                                                            {parseFloat(modifier.price_adjustment) > 0 ? `+₹${parseFloat(modifier.price_adjustment).toFixed(2)}` : ''}
                                                         </span>
                                                     </div>
                                                 )
@@ -153,11 +153,11 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                 <div className="p-6 border-t bg-background">
                     <Button 
                         size="lg" 
-                        className="w-full text-lg h-14" 
+                        className="w-full text-lg h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-sm" 
                         onClick={handleConfirm}
                         disabled={!isValid}
                     >
-                        Add to Order - ${calculateItemTotal().toFixed(2)}
+                        Add to Order • ₹{calculateItemTotal().toFixed(2)}
                     </Button>
                 </div>
             </DialogContent>

@@ -28,6 +28,13 @@ class PosController extends Controller
                     ->latest()
                     ->first();
             }
+        } elseif ($request->order_id) {
+            $activeOrder = \App\Models\Order::with(['items.modifiers', 'items.menuItem', 'waiter', 'diningTable'])
+                ->whereIn('status', ['draft', 'running', 'billed'])
+                ->find($request->order_id);
+            if ($activeOrder && $activeOrder->dining_table_id) {
+                $table = $activeOrder->diningTable;
+            }
         }
         // Eager load recipe items to check inventory
         $categories = MenuCategory::with(['items.modifierGroups.modifiers.recipeItems', 'items.recipeItems'])->where('is_active', true)->get();
@@ -177,7 +184,7 @@ class PosController extends Controller
 
         $validated = $request->validate([
             'order_id' => 'nullable|exists:pos_orders,id',
-            'action' => 'required|in:save_kot,print_bill,settle,cancel_draft,kot_and_print_bill',
+            'action' => 'required|in:save,save_kot,print_bill,settle,cancel_draft,kot_and_print_bill',
             'customer_name' => 'nullable|string',
             'order_type' => 'required|string',
             'payment_method' => 'nullable|string',
@@ -266,7 +273,7 @@ class PosController extends Controller
                     if (isset($validated['pax'])) $order->pax = $validated['pax'];
                     if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
                     if (isset($validated['dining_table_id'])) $order->dining_table_id = $validated['dining_table_id'];
-                    if ($validated['action'] === 'save_kot') $order->status = 'running';
+                    if ($validated['action'] === 'save' || $validated['action'] === 'save_kot') $order->status = 'running';
                     if ($validated['action'] === 'kot_and_print_bill' || $validated['action'] === 'print_bill') $order->status = 'billed';
                     $order->save();
                 } else {
@@ -482,6 +489,12 @@ class PosController extends Controller
             }
             
             // Redirect based on action and order type
+            if ($validated['action'] === 'save') {
+                return back()->with([
+                    'success' => "Order {$order->order_number} saved.",
+                ]);
+            }
+
             if ($validated['action'] === 'save_kot') {
                 return back()->with([
                     'success' => "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent to kitchen.",
@@ -489,22 +502,17 @@ class PosController extends Controller
                 ]);
             }
 
-            if ($validated['action'] === 'kot_and_print_bill') {
+            if ($validated['action'] === 'print_bill' || $validated['action'] === 'kot_and_print_bill') {
                 $roundText = $recentKot ? "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent & " : "";
-                return back()->with([
+                $flashData = [
                     'success' => "{$roundText}Bill generated for {$order->order_number}.",
-                    'recent_kot' => $recentKot,
                     'recent_order' => $order,
                     'is_bill_only' => true
-                ]);
-            }
-
-            if ($validated['action'] === 'print_bill') {
-                return back()->with([
-                    'success' => "Bill for {$order->order_number} generated.",
-                    'recent_order' => $order,
-                    'is_bill_only' => true
-                ]);
+                ];
+                if (!empty($recentKot)) {
+                    $flashData['recent_kot'] = $recentKot;
+                }
+                return back()->with($flashData);
             }
 
             if ($order->dining_table_id && $order->status === 'Completed') {

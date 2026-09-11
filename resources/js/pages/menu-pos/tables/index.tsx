@@ -4,7 +4,7 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { ZoneFormDialog } from './ZoneFormDialog';
 import { TableFormDialog } from './TableFormDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/shadcn/ui/dropdown-menu';
-import { Settings, Plus, Pencil, Trash2, Edit, ArrowRight, Users, ReceiptText, Clock, User, ArrowLeft, Lock } from 'lucide-react';
+import { Settings, Plus, Pencil, Trash2, Edit, ArrowRight, Users, ReceiptText, Clock, User, ArrowLeft, Lock, LayoutGrid, ShoppingBag, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -123,21 +123,41 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     return (
         <>
             <Head title="Dine-In Tables" />
-            <div className="flex h-[calc(100vh-80px)] w-full bg-muted/10 overflow-hidden rounded-xl border border-border/40 shadow-sm print:hidden flex-col">
+            <div className="flex flex-1 h-[calc(100vh-70px)] w-full bg-muted/10 overflow-hidden print:hidden flex-col">
                 
                 {/* Top Navigation Header */}
                 <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            {/* Segmented Mode Switcher (Dine-In / Takeaway) */}
+                            <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all bg-background text-foreground shadow-xs cursor-default"
+                                >
+                                    <LayoutGrid className="w-3.5 h-3.5 text-primary" />
+                                    <span>Dine-In</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => router.get('/menu-pos/terminal')}
+                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                    <span>Takeaway</span>
+                                </button>
+                            </div>
+
+                            {/* Live Orders button right along with the mode toggle */}
                             <Button 
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => window.history.back()} 
-                                className="h-8 px-2 text-muted-foreground"
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5 px-2.5 border border-border/50 rounded-lg hover:bg-muted"
+                                onClick={() => router.get('/menu-pos/live-orders')}
                             >
-                                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                                <ClipboardList className="w-3.5 h-3.5 text-primary" />
+                                <span>Live Orders</span>
                             </Button>
-                            <h1 className="text-lg font-bold tracking-tight">Dine-In Floor</h1>
                         </div>
                         
                         {/* Stats Summary */}
@@ -155,49 +175,44 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
                                     <span className="text-muted-foreground">Billed: {billed}</span>
                                 </div>
-                                <div className="pl-2 border-l border-border text-foreground font-bold">
+                                <div className="text-foreground font-bold">
                                     Total: {totalTables}
                                 </div>
                             </div>
                             
-                            
                             {/* Manage Controls (Admin) */}
-                            
-                                
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm" className="h-8 border-dashed">
-                                            <Settings className="w-4 h-4 mr-2" /> Manage Floor
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-56">
-                                        <DropdownMenuLabel>Floor Management</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditingZone(null); setZoneDialogOpen(true); }}>
-                                            <Plus className="w-4 h-4 mr-2" /> Add New Zone
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                            disabled={!activeZoneData}
-                                            onSelect={(e) => { e.preventDefault(); setEditingZone(activeZoneData); setZoneDialogOpen(true); }}
-                                        >
-                                            <Pencil className="w-4 h-4 mr-2" /> Edit Current Zone
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem 
-                                            disabled={!activeZoneData}
-                                            onSelect={(e) => { 
-                                                e.preventDefault();
-                                                setEditingTable(null); 
-                                                setSelectedZoneForTable(activeZone || '');
-                                                setTableDialogOpen(true); 
-                                            }}
-                                        >
-                                            <Plus className="w-4 h-4 mr-2" /> Add Table (Current Zone)
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-8 border-dashed">
+                                        <Settings className="w-4 h-4 mr-2" /> Manage Floor
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuLabel>Floor Management</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setEditingZone(null); setZoneDialogOpen(true); }}>
+                                        <Plus className="w-4 h-4 mr-2" /> Add New Zone
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        disabled={!activeZoneData}
+                                        onSelect={(e) => { e.preventDefault(); setEditingZone(activeZoneData); setZoneDialogOpen(true); }}
+                                    >
+                                        <Pencil className="w-4 h-4 mr-2" /> Edit Current Zone
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                        disabled={!activeZoneData}
+                                        onSelect={(e) => { 
+                                            e.preventDefault();
+                                            setEditingTable(null); 
+                                            setSelectedZoneForTable(activeZone || ''); 
+                                            setTableDialogOpen(true); 
+                                        }}
+                                    >
+                                        <Plus className="w-4 h-4 mr-2" /> Add Table (Current Zone)
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
                             {/* Merge Controls */}
                             <div className="flex items-center gap-2">
@@ -205,7 +220,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     <>
                                         <Button 
                                             variant="outline" 
-                                            size="sm"
+                                            size="sm" 
                                             onClick={() => { setMergeMode(false); setSelectedTablesToMerge([]); }}
                                             className="h-8"
                                         >
@@ -213,7 +228,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                         </Button>
                                         <Button 
                                             variant="default" 
-                                            size="sm"
+                                            size="sm" 
                                             disabled={selectedTablesToMerge.length < 2}
                                             onClick={() => {
                                                 router.post('/menu-pos/tables/merge', { table_ids: selectedTablesToMerge }, {
@@ -231,7 +246,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                 ) : (
                                     <Button 
                                         variant="outline" 
-                                        size="sm"
+                                        size="sm" 
                                         onClick={() => setMergeMode(true)}
                                         className="h-8 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 font-medium"
                                     >
@@ -250,8 +265,13 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     {visibleZones.map((zone: any) => (
                                         <Button 
                                             key={zone.id}
-                                            variant={activeZone === zone.id ? 'default' : 'secondary'}
-                                            className="rounded-full px-5 h-8 text-xs shrink-0"
+                                            variant={activeZone === zone.id ? 'default' : 'outline'}
+                                            className={cn(
+                                                "rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-all cursor-pointer",
+                                                activeZone === zone.id 
+                                                    ? "bg-primary text-primary-foreground shadow-xs border-transparent hover:bg-primary/90" 
+                                                    : "bg-muted/50 border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            )}
                                             onClick={() => setActiveZone(zone.id)}
                                         >
                                             {zone.name}
@@ -402,8 +422,8 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                         )}
                                     </div>
                                 );
-                        })}
-                    </div>
+                            })}
+                        </div>
                     ) : null}
                 </ScrollArea>
             </div>

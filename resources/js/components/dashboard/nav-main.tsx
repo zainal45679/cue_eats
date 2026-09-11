@@ -206,7 +206,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
         return (
           <SidebarGroup className="px-2 py-0 mt-4 mb-1" key={groupName}>
             {/* Group Header */}
-            <SidebarGroupLabel className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest px-3 mb-2">
+            <SidebarGroupLabel className="text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider px-3 mb-1.5 h-auto py-1">
               {groupName}
             </SidebarGroupLabel>
 

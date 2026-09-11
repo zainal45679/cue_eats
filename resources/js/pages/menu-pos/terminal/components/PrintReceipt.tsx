@@ -149,7 +149,7 @@ export function PrintReceipt({
                                             <div className="text-[10px] italic">Note: {item.notes}</div>
                                         )}
                                     </td>
-                                    <td className="text-right pt-1.5 font-bold">${Number(item.subtotal).toFixed(2)}</td>
+                                    <td className="text-right pt-1.5 font-bold">₹{Number(item.subtotal).toFixed(2)}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -160,15 +160,15 @@ export function PrintReceipt({
             <div className="border-t border-black pt-1.5 mb-3 space-y-1 text-xs">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${parseFloat(order.subtotal || 0).toFixed(2)}</span>
+                    <span>₹{parseFloat(order.subtotal || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Tax / GST</span>
-                    <span>${parseFloat(order.tax_total || 0).toFixed(2)}</span>
+                    <span>₹{parseFloat(order.tax_total || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-base mt-1.5 pt-1.5 border-t border-black">
                     <span>TOTAL</span>
-                    <span>${parseFloat(order.grand_total || 0).toFixed(2)}</span>
+                    <span>₹{parseFloat(order.grand_total || 0).toFixed(2)}</span>
                 </div>
                 {order.payment_method && (
                     <div className="flex justify-between text-[10px] mt-0.5">

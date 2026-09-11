@@ -77,8 +77,6 @@ export function AppHeaderRight() {
           </TooltipContent>
         </Tooltip>
 
-        <div className="mx-2 h-4 w-px bg-border" />
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Avatar className="h-8 w-8 cursor-pointer overflow-hidden rounded-full">

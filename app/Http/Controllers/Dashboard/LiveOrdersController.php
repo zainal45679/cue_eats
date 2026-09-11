@@ -16,18 +16,28 @@ class LiveOrdersController extends Controller
             ? session('active_location_id') 
             : auth()->user()->business_location_id;
 
-        // Fetch orders that are either created today OR their kitchen_status is not 'ready'/'rejected' (meaning they are active)
-        $orders = Order::with(['items.menuItem', 'items.modifiers.modifier', 'cashier'])
+        // Fetch only active live kitchen orders (pending and preparing)
+        $orders = Order::with([
+            'items.menuItem', 
+            'items.modifiers.modifier', 
+            'kots.items.menuItem', 
+            'kots.items.modifiers.modifier', 
+            'diningTable', 
+            'waiter', 
+            'cashier'
+        ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->where(function ($query) {
-                $query->whereDate('created_at', Carbon::today())
-                      ->orWhereIn('kitchen_status', ['pending', 'preparing']);
+                $query->whereIn('kitchen_status', ['pending', 'preparing'])
+                      ->orWhereNull('kitchen_status');
             })
+            ->where('status', '!=', 'cancelled')
             ->orderBy('created_at', 'desc')
             ->get();
 
         return Inertia::render('menu-pos/live-orders/index', [
-            'orders' => $orders
+            'orders' => $orders,
+            'locationId' => $locationId ? (string) $locationId : null
         ]);
     }
 

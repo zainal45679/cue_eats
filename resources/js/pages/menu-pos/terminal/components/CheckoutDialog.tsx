@@ -17,10 +17,11 @@ interface CheckoutDialogProps {
     tableId?: string;
     waiterId?: string;
     pax?: number;
+    defaultCustomerName?: string;
     onSuccess: () => void;
 }
 
-export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tableId, waiterId, pax, onSuccess }: CheckoutDialogProps) {
+export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tableId, waiterId, pax, defaultCustomerName, onSuccess }: CheckoutDialogProps) {
     const [stockWarningOpen, setStockWarningOpen] = useState(false);
     const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
     const [checkingStock, setCheckingStock] = useState(false);
@@ -33,7 +34,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
         dining_table_id: tableId || '',
         waiter_id: waiterId || '',
         pax: pax || 1,
-        customer_name: '',
+        customer_name: defaultCustomerName || '',
         order_type: tableId ? 'Dine-in' : 'Takeaway',
         payment_method: 'Cash',
         tendered_amount: '' as string | number,
@@ -74,11 +75,12 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                 waiter_id: waiterId || '',
                 pax: pax || 1,
                 order_type: tableId ? 'Dine-in' : 'Takeaway',
+                customer_name: defaultCustomerName || prev.customer_name || '',
                 allow_override: false,
                 tendered_amount: subtotal > 0 ? String(subtotal) : ''
             }));
         }
-    }, [isOpen, subtotal, orderId, tableId, waiterId, pax]);
+    }, [isOpen, subtotal, orderId, tableId, waiterId, pax, defaultCustomerName]);
 
     const tenderedVal = parseFloat(String(data.tendered_amount)) || 0;
     const currentDiscount = parseFloat(String(data.discount_amount)) || 0;
@@ -229,10 +231,10 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                         {data.payment_method === 'Cash' && (
                             <div className="space-y-3 pt-2 border-t">
                                 <div className="space-y-2">
-                                    <Label>Cash Tendered ($)</Label>
+                                    <Label>Cash Tendered (₹)</Label>
                                     <Input 
                                         type="number"
-                                        step="0.01"
+                                        step="1"
                                         value={data.tendered_amount}
                                         onChange={e => setData('tendered_amount', e.target.value)}
                                         placeholder="0.00"
@@ -242,27 +244,27 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
 
                                 <div className="space-y-1.5">
                                     <Label className="text-xs text-muted-foreground uppercase tracking-wider">Quick Cash Presets</Label>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {[20, 50, 100].map(amt => (
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {[100, 200, 500, 2000].map(amt => (
                                             <Button 
                                                 key={amt}
                                                 type="button"
                                                 variant="outline" 
                                                 size="sm"
                                                 onClick={() => handleQuickCash(amt)}
-                                                className="font-bold"
+                                                className="font-bold text-xs"
                                             >
-                                                ${amt}
+                                                ₹{amt}
                                             </Button>
                                         ))}
                                         <Button 
-                                            type="button"
+                                            type="button" 
                                             variant="outline" 
                                             size="sm"
                                             onClick={() => handleQuickCash(grandTotal)}
                                             className="font-bold text-xs"
                                         >
-                                            Exact (${grandTotal.toFixed(2)})
+                                            Exact (₹{grandTotal.toFixed(2)})
                                         </Button>
                                     </div>
                                 </div>
@@ -279,14 +281,14 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="fixed">Fixed</SelectItem>
-                                        <SelectItem value="percentage">Percentage</SelectItem>
+                                        <SelectItem value="fixed">Fixed (₹)</SelectItem>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Input 
                                     type="number" 
                                     min="0"
-                                    placeholder={discountType === 'percentage' ? '10' : '5.00'}
+                                    placeholder={discountType === 'percentage' ? '10' : '50.00'}
                                     value={discountInput}
                                     onChange={e => setDiscountInput(e.target.value)}
                                     className="flex-1"
@@ -296,40 +298,40 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                         <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Subtotal</span>
-                                <span>${subtotal.toFixed(2)}</span>
+                                <span>₹{subtotal.toFixed(2)}</span>
                             </div>
                             {parseFloat(data.discount_amount as string) > 0 && (
                                 <div className="flex justify-between items-center text-sm text-green-600 font-medium">
                                     <span>Discount</span>
-                                    <span>-${parseFloat(data.discount_amount as string).toFixed(2)}</span>
+                                    <span>-₹{parseFloat(data.discount_amount as string).toFixed(2)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Tax</span>
-                                <span>$0.00</span>
+                                <span>₹0.00</span>
                             </div>
                             <div className="flex justify-between font-bold text-lg pt-2 border-t">
                                 <span>Total Due</span>
-                                <span>${Math.max(0, subtotal - parseFloat((data.discount_amount as string) || '0')).toFixed(2)}</span>
+                                <span>₹{Math.max(0, subtotal - parseFloat((data.discount_amount as string) || '0')).toFixed(2)}</span>
                             </div>
 
                             {data.payment_method === 'Cash' && (
                                 <>
                                     <div className="flex justify-between text-sm pt-2 border-t">
                                         <span className="text-muted-foreground">Tendered Amount</span>
-                                        <span className="font-semibold">${tenderedVal.toFixed(2)}</span>
+                                        <span className="font-semibold">₹{tenderedVal.toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-base font-bold pt-1">
                                         <span>Change Due</span>
                                         <span className={isInsufficient ? "text-red-500" : "text-emerald-600 text-lg"}>
-                                            ${changeVal.toFixed(2)}
+                                            ₹{changeVal.toFixed(2)}
                                         </span>
                                     </div>
 
                                     {isInsufficient && (
                                         <div className="flex items-center gap-2 text-xs font-medium text-red-500 bg-red-500/10 p-2 rounded-md mt-2">
                                             <AlertCircle className="w-4 h-4 shrink-0" />
-                                            <span>Insufficient cash. Short by ${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0")) - tenderedVal).toFixed(2)}</span>
+                                            <span>Insufficient cash. Short by ₹{(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0")) - tenderedVal).toFixed(2)}</span>
                                         </div>
                                     )}
                                 </>
@@ -342,15 +344,15 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
                         <Button 
                             onClick={handleCheckout} 
                             disabled={processing || checkingStock || (cart.length === 0 && !orderId && !data.order_id) || isInsufficient} 
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                         >
                             {data.payment_method === 'Cash' ? (
                                 <>
-                                    <Banknote className="w-4 h-4 mr-2" /> Complete Cash Payment (${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)})
+                                    <Banknote className="w-4 h-4 mr-2" /> Complete Cash Payment (₹{(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)})
                                 </>
                             ) : (
                                 <>
-                                    <CreditCard className="w-4 h-4 mr-2" /> Pay ${(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)}
+                                    <CreditCard className="w-4 h-4 mr-2" /> Pay ₹{(Math.max(0, subtotal - parseFloat((data.discount_amount as string) || "0"))).toFixed(2)}
                                 </>
                             )}
                         </Button>
