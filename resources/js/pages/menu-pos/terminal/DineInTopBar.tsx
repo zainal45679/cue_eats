@@ -1,10 +1,9 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { Input } from '@/components/shadcn/ui/input';
-import { Users, UserCircle, XCircle, LayoutGrid, ShoppingBag, ClipboardList, UtensilsCrossed, Search, X } from 'lucide-react';
+import { Users, UserCircle, XCircle, LayoutGrid, ShoppingBag, ClipboardList, UtensilsCrossed, Search, X, ChefHat, Bell, Plus } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
@@ -23,12 +22,16 @@ export function DineInTopBar({
     categories,
     activeCategoryId,
     setActiveCategoryId,
+    runningOrders = [],
+    onOpenRunningOrders,
+    onNewOrder,
 }: any) {
     const handleBackClick = () => {
         router.get('/menu-pos/tables');
     };
 
     const currentWaiterName = waiters?.find((w: any) => w.id === waiterId)?.name || 'Unknown Waiter';
+    const readyCount = runningOrders?.filter((o: any) => o.kitchen_status === 'ready').length || 0;
 
     return (
         <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
@@ -85,6 +88,44 @@ export function DineInTopBar({
                             <span className="relative z-10">Live Orders</span>
                         </button>
                     </div>
+
+                    {/* Running Orders Drawer Trigger */}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={onOpenRunningOrders}
+                        className={cn(
+                            "h-8 text-xs font-semibold rounded-lg px-2.5 gap-1.5 cursor-pointer shadow-2xs transition-all",
+                            readyCount > 0 
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 animate-pulse" 
+                                : "border-border/70 bg-background text-foreground hover:bg-muted"
+                        )}
+                        title="View running orders across dining floor and takeaway"
+                    >
+                        {readyCount > 0 ? (
+                            <Bell className="w-3.5 h-3.5 text-emerald-600 animate-bounce" />
+                        ) : (
+                            <ChefHat className="w-3.5 h-3.5 text-primary" />
+                        )}
+                        <span>Active</span>
+                        <Badge 
+                            variant="secondary" 
+                            className={cn(
+                                "h-4 min-w-4 px-1 text-[10px] font-bold rounded-full",
+                                readyCount > 0 
+                                    ? "bg-emerald-600 text-white" 
+                                    : "bg-primary/15 text-primary"
+                            )}
+                        >
+                            {runningOrders?.length || 0}
+                        </Badge>
+                        {readyCount > 0 && (
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                                {readyCount} Ready!
+                            </span>
+                        )}
+                    </Button>
 
                     {table && (
                         <>
@@ -153,12 +194,26 @@ export function DineInTopBar({
                             </Badge>
                             <Badge className={cn(
                                 "text-xs h-8 px-3 rounded-full font-medium shadow-2xs",
+                                activeOrder.kitchen_status === 'ready' ? 'bg-emerald-600 text-white' :
                                 activeOrder.status === 'billed' ? 'bg-amber-500 text-white' :
                                 activeOrder.status === 'Completed' ? 'bg-emerald-600 text-white' :
                                 'bg-blue-600 text-white'
                             )}>
-                                {activeOrder.status === 'billed' ? 'Billed' : activeOrder.status || 'Running'}
+                                {activeOrder.kitchen_status === 'ready' ? 'Ready!' :
+                                 activeOrder.status === 'billed' ? 'Billed' : activeOrder.status || 'Running'}
                             </Badge>
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
+                                onClick={onNewOrder}
+                                title="Clear current order and start a new ticket"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1" />
+                                New Order
+                            </Button>
                         </div>
                     )}
 
@@ -207,7 +262,7 @@ export function DineInTopBar({
 
             {/* Row 2: Category Navigation Pills */}
             <div className="flex items-center justify-between w-full mb-1">
-                <ScrollArea className="flex-1 whitespace-nowrap">
+                <div className="flex-1 overflow-x-auto no-scrollbar">
                     <div className="flex space-x-2 pb-1 items-center">
                         <motion.button 
                             type="button"
@@ -256,8 +311,7 @@ export function DineInTopBar({
                             );
                         })}
                     </div>
-                    <ScrollBar orientation="horizontal" className="hidden" />
-                </ScrollArea>
+                </div>
             </div>
         </div>
     );

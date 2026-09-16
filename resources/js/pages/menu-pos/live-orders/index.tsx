@@ -3,7 +3,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
-import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
+import { ScrollArea } from '@/components/shadcn/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
@@ -181,7 +181,7 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
 
                     {/* Row 2: Status Filter Navigation Pills */}
                     <div className="flex items-center justify-between w-full mb-1">
-                        <ScrollArea className="flex-1 whitespace-nowrap">
+                        <div className="flex-1 overflow-x-auto no-scrollbar">
                             <div className="flex space-x-2 pb-1 items-center">
                                 {[
                                     { id: 'all', label: `All Active (${orders.length})` },
@@ -214,22 +214,23 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                     );
                                 })}
                             </div>
-                            <ScrollBar orientation="horizontal" className="hidden" />
-                        </ScrollArea>
+                        </div>
                     </div>
                 </div>
 
                 {/* Main Content Area: KDS-Style Order Cards Grid */}
                 <ScrollArea className="flex-1 p-3.5 min-h-0 bg-muted/10">
                     {filteredOrders.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground border-2 border-dashed rounded-xl bg-card/40 mx-auto max-w-2xl my-8">
-                            <ChefHat className="w-16 h-16 mb-4 opacity-25" />
-                            <h3 className="text-lg font-bold text-foreground mb-1">No Orders Found</h3>
+                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card/50 w-full">
+                            <ChefHat className="w-16 h-16 mb-4 opacity-20" />
+                            <h2 className="text-xl font-medium mb-1 text-foreground">
+                                {searchQuery ? 'No Orders Found' : 'No Active Orders'}
+                            </h2>
                             <p className="text-sm text-muted-foreground text-center max-w-sm">
                                 {searchQuery 
                                     ? `No orders matching "${searchQuery}". Try a different keyword.` 
                                     : activeTab === 'all'
-                                    ? 'Kitchen and counter are clear. Waiting for new orders to arrive.'
+                                    ? 'Kitchen is clear. Waiting for new orders...'
                                     : activeTab === 'pending'
                                     ? 'No pending orders right now. Kitchen is all caught up!'
                                     : 'No orders are currently in preparation.'}
@@ -359,15 +360,25 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                             <span className="text-xs text-muted-foreground font-medium">
                                                 {order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0)} items
                                             </span>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-7 text-xs gap-1.5 px-3 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-                                                onClick={() => setViewOrder(order)}
-                                            >
-                                                <Eye className="w-3.5 h-3.5" />
-                                                <span>View Details</span>
-                                            </Button>
+                                            <div className="flex items-center gap-1.5">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs gap-1.5 px-2.5 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+                                                    onClick={() => setViewOrder(order)}
+                                                >
+                                                    <Eye className="w-3.5 h-3.5" />
+                                                    <span>Details</span>
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    className="h-7 text-xs gap-1.5 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold cursor-pointer shadow-2xs"
+                                                    onClick={() => router.get('/menu-pos/terminal', { order_id: order.id })}
+                                                >
+                                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                                    <span>Open in POS</span>
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -455,8 +466,16 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                             </div>
                         </div>
                     )}
-                    <DialogFooter>
+                    <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
                         <Button variant="outline" size="sm" onClick={() => setViewOrder(null)}>Close</Button>
+                        <Button 
+                            size="sm" 
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-1.5 cursor-pointer shadow-2xs"
+                            onClick={() => router.get('/menu-pos/terminal', { order_id: viewOrder.id })}
+                        >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Open in POS Terminal</span>
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

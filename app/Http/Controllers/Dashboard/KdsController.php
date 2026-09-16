@@ -28,6 +28,9 @@ class KdsController extends Controller
             'waiter'
         ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->where('status', '!=', 'draft')
+            ->whereHas('kots')
+            ->whereHas('items')
             ->where(function ($query) {
                 $query->whereIn('kitchen_status', ['pending', 'preparing'])
                       ->orWhere(function ($q) {

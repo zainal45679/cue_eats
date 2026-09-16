@@ -27,6 +27,8 @@ class LiveOrdersController extends Controller
             'cashier'
         ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->where('status', '!=', 'draft')
+            ->whereHas('items')
             ->where(function ($query) {
                 $query->whereIn('kitchen_status', ['pending', 'preparing'])
                       ->orWhereNull('kitchen_status');

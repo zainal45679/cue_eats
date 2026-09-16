@@ -14,7 +14,7 @@ class TableController extends Controller
     public function index(Request $request)
     {
         $query = DiningZone::with(['tables' => function ($q) {
-            $q->with(['activeOrder.items', 'activeOrder.waiter', 'children']);
+            $q->with(['activeOrder.items.menuItem', 'activeOrder.waiter', 'activeOrder.location', 'children']);
         }]);
 
         if (auth()->user()->hasRole('admin')) {
@@ -81,6 +81,8 @@ class TableController extends Controller
 
     public function updateZone(Request $request, DiningZone $zone)
     {
+        $this->authorizeZoneAccess($zone);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -93,6 +95,8 @@ class TableController extends Controller
 
     public function destroyZone(DiningZone $zone)
     {
+        $this->authorizeZoneAccess($zone);
+
         // Safety check: Prevent deleting zone if active orders exist in its tables
         $hasActiveOrders = $zone->tables()->whereHas('activeOrder')->exists();
         if ($hasActiveOrders) {
@@ -112,6 +116,9 @@ class TableController extends Controller
             'seating_capacity' => 'required|integer|min:1|max:50',
         ]);
 
+        $zone = DiningZone::findOrFail($validated['dining_zone_id']);
+        $this->authorizeZoneAccess($zone);
+
         DiningTable::create([
             'dining_zone_id' => $validated['dining_zone_id'],
             'name' => $validated['name'],
@@ -124,11 +131,17 @@ class TableController extends Controller
 
     public function updateTable(Request $request, DiningTable $table)
     {
+        $this->authorizeTableAccess($table);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'seating_capacity' => 'required|integer|min:1|max:50',
             'dining_zone_id' => 'nullable|exists:dining_zones,id',
         ]);
+
+        if (! empty($validated['dining_zone_id'])) {
+            $this->authorizeZoneAccess(DiningZone::findOrFail($validated['dining_zone_id']));
+        }
 
         $table->update(array_filter($validated));
 
@@ -137,6 +150,8 @@ class TableController extends Controller
 
     public function destroyTable(DiningTable $table)
     {
+        $this->authorizeTableAccess($table);
+
         if ($table->activeOrder()->exists()) {
             return back()->withErrors(['error' => 'Cannot delete table with an active order.']);
         }
@@ -153,6 +168,11 @@ class TableController extends Controller
             'table_ids.*' => 'exists:dining_tables,id'
         ]);
 
+        $tables = DiningTable::with('zone')->whereIn('id', $request->table_ids)->get();
+        abort_unless($tables->count() === count($request->table_ids), 422, 'One or more tables were not found.');
+        $tables->each(fn (DiningTable $table) => $this->authorizeTableAccess($table));
+        abort_if($tables->pluck('zone.business_location_id')->unique()->count() !== 1, 422, 'Tables must belong to the same outlet.');
+
         $tableIds = $request->table_ids;
         $parentTableId = array_shift($tableIds); // The first table becomes the parent
 
@@ -160,7 +180,7 @@ class TableController extends Controller
 
         $parentTable = \App\Models\DiningTable::find($parentTableId);
         if ($parentTable) {
-            $locationId = $parentTable->diningZone?->business_location_id ?? 1;
+            $locationId = $parentTable->zone?->business_location_id;
             try {
                 event(new \App\Events\TableStatusUpdated($parentTableId, $locationId));
             } catch (\Throwable $e) {
@@ -178,10 +198,11 @@ class TableController extends Controller
         ]);
 
         $parentTable = \App\Models\DiningTable::find($request->parent_table_id);
+        $this->authorizeTableAccess($parentTable);
         \App\Models\DiningTable::where('parent_table_id', $request->parent_table_id)->update(['parent_table_id' => null]);
 
         if ($parentTable) {
-            $locationId = $parentTable->diningZone?->business_location_id ?? 1;
+            $locationId = $parentTable->zone?->business_location_id;
             try {
                 event(new \App\Events\TableStatusUpdated($parentTable->id, $locationId));
             } catch (\Throwable $e) {
@@ -190,5 +211,23 @@ class TableController extends Controller
         }
 
         return back()->with('success', 'Tables unmerged successfully.');
+    }
+
+    private function authorizeZoneAccess(DiningZone $zone): void
+    {
+        $user = auth()->user();
+
+        abort_if(
+            ! $user->hasRole('admin') && $user->business_location_id !== $zone->business_location_id,
+            403,
+            'You are not authorized to manage tables for this outlet.'
+        );
+    }
+
+    private function authorizeTableAccess(DiningTable $table): void
+    {
+        $table->loadMissing('zone');
+        abort_if(! $table->zone, 422, 'The table is not assigned to a dining zone.');
+        $this->authorizeZoneAccess($table->zone);
     }
 }

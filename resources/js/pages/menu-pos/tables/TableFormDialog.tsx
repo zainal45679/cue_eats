@@ -35,6 +35,7 @@ export function TableFormDialog({ open, onOpenChange, table, zones, defaultZoneI
     const [submitting, setSubmitting] = React.useState(false);
 
     useEffect(() => {
+        if (!open) return;
         if (table) {
             setName(table.name || '');
             setSeatingCapacity(table.seating_capacity || 4);
@@ -42,9 +43,9 @@ export function TableFormDialog({ open, onOpenChange, table, zones, defaultZoneI
         } else {
             setName('');
             setSeatingCapacity(4);
-            setDiningZoneId(defaultZoneId || (zones.length > 0 ? zones[0].id : ''));
+            setDiningZoneId(defaultZoneId || (zones && zones.length > 0 ? zones[0].id : ''));
         }
-    }, [table, open, defaultZoneId, zones]);
+    }, [table, open, defaultZoneId]);
 
 
     const handleDelete = () => {

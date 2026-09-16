@@ -4,40 +4,50 @@ import { Head, router, usePage } from '@inertiajs/react';
 import { ZoneFormDialog } from './ZoneFormDialog';
 import { TableFormDialog } from './TableFormDialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/shadcn/ui/dropdown-menu';
-import { Settings, Plus, Pencil, Trash2, Edit, ArrowRight, Users, ReceiptText, Clock, User, ArrowLeft, Lock, LayoutGrid, ShoppingBag, ClipboardList } from 'lucide-react';
+import { 
+    Settings, 
+    Plus, 
+    Pencil, 
+    Trash2, 
+    Edit, 
+    ArrowRight, 
+    Users, 
+    ReceiptText, 
+    Clock, 
+    User, 
+    ArrowLeft, 
+    Lock, 
+    LayoutGrid, 
+    ShoppingBag, 
+    ClipboardList,
+    Printer,
+    Eye,
+    Save
+} from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
-import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
+import { ScrollArea } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { motion } from 'motion/react';
-
-const getMergeSpan = (tableName: string) => {
-    if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
-    const matches = tableName.match(/\d+/g);
-    if (!matches || matches.length < 2) return "col-span-2 sm:col-span-2 md:col-span-2";
-    
-    if (matches.length >= 3) {
-        return "col-span-2 sm:col-span-2 md:col-span-2 row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
-    }
-    
-    const diff = Math.abs(parseInt(matches[0]) - parseInt(matches[1]));
-    return diff === 1 
-        ? "col-span-2 sm:col-span-2 md:col-span-2"
-        : "row-span-2 sm:row-span-2 md:row-span-2 min-h-[204px]";
-}
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
+import { PrintReceipt } from '../terminal/components/PrintReceipt';
 
 export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     const { auth } = usePage().props as any;
     const currentUserId = auth?.user?.id;
+    const currentUserLocationId = auth?.user?.business_location_id;
     const isAllOutlets = auth?.active_location_id === null;
     const allLocations = auth?.all_business_locations || [];
     const [selectedLocationId, setSelectedLocationId] = useState(
         isAllOutlets ? (allLocations[0]?.id || null) : auth?.active_location_id
     );
     
-    const visibleZones = zones.filter((z: any) => z.business_location_id === selectedLocationId);
+    const visibleZones = React.useMemo(() => {
+        return zones.filter((z: any) => z.business_location_id === selectedLocationId);
+    }, [zones, selectedLocationId]);
     
-    const [activeZone, setActiveZone] = useState(visibleZones.length > 0 ? visibleZones[0].id : null);
+    // 'all' to show all sections vertically like Petpooja, or specific zone id
+    const [activeZone, setActiveZone] = useState<string | 'all'>('all');
     const [currentTime, setCurrentTime] = useState(new Date());
 
     const [mergeMode, setMergeMode] = useState(false);
@@ -49,12 +59,11 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     const [editingTable, setEditingTable] = useState<any>(null);
     const [selectedZoneForTable, setSelectedZoneForTable] = useState<string>('');
 
+    // Quick View Order Modal
+    const [viewOrder, setViewOrder] = useState<any | null>(null);
 
-    useEffect(() => {
-        if (visibleZones.length > 0 && !visibleZones.find((z: any) => z.id === activeZone)) {
-            setActiveZone(visibleZones[0].id);
-        }
-    }, [selectedLocationId, visibleZones]);
+    // Direct Receipt Printing Trigger
+    const [orderToPrint, setOrderToPrint] = useState<any | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -62,8 +71,8 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
     }, []);
 
     useEffect(() => {
-        if (!auth.user) return;
-        const locId = selectedLocationId || auth.user.business_location_id;
+        if (!currentUserId) return;
+        const locId = selectedLocationId || currentUserLocationId;
         if (!locId) return;
         
         let channel: any = null;
@@ -90,15 +99,13 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                 window.Echo.leave(`tables.${locId}`);
             }
         };
-    }, [auth.user, selectedLocationId]);
+    }, [currentUserId, currentUserLocationId, selectedLocationId]);
 
-    const activeZoneData = visibleZones.find((z: any) => z.id === activeZone);
-
-    const getTableColorClass = (table: any) => {
-        if (!table.active_order) return 'bg-card border-border border-l-4 border-l-green-500 hover:border-l-green-600 text-card-foreground shadow-sm'; 
-        if (table.active_order.status === 'billed') return 'bg-card border-border border-l-4 border-l-red-500 hover:border-l-red-600 text-card-foreground shadow-sm'; 
-        return 'bg-card border-border border-l-4 border-l-orange-500 hover:border-l-orange-600 text-card-foreground shadow-sm'; 
-    };
+    const activeZoneData = React.useMemo(() => {
+        return activeZone === 'all' 
+            ? null 
+            : visibleZones.find((z: any) => z.id === activeZone);
+    }, [activeZone, visibleZones]);
 
     const handleTableClick = (table: any) => {
         if (mergeMode) {
@@ -122,20 +129,148 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
         return `${mins}m`;
     };
 
-    // Calculate Summary Stats
+    // Petpooja Summary Stats
     let totalTables = 0;
     let available = 0;
-    let occupied = 0;
+    let seated = 0;
+    let running = 0;
     let billed = 0;
 
     visibleZones.forEach(zone => {
         zone.tables?.forEach((table: any) => {
             totalTables++;
-            if (!table.active_order) available++;
-            else if (table.active_order.status === 'billed') billed++;
-            else occupied++;
+            if (!table.active_order) {
+                available++;
+            } else if (table.active_order.status === 'draft') {
+                seated++;
+            } else if (table.active_order.status === 'billed') {
+                billed++;
+            } else {
+                running++;
+            }
         });
     });
+
+    const renderTableCard = (table: any, zone: any) => {
+        const order = table.active_order;
+        const isAvailable = !order;
+        const isDraft = order?.status === 'draft';
+        const isBilled = order?.status === 'billed';
+        const isRunning = order && !isDraft && !isBilled;
+
+        const isLockedByOther = order && order.user_id && order.user_id !== currentUserId;
+
+        return (
+            <div
+                key={table.id}
+                onClick={() => (!isLockedByOther || mergeMode) && handleTableClick(table)}
+                className={cn(
+                    "relative rounded-xl flex flex-col items-center justify-center select-none transition-all duration-150 group h-[78px] sm:h-[84px] cursor-pointer",
+                    // Petpooja authentic palette
+                    isAvailable && "border-2 border-dashed border-slate-300 dark:border-slate-700 bg-card/60 dark:bg-muted/20 text-slate-700 dark:text-slate-300 hover:border-slate-400 hover:bg-card/90",
+                    isDraft && "bg-[#bbf7d0] text-emerald-950 border border-emerald-300/80 shadow-2xs hover:brightness-95",
+                    isRunning && "bg-[#bde3fc] text-sky-950 border border-sky-300/80 shadow-2xs hover:brightness-95",
+                    isBilled && "bg-[#fef08a] text-amber-950 border border-yellow-300/80 shadow-2xs hover:brightness-95",
+                    // Merge selection state
+                    selectedTablesToMerge.includes(table.id) && "ring-2 ring-primary ring-offset-2 scale-[1.03]",
+                    isLockedByOther && !mergeMode && "opacity-80"
+                )}
+            >
+                {/* Subtle Edit button on hover */}
+                <button 
+                    type="button"
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setEditingTable(table); 
+                        setSelectedZoneForTable(zone.id || ''); 
+                        setTableDialogOpen(true); 
+                    }} 
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 dark:text-slate-300 hover:text-foreground p-1 rounded hover:bg-black/10 z-10 cursor-pointer"
+                    title="Edit Table"
+                >
+                    <Edit className="w-3 h-3" />
+                </button>
+
+                {/* Table Name */}
+                <span className="text-xs sm:text-[13px] font-semibold tracking-tight text-center truncate px-2 text-slate-800 dark:text-slate-100">
+                    {table.name}
+                </span>
+
+                {table.is_merged && (
+                    <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 mt-0.5">
+                        🔗 Merged
+                    </span>
+                )}
+
+                {/* Lock indicator */}
+                {isLockedByOther && !mergeMode && (
+                    <div className="absolute top-1 left-1.5 flex items-center gap-0.5 text-[9px] font-bold text-slate-600 dark:text-slate-300">
+                        <Lock size={10} />
+                    </div>
+                )}
+
+                {/* Petpooja Floating Action Pills at Bottom Edge */}
+                {isDraft && (
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleTableClick(table);
+                        }}
+                        title="Open Draft Order"
+                        className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                        <Save className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200" />
+                    </div>
+                )}
+
+                {isRunning && (
+                    <div 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToPrint(order);
+                        }}
+                        title="Print Bill"
+                        className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    >
+                        <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200" />
+                    </div>
+                )}
+
+                {isBilled && (
+                    <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1">
+                        <button 
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOrderToPrint(order);
+                            }}
+                            title="Reprint Bill"
+                            className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                            <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200" />
+                        </button>
+                        <button 
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setViewOrder(order);
+                            }}
+                            title="View Bill Details"
+                            className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                            <Eye className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200" />
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const zonesToRender = React.useMemo(() => {
+        return activeZone === 'all' 
+            ? visibleZones 
+            : visibleZones.filter((z: any) => z.id === activeZone);
+    }, [activeZone, visibleZones]);
 
     return (
         <>
@@ -143,10 +278,10 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
             <div className="flex flex-1 h-[calc(100vh-70px)] w-full bg-muted/10 overflow-hidden print:hidden flex-col">
                 
                 {/* Top Navigation Header */}
-                <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
+                <div className="bg-background border-b p-3 space-y-3 shadow-2xs z-10 shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            {/* Segmented Mode Switcher (Dine-In / Takeaway) */}
+                            {/* Segmented Mode Switcher (Dine-In / Takeaway / Live Orders) */}
                             <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
                                 <button
                                     type="button"
@@ -179,22 +314,26 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             </div>
                         </div>
                         
-                        {/* Stats Summary */}
+                        {/* Petpooja Color Coded Status Legend & Counts */}
                         <div className="flex items-center gap-4">
-                            <div className="text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-4">
+                            <div className="text-xs font-medium hidden md:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-3.5">
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                                    <span className="text-muted-foreground">Available: {available}</span>
+                                    <span className="w-3.5 h-3.5 rounded border border-dashed border-slate-400 bg-card/60"></span>
+                                    <span className="text-muted-foreground">Blank: <strong className="text-foreground font-semibold">{available}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                                    <span className="text-muted-foreground">Running: {occupied}</span>
+                                    <span className="w-3.5 h-3.5 rounded bg-[#bbf7d0] border border-emerald-400/60"></span>
+                                    <span className="text-muted-foreground">Seated: <strong className="text-foreground font-semibold">{seated}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                                    <span className="text-muted-foreground">Billed: {billed}</span>
+                                    <span className="w-3.5 h-3.5 rounded bg-[#bde3fc] border border-sky-400/60"></span>
+                                    <span className="text-muted-foreground">Running: <strong className="text-foreground font-semibold">{running}</strong></span>
                                 </div>
-                                <div className="text-foreground font-bold">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-3.5 h-3.5 rounded bg-[#fef08a] border border-yellow-400/60"></span>
+                                    <span className="text-muted-foreground">Billed: <strong className="text-foreground font-semibold">{billed}</strong></span>
+                                </div>
+                                <div className="text-foreground font-bold pl-2 border-l border-border/60">
                                     Total: {totalTables}
                                 </div>
                             </div>
@@ -202,7 +341,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             {/* Manage Controls (Admin) */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 border-dashed">
+                                    <Button variant="outline" size="sm" className="h-8 border-dashed cursor-pointer">
                                         <Settings className="w-4 h-4 mr-2" /> Manage Floor
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -220,15 +359,15 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
-                                        disabled={!activeZoneData}
+                                        disabled={visibleZones.length === 0}
                                         onSelect={(e) => { 
                                             e.preventDefault();
                                             setEditingTable(null); 
-                                            setSelectedZoneForTable(activeZone || ''); 
+                                            setSelectedZoneForTable(activeZone === 'all' ? (visibleZones[0]?.id || '') : activeZone); 
                                             setTableDialogOpen(true); 
                                         }}
                                     >
-                                        <Plus className="w-4 h-4 mr-2" /> Add Table (Current Zone)
+                                        <Plus className="w-4 h-4 mr-2" /> Add Table
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -241,7 +380,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                             variant="outline" 
                                             size="sm" 
                                             onClick={() => { setMergeMode(false); setSelectedTablesToMerge([]); }}
-                                            className="h-8"
+                                            className="h-8 cursor-pointer"
                                         >
                                             Cancel
                                         </Button>
@@ -257,7 +396,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                                     }
                                                 });
                                             }}
-                                            className="h-8 bg-primary text-primary-foreground font-bold hover:bg-primary/90"
+                                            className="h-8 bg-primary text-primary-foreground font-bold hover:bg-primary/90 cursor-pointer"
                                         >
                                             Confirm Merge ({selectedTablesToMerge.length})
                                         </Button>
@@ -267,7 +406,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                         variant="outline" 
                                         size="sm" 
                                         onClick={() => setMergeMode(true)}
-                                        className="h-8 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 font-medium"
+                                        className="h-8 bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 font-medium cursor-pointer"
                                     >
                                         Merge Tables
                                     </Button>
@@ -279,8 +418,31 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     {/* Zone Toggles & Location Dropdown */}
                     <div className="flex items-center justify-between w-full mb-1">
                         {visibleZones.length > 0 ? (
-                            <ScrollArea className="flex-1 whitespace-nowrap mr-4">
+                            <div className="flex-1 overflow-x-auto no-scrollbar mr-4">
                                 <div className="flex space-x-2 pb-1 items-center">
+                                    {/* All Sections Pill */}
+                                    <motion.button 
+                                        type="button"
+                                        whileTap={{ scale: 0.95 }}
+                                        className={cn(
+                                            "relative rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-colors duration-200 cursor-pointer flex items-center justify-center select-none border outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+                                            activeZone === 'all'
+                                                ? "border-transparent text-primary-foreground font-semibold" 
+                                                : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                        )}
+                                        onClick={() => setActiveZone('all')}
+                                    >
+                                        {activeZone === 'all' && (
+                                            <motion.span
+                                                layoutId="tables-active-zone-pill"
+                                                className="absolute inset-0 rounded-full bg-primary shadow-xs"
+                                                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                            />
+                                        )}
+                                        <span className="relative z-10">All Sections ({totalTables})</span>
+                                    </motion.button>
+
+                                    {/* Individual Zone Pills */}
                                     {visibleZones.map((zone: any) => {
                                         const isActive = activeZone === zone.id;
                                         return (
@@ -303,13 +465,12 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                                         transition={{ type: "spring", stiffness: 450, damping: 32 }}
                                                     />
                                                 )}
-                                                <span className="relative z-10">{zone.name}</span>
+                                                <span className="relative z-10">{zone.name} ({zone.tables?.length || 0})</span>
                                             </motion.button>
                                         );
                                     })}
                                 </div>
-                                <ScrollBar orientation="horizontal" className="hidden" />
-                            </ScrollArea>
+                            </div>
                         ) : (
                             <div className="flex-1"></div>
                         )}
@@ -317,7 +478,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                         {isAllOutlets && allLocations.length > 1 && (
                             <div className="shrink-0">
                                 <Select 
-                                    value={selectedLocationId ? selectedLocationId.toString() : ''} 
+                                    value={selectedLocationId ? selectedLocationId.toString() : (allLocations[0]?.id ? allLocations[0].id.toString() : undefined)} 
                                     onValueChange={(val) => setSelectedLocationId(val)}
                                 >
                                     <SelectTrigger className="w-[180px] h-8 rounded-full text-xs bg-muted/50 border-border/50 focus:ring-0">
@@ -336,148 +497,164 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     </div>
                 </div>
 
-                {/* Main Content Area - Table Grid */}
-                <ScrollArea className="flex-1 min-h-0">
-                    {visibleZones.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
-                            <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>
-                            <p className="text-sm mt-1">Please set up your dining zones and tables in the admin panel.</p>
-                        </div>
-                    ) : activeZoneData ? (
-                        <motion.div 
-                            key={activeZone}
-                            initial={{ opacity: 0.7, y: 3 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.15, ease: "easeOut" }}
-                            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4 pb-8"
-                        >
-                            {activeZoneData.tables?.map((table: any) => {
-                                const order = table.active_order;
-                                const isAvailable = !order;
-                                const isBilled = order?.status === 'billed';
-                                const colorClass = getTableColorClass(table);
-                                
-                                // Lock logic: If an active order exists and current user is not the creator
-                                const isLockedByOther = order && order.user_id !== currentUserId;
-                                
-                                return (
-                                    <div 
-                                        key={table.id}
-                                        onClick={() => (!isLockedByOther || mergeMode) && handleTableClick(table)}
-                                        className={cn(
-                                            "relative flex flex-col p-2.5 border rounded-lg transition-all min-h-[96px] group overflow-hidden",
-                                            table.is_merged ? cn(getMergeSpan(table.name), "bg-gradient-to-br from-card to-muted/30") : "",
-                                            colorClass,
-                                            isLockedByOther && !mergeMode ? "opacity-70 cursor-not-allowed hover:scale-[1.02]" : "cursor-pointer hover:shadow-md hover:scale-[1.02]",
-                                            selectedTablesToMerge.includes(table.id) ? "ring-2 ring-primary ring-offset-2 bg-primary/5 scale-[1.02]" : ""
-                                        )}
-                                    >
-                                        {isLockedByOther && !mergeMode && (
-                                            <div className="absolute inset-0 bg-black/5 z-10 flex flex-col items-center justify-center backdrop-blur-[1px]">
-                                                <Users className="w-8 h-8 text-foreground/40 mb-1" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/60">Occupied</span>
-                                            </div>
-                                        )}
+                {/* Main Content Area - Petpooja Style Table Floor Plan */}
+                <ScrollArea className="flex-1 min-h-0 bg-background/50">
+                    <div className="p-5 pb-12 max-w-[1600px] mx-auto space-y-8">
+                        {visibleZones.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+                                <p className="text-lg font-medium text-foreground">No Dining Zones Found</p>
+                                <p className="text-sm mt-1">Please set up your dining zones and tables in Manage Floor.</p>
+                            </div>
+                        ) : (
+                            zonesToRender.map((zone: any) => (
+                                <div key={zone.id} className="space-y-3.5">
+                                    {/* Section Heading like A/C, Non A/C in Petpooja */}
+                                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                        <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                                            <span>{zone.name}</span>
+                                            <span className="text-xs font-normal text-muted-foreground">({zone.tables?.length || 0} tables)</span>
+                                        </h3>
+                                    </div>
 
-                                        <div className="flex justify-between items-start mb-1 relative z-0">
-                                            <div className="flex flex-col gap-0.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="text-base font-bold leading-none tracking-tight">{table.name}</div>
-                                                    <button 
-                                                        onClick={(e) => { 
-                                                            e.stopPropagation(); 
-                                                            setEditingTable(table); 
-                                                            setSelectedZoneForTable(activeZone || ''); 
-                                                            setTableDialogOpen(true); 
-                                                        }} 
-                                                        className="text-muted-foreground hover:text-primary transition-colors p-1 rounded hover:bg-muted"
-                                                        title="Edit Table"
-                                                    >
-                                                        <Edit className="w-3.5 h-3.5" />
-                                                    </button>
-                                                </div>
-                                                {table.is_merged && (
-                                                    <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider flex items-center gap-1 mt-0.5">
-                                                        <span>🔗 Merged</span>
-                                                        <span 
-                                                            className="text-red-500 hover:text-red-600 cursor-pointer ml-1"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (confirm("Are you sure you want to unmerge these tables?")) {
-                                                                    router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id });
-                                                                }
-                                                            }}
-                                                        >
-                                                            (Unmerge)
-                                                        </span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className={cn("flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border", 
-                                                isAvailable ? "bg-muted/50 text-muted-foreground border-border/50" : "bg-primary/10 text-primary border-primary/20"
-                                            )}>
-                                                <Users size={10} /> 
-                                                {order?.pax || table.seating_capacity}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex-1 flex flex-col justify-end mt-1">
-                                            {order ? (
-                                                <div className="flex justify-between items-end">
-                                                    <div className="space-y-1">
-                                                        {order.waiter && (
-                                                            <div className="flex items-center gap-1 text-[11px] font-medium text-foreground">
-                                                                <User size={10} className="text-muted-foreground" />
-                                                                <span className="truncate max-w-[70px]">{order.waiter.name}</span>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
-                                                            <Clock size={10} className="text-muted-foreground" />
-                                                            <span>{getRunningTime(order.created_at)}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground">Total</div>
-                                                        <div className="font-bold text-sm leading-none tracking-tight text-foreground">
-                                                            ₹{Number(order.grand_total).toFixed(2)}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
-                                                    Available
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {isBilled && (
-                                            <div className="absolute top-2 right-2 flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500 shadow-sm"></span>
+                                    {/* Petpooja Grid of Tables */}
+                                    <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-x-3.5 gap-y-7 items-start">
+                                        {zone.tables && zone.tables.length > 0 ? (
+                                            zone.tables.map((table: any) => renderTableCard(table, zone))
+                                        ) : (
+                                            <div className="col-span-full py-6 text-xs text-muted-foreground italic">
+                                                No tables added to this section yet.
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
-                        </motion.div>
-                    ) : null}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </ScrollArea>
             </div>
 
-            <ZoneFormDialog 
-                open={zoneDialogOpen} 
-                onOpenChange={setZoneDialogOpen} 
-                zone={editingZone} 
-            />
-            
-            <TableFormDialog 
-                open={tableDialogOpen} 
-                onOpenChange={setTableDialogOpen} 
-                table={editingTable}
-                zones={visibleZones}
-                defaultZoneId={selectedZoneForTable}
-            />
+            {/* View Order Dialog (Petpooja Eye Icon) */}
+            {viewOrder && (
+                <Dialog open={true} onOpenChange={(open) => !open && setViewOrder(null)}>
+                    <DialogContent className="sm:max-w-[440px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                        <DialogHeader className="p-4 border-b bg-muted/20">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <DialogTitle className="text-base font-bold flex items-center gap-2">
+                                        <span>{viewOrder?.dining_table?.name || viewOrder?.diningTable?.name || 'Table Order'}</span>
+                                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold uppercase bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                            {viewOrder?.status}
+                                        </span>
+                                    </DialogTitle>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Order #{viewOrder?.order_number} {viewOrder?.waiter?.name && `• Waiter: ${viewOrder.waiter.name}`}
+                                    </p>
+                                </div>
+                            </div>
+                        </DialogHeader>
 
+                        <div className="flex-1 max-h-[360px] overflow-y-auto p-4">
+                            <div className="space-y-3">
+                                <div className="divide-y divide-border/60">
+                                    {viewOrder?.items?.map((item: any) => (
+                                        <div key={item.id} className="py-2 flex items-center justify-between text-xs">
+                                            <div className="space-y-0.5">
+                                                <p className="font-semibold text-foreground">
+                                                    {item.menu_item?.name || item.item_name || 'Item'}
+                                                </p>
+                                                <p className="text-muted-foreground text-[11px]">
+                                                    {item.quantity} × ₹{Number(item.unit_price || 0).toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <span className="font-semibold text-foreground">
+                                                ₹{Number(item.total_price || (item.quantity * item.unit_price) || 0).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="pt-3 border-t border-border/70 space-y-1.5 text-xs">
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Subtotal</span>
+                                        <span>₹{Number(viewOrder?.subtotal || 0).toFixed(2)}</span>
+                                    </div>
+                                    {Number(viewOrder?.tax_amount || 0) > 0 && (
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span>Tax</span>
+                                            <span>₹{Number(viewOrder?.tax_amount || 0).toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-sm font-bold text-foreground pt-1.5 border-t border-border/60">
+                                        <span>Grand Total</span>
+                                        <span className="text-primary font-mono">₹{Number(viewOrder?.grand_total || 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter className="p-3 border-t bg-muted/20 flex items-center justify-between gap-2 sm:justify-between">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="gap-1.5 text-xs h-8 cursor-pointer"
+                                onClick={() => {
+                                    setOrderToPrint(viewOrder);
+                                }}
+                            >
+                                <Printer className="w-3.5 h-3.5" />
+                                Print Bill
+                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="text-xs h-8 cursor-pointer"
+                                    onClick={() => setViewOrder(null)}
+                                >
+                                    Close
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    className="text-xs h-8 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold gap-1.5 cursor-pointer shadow-2xs"
+                                    onClick={() => {
+                                        router.get('/menu-pos/terminal', { order_id: viewOrder.id });
+                                    }}
+                                >
+                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                    Open in POS
+                                </Button>
+                            </div>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Direct Receipt Print Trigger */}
+            {orderToPrint && (
+                <PrintReceipt 
+                    order={orderToPrint} 
+                    isBillOnly={true} 
+                    onPrinted={() => setOrderToPrint(null)} 
+                />
+            )}
+
+            {zoneDialogOpen && (
+                <ZoneFormDialog 
+                    open={zoneDialogOpen} 
+                    onOpenChange={setZoneDialogOpen} 
+                    zone={editingZone} 
+                />
+            )}
+            
+            {tableDialogOpen && (
+                <TableFormDialog 
+                    open={tableDialogOpen} 
+                    onOpenChange={setTableDialogOpen} 
+                    table={editingTable}
+                    zones={visibleZones}
+                    defaultZoneId={selectedZoneForTable}
+                />
+            )}
         </>
     );
 }

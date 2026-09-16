@@ -24,6 +24,7 @@ class DashboardController extends Controller
             : auth()->user()->business_location_id;
 
         $today = Carbon::today();
+        $completedStatuses = ['Completed', 'completed', 'paid'];
 
         // Helper closure to apply optional location filter
         $applyLocationFilter = function ($query) use ($locationId) {
@@ -36,20 +37,54 @@ class DashboardController extends Controller
         // 1. KPI Metrics
         $completedOrdersToday = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
-            ->where('status', 'Completed');
+            ->whereIn('status', $completedStatuses);
             
         $todaysRevenue = (float) $completedOrdersToday->sum('grand_total');
         $todaysOrders = $completedOrdersToday->count();
         $aov = $todaysOrders > 0 ? $todaysRevenue / $todaysOrders : 0;
 
-        $canceledOrders = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
-            ->whereDate('created_at', $today)
-            ->where('status', 'Canceled')
-            ->count();
+        $canceledOrdersQuery = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->where(function($q) use ($today) {
+                $q->whereDate('updated_at', $today)
+                  ->orWhereDate('created_at', $today);
+            })
+            ->where(function($q) {
+                $q->whereIn('status', ['cancelled', 'Canceled', 'canceled'])
+                  ->orWhere('kitchen_status', 'cancelled');
+            });
+
+        $canceledOrders = $canceledOrdersQuery->count();
+
+        $canceledOrdersList = (clone $canceledOrdersQuery)
+            ->with(['diningTable', 'waiter', 'cashier', 'items.menuItem'])
+            ->latest('updated_at')
+            ->take(20)
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'order_type' => $order->order_type,
+                    'table_name' => $order->diningTable?->name,
+                    'waiter_name' => $order->waiter?->name ?? $order->cashier?->name ?? 'Staff',
+                    'grand_total' => (float) $order->grand_total,
+                    'rejection_reason' => $order->rejection_reason ?? 'Voided by staff',
+                    'cancelled_at' => $order->updated_at ? $order->updated_at->format('h:i A') : '',
+                    'items_count' => $order->items->count(),
+                    'items' => $order->items->map(fn($i) => [
+                        'name' => $i->menuItem?->name ?? 'Item',
+                        'quantity' => $i->quantity,
+                        'subtotal' => (float) $i->subtotal,
+                        'is_voided' => (bool) $i->is_voided,
+                        'void_reason' => $i->void_reason,
+                    ]),
+                ];
+            });
 
         // 2. Order Types Breakdown
         $orderTypes = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
+            ->whereIn('status', $completedStatuses)
             ->select('order_type', DB::raw('count(*) as count'), DB::raw('SUM(grand_total) as revenue'))
             ->groupBy('order_type')
             ->get();
@@ -67,7 +102,7 @@ class DashboardController extends Controller
         // 4. Cashier Performance Leaderboard
         $cashierPerformance = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
             ->whereDate('created_at', $today)
-            ->where('status', 'Completed')
+            ->whereIn('status', $completedStatuses)
             ->select('user_id', DB::raw('count(*) as orders_count'), DB::raw('SUM(grand_total) as total_revenue'))
             ->groupBy('user_id')
             ->with('cashier:id,name')
@@ -136,7 +171,7 @@ class DashboardController extends Controller
             $date = Carbon::today()->subDays($i);
             $revenue = Order::when($locationId, fn($q) => $q->where('business_location_id', $locationId))
                 ->whereDate('created_at', $date)
-                ->where('status', 'Completed')
+                ->whereIn('status', $completedStatuses)
                 ->sum('grand_total');
             
             $last7Days->push([
@@ -153,10 +188,13 @@ class DashboardController extends Controller
                 'aov' => $aov,
                 'canceledOrders' => $canceledOrders
             ],
+            'canceledOrdersList' => $canceledOrdersList,
+            'currentDateFormatted' => $today->format('M d, Y'),
             'kitchen' => [
                 'pending' => $kitchenStatus['pending'] ?? 0,
                 'preparing' => $kitchenStatus['preparing'] ?? 0,
                 'ready' => $kitchenStatus['ready'] ?? 0,
+                'cancelled' => $kitchenStatus['cancelled'] ?? 0,
             ],
             'orderTypes' => $orderTypes,
             'cashierPerformance' => $cashierPerformance,

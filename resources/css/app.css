@@ -182,3 +182,12 @@ input[type="number"] {
 [data-radix-scroll-area-viewport] > div {
   display: block !important;
 }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

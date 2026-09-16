@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
@@ -21,6 +21,13 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
     useEffect(() => {
         setLocalOrders(orders);
     }, [orders]);
+
+    const validOrders = useMemo(() => {
+        return localOrders.filter(order => 
+            order.status !== 'draft' && 
+            ((order.items && order.items.length > 0) || (order.kots && order.kots.length > 0))
+        );
+    }, [localOrders]);
     
     // Use a persistent reference for the audio element
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -221,17 +228,17 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     )}
                     <div className="flex gap-2">
                         <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {localOrders.filter(o => o.kitchen_status === 'pending').length} Pending
+                            {validOrders.filter(o => o.kitchen_status === 'pending').length} Pending
                         </Badge>
                         <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {localOrders.filter(o => o.kitchen_status === 'preparing').length} Preparing
+                            {validOrders.filter(o => o.kitchen_status === 'preparing').length} Preparing
                         </Badge>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-                {localOrders.length === 0 && (
+                {validOrders.length === 0 && (
                     <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card/50">
                         <ChefHat className="w-16 h-16 mb-4 opacity-20" />
                         <h2 className="text-xl font-medium mb-1">No Active Orders</h2>
@@ -239,7 +246,7 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     </div>
                 )}
                 
-                {localOrders.map((order) => {
+                {validOrders.map((order) => {
                     const orderTime = new Date(order.created_at);
                     const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000; // 15 mins
                     

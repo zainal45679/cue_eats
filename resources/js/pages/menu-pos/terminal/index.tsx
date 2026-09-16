@@ -13,11 +13,28 @@ import { CheckoutDialog } from './components/CheckoutDialog';
 import { PrintReceipt } from './components/PrintReceipt';
 import { PrintKOT } from './components/PrintKOT';
 import { DineInTopBar } from './DineInTopBar';
+import { ActiveOrdersSheet } from './components/ActiveOrdersSheet';
 import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
 
-export default function PosTerminal({ categories, inventoryBalances, waiters, table, activeOrder }: { categories: any[], inventoryBalances: Record<string, number>, waiters?: any[], table?: any, activeOrder?: any }) {
+export default function PosTerminal({ 
+    categories, 
+    inventoryBalances, 
+    waiters, 
+    table, 
+    activeOrder,
+    runningOrders = [],
+    locationId
+}: { 
+    categories: any[], 
+    inventoryBalances: Record<string, number>, 
+    waiters?: any[], 
+    table?: any, 
+    activeOrder?: any,
+    runningOrders?: any[],
+    locationId?: string | null
+}) {
     const [cart, setCart] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [voidItem, setVoidItem] = useState<any>(null);
@@ -25,6 +42,20 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
     const [managerPin, setManagerPin] = useState('');
     const [isWasted, setIsWasted] = useState(false);
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
+    const [isActiveOrdersOpen, setIsActiveOrdersOpen] = useState(false);
+
+    const handleSelectOrder = (orderId: string) => {
+        router.get('/menu-pos/terminal', { order_id: orderId }, {
+            preserveState: false,
+        });
+    };
+
+    const handleNewOrder = () => {
+        clearCart();
+        router.get('/menu-pos/terminal', {}, {
+            preserveState: false,
+        });
+    };
     
     // Support auto-print from flash
     const { flash, auth } = usePage().props as any;
@@ -56,6 +87,54 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
             triggerOrderPrint(flash.recent_order);
         }
     }, [flash?.recent_order, flash?.recent_kot]);
+
+    // Live WebSockets updates via Reverb / Echo
+    useEffect(() => {
+        const targetLocationId = locationId || auth?.user?.business_location_id;
+        let channel: any = null;
+
+        if (window.Echo && targetLocationId) {
+            channel = window.Echo.private(`orders.${targetLocationId}`)
+                .listen('.App\\Events\\OrderCreated', () => {
+                    router.reload({ only: ['runningOrders', 'inventoryBalances'], preserveScroll: true, preserveState: true });
+                })
+                .listen('.App\\Events\\OrderStatusUpdated', (event: any) => {
+                    router.reload({ only: ['runningOrders', 'activeOrder'], preserveScroll: true, preserveState: true });
+                    
+                    if (event?.kitchenStatus === 'ready') {
+                        try {
+                            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                            osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+                            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start();
+                            osc.stop(ctx.currentTime + 0.4);
+                        } catch (e) {
+                            // AudioContext might require prior user gesture
+                        }
+
+                        toast.success('Food is Ready for Pickup/Serving!', {
+                            description: 'Kitchen marked an order as READY.',
+                            duration: 4000,
+                        });
+                    }
+                });
+        }
+
+        return () => {
+            if (channel && window.Echo && targetLocationId) {
+                channel.stopListening('.App\\Events\\OrderCreated');
+                channel.stopListening('.App\\Events\\OrderStatusUpdated');
+                window.Echo.leave(`orders.${targetLocationId}`);
+            }
+        };
+    }, [locationId, auth?.user?.business_location_id]);
     
     const [selectedItemForMod, setSelectedItemForMod] = useState<any | null>(null);
     const [isModModalOpen, setIsModModalOpen] = useState(false);
@@ -329,6 +408,9 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                     categories={categories}
                     activeCategoryId={activeCategoryId}
                     setActiveCategoryId={setActiveCategoryId}
+                    runningOrders={runningOrders}
+                    onOpenRunningOrders={() => setIsActiveOrdersOpen(true)}
+                    onNewOrder={handleNewOrder}
                 />
                 <div className="flex-1 min-h-0 flex overflow-hidden">
                 {/* Left Side: Main POS Area */}
@@ -821,6 +903,16 @@ export default function PosTerminal({ categories, inventoryBalances, waiters, ta
                     onPrinted={() => setOrderToPrint(null)} 
                 />
             ) : null}
+
+            {/* Active & Running Orders Drawer */}
+            <ActiveOrdersSheet
+                isOpen={isActiveOrdersOpen}
+                onClose={() => setIsActiveOrdersOpen(false)}
+                runningOrders={runningOrders}
+                currentOrderId={activeOrder?.id}
+                onSelectOrder={handleSelectOrder}
+                onNewOrder={handleNewOrder}
+            />
         </>
     );
 }

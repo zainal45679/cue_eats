@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { 
     BarChart3, 
     FileText, 
@@ -13,10 +14,17 @@ import {
     Clock, 
     RefreshCw, 
     CheckCircle2, 
-    ArrowRight, 
-    ChevronDown
+    ArrowRight,
+    AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription 
+} from '@/components/shadcn/ui/dialog';
 import { cn } from '@/lib/utils';
 
 interface AdvancedDashboardProps {
@@ -31,12 +39,15 @@ interface AdvancedDashboardProps {
         pending: number;
         preparing: number;
         ready: number;
+        cancelled?: number;
     };
     orderTypes: { order_type: string; count: number; revenue: number }[];
     cashierPerformance: { name: string; orders: number; revenue: number }[];
     topConsumed: { name: string; quantity: number; uom: string }[];
     lowStockItems: { name: string; qty: number; uom: string; location: string }[];
     salesTrend: { name: string; revenue: number }[];
+    canceledOrdersList?: any[];
+    currentDateFormatted?: string;
 }
 
 export default function Dashboard({ 
@@ -46,8 +57,11 @@ export default function Dashboard({
     cashierPerformance, 
     topConsumed, 
     lowStockItems, 
-    salesTrend 
+    salesTrend,
+    canceledOrdersList = [],
+    currentDateFormatted
 }: AdvancedDashboardProps) {
+    const [canceledDialogOpen, setCanceledDialogOpen] = useState(false);
 
     // Ensure salesTrend has 7 days for the chart to look like the screenshot even if empty
     const paddedSalesTrend = (salesTrend || []).length === 7 ? salesTrend : [
@@ -89,29 +103,28 @@ export default function Dashboard({
     const p2 = dineInPct + takeawayPct;
 
     return (
-        <div className="flex-1 p-6 lg:p-8 pt-6 pb-20 bg-slate-100 dark:bg-[#0c0c0e] min-h-screen text-zinc-900 dark:text-zinc-100 w-full font-sans transition-colors">
-            <Head title="Command Center" />
+        <div className="flex-1 p-4 sm:p-5 lg:p-6 pb-16 bg-slate-100 dark:bg-[#0c0c0e] min-h-screen text-zinc-900 dark:text-zinc-100 w-full font-sans transition-colors">
+            <Head title="Dashboard" />
             
             {/* Header Section */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-8">
-                <div>
-                    <div className="flex items-center gap-3 mb-1">
-                        <h2 className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none">Command Center</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-5 mb-5">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">Dashboard</h2>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-green-500/20 bg-green-500/10">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                             <span className="text-xs font-medium text-green-500 tracking-wide">Live</span>
                         </div>
                     </div>
-                    <p className="text-[15px] font-medium text-zinc-500 dark:text-zinc-400">Your restaurant at a glance.</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Today’s service, sales, kitchen, and stock overview.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="bg-white dark:bg-[#121214] border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                <div className="flex w-full sm:w-auto items-center gap-2.5 shrink-0">
+                    <div className="h-9 flex items-center rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121214] px-3 text-sm text-zinc-600 dark:text-zinc-300">
                         <Calendar className="w-4 h-4 mr-2 text-zinc-500 dark:text-zinc-400" />
-                        Sep 07, 2026
-                        <ChevronDown className="w-4 h-4 ml-2 text-zinc-500" />
-                    </Button>
-                    <Link href="/menu-pos/terminal">
-                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-medium px-5 shadow-xs">
+                        {currentDateFormatted || "Today"}
+                    </div>
+                    <Link href="/menu-pos/terminal" className="ml-auto sm:ml-0">
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-medium px-4 shadow-xs">
                             <Monitor className="w-4 h-4 mr-2" />
                             Open POS
                         </Button>
@@ -120,9 +133,9 @@ export default function Dashboard({
             </div>
 
             {/* SECTION 1: TOP KPI CARDS */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+            <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4 mb-5">
                 {/* Gross Revenue */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-primary/40 dark:border-primary/40 shadow-sm flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-primary/40 dark:border-primary/40 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Gross Revenue</div>
                         <div className="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center">
@@ -138,7 +151,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Total Orders */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Total Orders</div>
                         <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center">
@@ -154,7 +167,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Average Order Value */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Average Order Value</div>
                         <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center">
@@ -170,26 +183,33 @@ export default function Dashboard({
                 </div>
 
                 {/* Canceled Orders */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
+                <button
+                    type="button"
+                    onClick={() => setCanceledDialogOpen(true)}
+                    className="w-full p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between text-left cursor-pointer hover:border-red-500/40 hover:shadow-md transition-all group"
+                >
                     <div className="flex justify-between items-start mb-2">
-                        <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Canceled Orders</div>
-                        <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center">
-                            <XCircle className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+                        <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400 group-hover:text-red-500 transition-colors">Canceled Orders</div>
+                        <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center group-hover:bg-red-500/10 group-hover:border-red-500/20 transition-colors">
+                            <XCircle className="w-4 h-4 text-zinc-500 dark:text-zinc-400 group-hover:text-red-500 transition-colors" />
                         </div>
                     </div>
                     <div>
-                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1">
-                            {metrics.canceledOrders}
+                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1 flex items-baseline justify-between">
+                            <span>{metrics.canceledOrders}</span>
+                            {metrics.canceledOrders > 0 && (
+                                <span className="text-[11px] font-semibold text-red-500 group-hover:underline">View details →</span>
+                            )}
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">Today</div>
                     </div>
-                </div>
+                </button>
             </div>
             
             {/* SECTION 2: CHARTS */}
-            <div className="grid gap-4 md:grid-cols-3 mb-6">
+            <div className="grid gap-3.5 lg:grid-cols-3 mb-5">
                 {/* Revenue Overview */}
-                <div className="col-span-2 p-6 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
+                <div className="lg:col-span-2 p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
                     <div className="flex justify-between items-start mb-8">
                         <div className="flex gap-3">
                             <BarChart3 className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
@@ -198,10 +218,9 @@ export default function Dashboard({
                                 <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Total gross revenue for the last 7 days.</p>
                             </div>
                         </div>
-                        <Button variant="outline" size="sm" className="bg-zinc-100 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs h-8">
+                        <div className="h-8 flex items-center rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-[#18181b] px-3 text-xs text-zinc-600 dark:text-zinc-400">
                             Last 7 days
-                            <ChevronDown className="w-3.5 h-3.5 ml-1 text-zinc-500" />
-                        </Button>
+                        </div>
                     </div>
                     
                     <div className="h-[200px] w-full mt-auto flex items-end justify-between px-4 gap-4 relative">
@@ -216,9 +235,7 @@ export default function Dashboard({
 
                         {/* Bars */}
                         {paddedSalesTrend.map((day, idx) => {
-                            // Visual fake data for Sep 01 in the screenshot to match if real data is 0
-                            const isFakeSep01 = day.name === "Sep 01" && day.revenue === 0;
-                            const h = isFakeSep01 ? 60 : Math.max((day.revenue / maxRevenue) * 100, 0); 
+                            const h = Math.max((day.revenue / maxRevenue) * 100, 0);
                             
                             return (
                                 <div key={idx} className="flex flex-col items-center justify-end w-full group relative h-full z-10">
@@ -241,12 +258,12 @@ export default function Dashboard({
                 </div>
 
                 {/* Sales by Type */}
-                <div className="col-span-1 p-6 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
                     <div className="flex gap-3 mb-8">
                         <PieChart className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
                             <h3 className="text-base font-semibold text-zinc-900 dark:text-white leading-tight">Sales by Type</h3>
-                            <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Distribution of orders today.</p>
+                            <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Completed orders today.</p>
                         </div>
                     </div>
                     <div className="flex-1 flex items-center justify-between gap-4 px-1">
@@ -310,9 +327,9 @@ export default function Dashboard({
             </div>
 
             {/* SECTION 3: BOTTOM CARDS */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-3.5 lg:grid-cols-3">
                 {/* Kitchen Load */}
-                <div className="p-6 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex gap-3 mb-6">
                         <ChefHat className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
@@ -344,14 +361,14 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div className="mt-auto">
-                        <Link href="/kitchen" className="text-sm font-medium text-primary hover:opacity-80 flex items-center transition-opacity">
+                        <Link href="/menu-pos/kds" className="text-sm font-medium text-primary hover:opacity-80 flex items-center transition-opacity">
                             View kitchen <ArrowRight className="w-4 h-4 ml-1" />
                         </Link>
                     </div>
                 </div>
 
                 {/* Cashier Leaderboard */}
-                <div className="p-6 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex gap-3 mb-6">
                         <Users className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
@@ -359,15 +376,30 @@ export default function Dashboard({
                             <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Top staff by revenue today.</p>
                         </div>
                     </div>
-                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4 mb-6">
-                        <Users className="w-10 h-10 text-zinc-400 dark:text-zinc-600 mb-3" />
-                        <div className="text-sm font-bold text-zinc-900 dark:text-white mb-1">No completed orders yet</div>
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">Staff performance appears after your first sale.</div>
-                    </div>
+                    {cashierPerformance.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center px-4 mb-4">
+                            <Users className="w-9 h-9 text-zinc-400 dark:text-zinc-600 mb-3" />
+                            <div className="text-sm font-bold text-zinc-900 dark:text-white mb-1">No completed orders yet</div>
+                            <div className="text-xs text-zinc-500 dark:text-zinc-400">Staff performance appears after your first sale.</div>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {cashierPerformance.map((cashier, index) => (
+                                <div key={`${cashier.name}-${index}`} className="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2.5">
+                                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-semibold">{cashier.name}</p>
+                                        <p className="text-xs text-zinc-500">{cashier.orders} order{cashier.orders === 1 ? '' : 's'}</p>
+                                    </div>
+                                    <p className="text-sm font-bold">${cashier.revenue.toFixed(2)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Inventory Health */}
-                <div className="p-6 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex justify-between items-start mb-6">
                         <div className="flex gap-3">
                             <Package className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
@@ -375,16 +407,28 @@ export default function Dashboard({
                                 <h3 className="text-base font-semibold text-zinc-900 dark:text-white leading-tight">Inventory Health</h3>
                             </div>
                         </div>
-                        <div className="px-3 py-1 rounded-full border border-emerald-500/30 text-emerald-500 text-xs font-medium">
-                            Healthy
+                        <div className={cn("px-3 py-1 rounded-full border text-xs font-medium", lowStockItems.length > 0 ? "border-amber-500/30 text-amber-500" : "border-emerald-500/30 text-emerald-500")}>
+                            {lowStockItems.length > 0 ? `${lowStockItems.length} low` : 'Healthy'}
                         </div>
                     </div>
-                    <div className="flex-1 flex flex-col items-center justify-center text-center px-4 mb-6">
-                        <div className="w-12 h-12 rounded-full border-2 border-emerald-500 flex items-center justify-center mb-4">
-                            <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                    {lowStockItems.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center px-4 mb-4">
+                            <div className="w-11 h-11 rounded-full border-2 border-emerald-500 flex items-center justify-center mb-3">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                            </div>
+                            <div className="text-sm font-bold text-zinc-900 dark:text-white">All stock levels are healthy.</div>
                         </div>
-                        <div className="text-sm font-bold text-zinc-900 dark:text-white">All stock levels are healthy.</div>
-                    </div>
+                    ) : (
+                        <div className="space-y-2 mb-4">
+                            {lowStockItems.slice(0, 4).map((item) => (
+                                <div key={item.name} className="flex items-center gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                                    <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>
+                                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{item.qty} {item.uom}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <div className="mt-auto">
                         <Link href="/inventory/live-stock" className="text-sm font-medium text-primary hover:opacity-80 flex items-center transition-opacity">
                             View inventory <ArrowRight className="w-4 h-4 ml-1" />
@@ -392,6 +436,74 @@ export default function Dashboard({
                     </div>
                 </div>
             </div>
+
+            {/* Canceled Orders Detail Dialog */}
+            <Dialog open={canceledDialogOpen} onOpenChange={setCanceledDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <XCircle className="w-5 h-5" />
+                            Canceled Orders Today ({canceledOrdersList.length})
+                        </DialogTitle>
+                        <DialogDescription>
+                            Review all orders and tickets cancelled during today's service.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1">
+                        {canceledOrdersList.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                No canceled orders recorded today.
+                            </div>
+                        ) : (
+                            canceledOrdersList.map((order: any) => (
+                                <div key={order.id} className="p-3.5 rounded-lg border border-red-500/20 bg-red-500/5 space-y-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-sm text-foreground">#{order.order_number}</span>
+                                                {order.table_name && (
+                                                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                                                        {order.table_name}
+                                                    </span>
+                                                )}
+                                                <span className="text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-600/10 text-red-600 border border-red-600/20">
+                                                    CANCELLED
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Staff: <span className="font-medium text-foreground">{order.waiter_name}</span> • Time: <span className="font-medium text-foreground">{order.cancelled_at}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {order.rejection_reason && (
+                                        <div className="text-xs bg-background/80 p-2 rounded border border-border/50 text-red-600 dark:text-red-400 font-medium">
+                                            Reason: {order.rejection_reason}
+                                        </div>
+                                    )}
+
+                                    {order.items && order.items.length > 0 && (
+                                        <div className="text-xs space-y-1 pt-1 border-t border-border/40">
+                                            <p className="font-semibold text-muted-foreground uppercase text-[10px] tracking-wider">Items in Ticket:</p>
+                                            {order.items.map((item: any, idx: number) => (
+                                                <div key={idx} className="flex justify-between items-center text-muted-foreground pl-1">
+                                                    <span className={cn(item.is_voided && "line-through text-red-500/80")}>
+                                                        {item.quantity}× {item.name}
+                                                    </span>
+                                                    {item.void_reason && (
+                                                        <span className="text-[10px] text-red-500 italic">({item.void_reason})</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

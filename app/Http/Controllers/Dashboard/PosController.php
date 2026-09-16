@@ -19,17 +19,29 @@ class PosController extends Controller
         $table = null;
         $activeOrder = null;
         
+        $orderWith = [
+            'items.modifiers.modifier', 
+            'items.menuItem', 
+            'items.voidedBy',
+            'kots.items.menuItem',
+            'kots.items.modifiers.modifier',
+            'kots.items.voidedBy',
+            'waiter', 
+            'diningTable',
+            'cashier'
+        ];
+
         if ($request->table_id) {
             $table = \App\Models\DiningTable::find($request->table_id);
             if ($table) {
-                $activeOrder = \App\Models\Order::with(['items.modifiers', 'items.menuItem', 'waiter'])
+                $activeOrder = \App\Models\Order::with($orderWith)
                     ->where('dining_table_id', $table->id)
                     ->whereIn('status', ['draft', 'running', 'billed'])
                     ->latest()
                     ->first();
             }
         } elseif ($request->order_id) {
-            $activeOrder = \App\Models\Order::with(['items.modifiers', 'items.menuItem', 'waiter', 'diningTable'])
+            $activeOrder = \App\Models\Order::with($orderWith)
                 ->whereIn('status', ['draft', 'running', 'billed'])
                 ->find($request->order_id);
             if ($activeOrder && $activeOrder->dining_table_id) {
@@ -101,12 +113,25 @@ class PosController extends Controller
             $waiters = \App\Models\User::role('waiter')->get(['id', 'name']);
         }
 
+        $runningOrders = \App\Models\Order::with([
+            'diningTable', 
+            'waiter', 
+            'cashier',
+            'items.menuItem'
+        ])
+            ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
+            ->whereIn('status', ['draft', 'running', 'billed'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return Inertia::render('menu-pos/terminal/index', [
             'categories' => $categories,
             'inventoryBalances' => $balances,
             'waiters' => $waiters,
             'table' => $table,
-            'activeOrder' => $activeOrder
+            'activeOrder' => $activeOrder,
+            'runningOrders' => $runningOrders,
+            'locationId' => $locationId ? (string) $locationId : null,
         ]);
     }
 
@@ -160,7 +185,7 @@ class PosController extends Controller
                 'order_type' => 'Dine-in',
                 'dining_table_id' => $table->id,
                 'status' => 'draft',
-                'kitchen_status' => 'pending',
+                'kitchen_status' => null,
                 'subtotal' => 0,
                 'tax_total' => 0,
                 'grand_total' => 0,
@@ -225,6 +250,9 @@ class PosController extends Controller
             $result = DB::transaction(function () use ($validated, $request, $allowOverride) {
                 if ($validated['action'] === 'cancel_draft' && !empty($validated['order_id'])) {
                     $order = Order::find($validated['order_id']);
+                    if ($order) {
+                        $this->authorizeOrderAccess($order);
+                    }
                     if ($order && $order->status === 'draft') {
                         $tableId = $order->dining_table_id;
                         $locationId = $order->business_location_id;
@@ -263,6 +291,20 @@ class PosController extends Controller
                 if (!$locationId) {
                     $locationId = \App\Models\BusinessLocation::first()?->id ?? 1;
                 }
+
+                abort_if(! auth()->user()->hasRole('admin') && auth()->user()->business_location_id !== $locationId, 403);
+
+                if (! empty($validated['dining_table_id'])) {
+                    $tableLocationId = \App\Models\DiningTable::with('zone')
+                        ->findOrFail($validated['dining_table_id'])
+                        ->zone?->business_location_id;
+                    abort_if($tableLocationId !== $locationId, 403, 'The selected table belongs to another outlet.');
+                }
+
+                if (! empty($validated['waiter_id'])) {
+                    $waiter = \App\Models\User::withoutGlobalScopes()->findOrFail($validated['waiter_id']);
+                    abort_if($waiter->business_location_id !== $locationId, 403, 'The selected waiter belongs to another outlet.');
+                }
                     
                 $storageLocation = \App\Models\StorageLocation::where('business_location_id', $locationId)->first();
                 $storageLocationId = $storageLocation ? $storageLocation->id : 1;
@@ -270,6 +312,9 @@ class PosController extends Controller
                 $order = null;
                 if (!empty($validated['order_id'])) {
                     $order = Order::find($validated['order_id']);
+                    abort_if(! $order, 404);
+                    $this->authorizeOrderAccess($order);
+                    abort_if($order->business_location_id !== $locationId, 403, 'The order belongs to another outlet.');
                     // Update basic details if changed
                     if (isset($validated['pax'])) $order->pax = $validated['pax'];
                     if (isset($validated['waiter_id'])) $order->waiter_id = $validated['waiter_id'];
@@ -546,9 +591,14 @@ class PosController extends Controller
             }
 
             if ($validated['action'] === 'save_kot') {
-                return back()->with([
+                $params = ['order_id' => $order->id];
+                if ($order->dining_table_id) {
+                    $params['table_id'] = $order->dining_table_id;
+                }
+                return redirect()->route('pos.terminal', $params)->with([
                     'success' => "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent to kitchen.",
-                    'recent_kot' => $recentKot
+                    'recent_kot' => $recentKot,
+                    'recent_order' => $order
                 ]);
             }
 
@@ -562,15 +612,27 @@ class PosController extends Controller
                 if (!empty($recentKot)) {
                     $flashData['recent_kot'] = $recentKot;
                 }
-                return back()->with($flashData);
+                $params = ['order_id' => $order->id];
+                if ($order->dining_table_id) {
+                    $params['table_id'] = $order->dining_table_id;
+                }
+                return redirect()->route('pos.terminal', $params)->with($flashData);
             }
 
-            if ($order->dining_table_id && $order->status === 'Completed') {
-                return redirect()->route('pos.tables')->with([
-                    'success' => "Order {$order->order_number} settled successfully.",
-                    'recent_order' => $order,
-                    'is_bill_only' => true
-                ]);
+            if ($order->status === 'Completed') {
+                if ($order->dining_table_id) {
+                    return redirect()->route('pos.tables')->with([
+                        'success' => "Order {$order->order_number} settled successfully.",
+                        'recent_order' => $order,
+                        'is_bill_only' => true
+                    ]);
+                } else {
+                    return redirect()->route('pos.terminal')->with([
+                        'success' => "Order {$order->order_number} settled successfully.",
+                        'recent_order' => $order,
+                        'is_bill_only' => true
+                    ]);
+                }
             }
 
             return back()->with([
@@ -687,5 +749,16 @@ class PosController extends Controller
             'running_balance' => $targetBalance->available_qty,
             'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
         ]);
+    }
+
+    private function authorizeOrderAccess(Order $order): void
+    {
+        $user = auth()->user();
+
+        abort_if(
+            ! $user->hasRole('admin') && $user->business_location_id !== $order->business_location_id,
+            403,
+            'You are not authorized to manage orders for this outlet.'
+        );
     }
 }

@@ -25,6 +25,7 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
     const [submitting, setSubmitting] = React.useState(false);
 
     useEffect(() => {
+        if (!open) return;
         if (zone) {
             setName(zone.name || '');
             setDescription(zone.description || '');
