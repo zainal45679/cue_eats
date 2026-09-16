@@ -12,10 +12,28 @@ class OrderItem extends Model
 {
     use HasUuids;
     protected $table = 'pos_order_items';
-    protected $fillable = ['pos_order_id', 'menu_item_id', 'quantity', 'unit_price', 'subtotal', 'notes', 'kot_round'];
+    protected $fillable = [
+        'pos_order_id', 
+        'menu_item_id', 
+        'quantity', 
+        'unit_price', 
+        'subtotal', 
+        'notes', 
+        'kot_round',
+        'is_voided',
+        'void_reason',
+        'voided_at',
+        'voided_by'
+    ];
+
+    protected $casts = [
+        'is_voided' => 'boolean',
+        'voided_at' => 'datetime',
+    ];
 
     public function order() { return $this->belongsTo(Order::class, 'pos_order_id'); }
     public function menuItem() { return $this->belongsTo(MenuItem::class); }
     public function modifiers() { return $this->hasMany(OrderItemModifier::class, 'pos_order_item_id'); }
+    public function voidedBy() { return $this->belongsTo(User::class, 'voided_by'); }
 
 }

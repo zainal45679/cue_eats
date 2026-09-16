@@ -7,6 +7,7 @@ import { Badge } from '@/components/shadcn/ui/badge';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
+import { motion } from 'motion/react';
 
 export function DineInTopBar({ 
     table, 
@@ -35,47 +36,58 @@ export function DineInTopBar({
             <div className="flex items-center justify-between">
                 {/* Left Section: Mode Switch / Table Context */}
                 <div className="flex items-center gap-2 shrink-0">
-                    {!table ? (
-                        <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
-                            <button
-                                type="button"
-                                onClick={handleBackClick}
-                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                                <LayoutGrid className="w-3.5 h-3.5" />
-                                <span>Dine-In</span>
-                            </button>
-                            <button
-                                type="button"
-                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all bg-background text-foreground shadow-xs cursor-default"
-                            >
-                                <ShoppingBag className="w-3.5 h-3.5 text-primary" />
-                                <span>Takeaway</span>
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
-                                <button
-                                    type="button"
-                                    onClick={handleBackClick}
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all bg-background text-foreground shadow-xs cursor-pointer"
-                                    title="Back to floor tables"
-                                >
-                                    <LayoutGrid className="w-3.5 h-3.5 text-primary" />
-                                    <span>Dine-In</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => router.get('/menu-pos/terminal')}
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
-                                    title="Switch to Takeaway"
-                                >
-                                    <ShoppingBag className="w-3.5 h-3.5" />
-                                    <span>Takeaway</span>
-                                </button>
-                            </div>
+                    <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
+                        <button
+                            type="button"
+                            onClick={handleBackClick}
+                            className={cn(
+                                "relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer select-none",
+                                table ? "text-foreground font-bold" : "text-muted-foreground hover:text-foreground"
+                            )}
+                            title="Floor Tables (Dine-In)"
+                        >
+                            {table && (
+                                <motion.span
+                                    layoutId="pos-top-mode-pill"
+                                    className="absolute inset-0 rounded-md bg-background shadow-xs"
+                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                />
+                            )}
+                            <LayoutGrid className={cn("w-3.5 h-3.5 relative z-10", table ? "text-primary" : "")} />
+                            <span className="relative z-10">Dine-In</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={table ? () => router.get('/menu-pos/terminal') : undefined}
+                            className={cn(
+                                "relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors select-none",
+                                !table ? "text-foreground font-bold cursor-default" : "text-muted-foreground hover:text-foreground cursor-pointer"
+                            )}
+                            title="Takeaway"
+                        >
+                            {!table && (
+                                <motion.span
+                                    layoutId="pos-top-mode-pill"
+                                    className="absolute inset-0 rounded-md bg-background shadow-xs"
+                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                />
+                            )}
+                            <ShoppingBag className={cn("w-3.5 h-3.5 relative z-10", !table ? "text-primary" : "")} />
+                            <span className="relative z-10">Takeaway</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => router.get('/menu-pos/live-orders')}
+                            className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer select-none"
+                            title="Live Orders"
+                        >
+                            <ClipboardList className="w-3.5 h-3.5 relative z-10" />
+                            <span className="relative z-10">Live Orders</span>
+                        </button>
+                    </div>
 
+                    {table && (
+                        <>
                             <Badge variant="secondary" className="h-8 px-3 text-xs font-bold rounded-full bg-primary/10 text-primary border-primary/20 flex items-center gap-1.5">
                                 <UtensilsCrossed className="w-3.5 h-3.5" />
                                 <span>{table.name}</span>
@@ -130,17 +142,6 @@ export function DineInTopBar({
                             )}
                         </>
                     )}
-
-                    {/* Live Orders button right along with the mode toggle */}
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5 px-2.5 border border-border/50 rounded-lg hover:bg-muted"
-                        onClick={() => router.get('/menu-pos/live-orders')}
-                    >
-                        <ClipboardList className="w-3.5 h-3.5 text-primary" />
-                        <span>Live Orders</span>
-                    </Button>
                 </div>
 
                 {/* Right Section: Status Badges, Release Table & Menu Search */}
@@ -207,36 +208,53 @@ export function DineInTopBar({
             {/* Row 2: Category Navigation Pills */}
             <div className="flex items-center justify-between w-full mb-1">
                 <ScrollArea className="flex-1 whitespace-nowrap">
-                    <div className="flex space-x-2 pb-1">
-                        <Button 
+                    <div className="flex space-x-2 pb-1 items-center">
+                        <motion.button 
                             type="button"
-                            variant={activeCategoryId === 'all' ? 'default' : 'outline'}
+                            whileTap={{ scale: 0.95 }}
                             className={cn(
-                                "rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-all cursor-pointer",
+                                "relative rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-colors duration-200 cursor-pointer flex items-center justify-center select-none border outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
                                 activeCategoryId === 'all'
-                                    ? "bg-primary text-primary-foreground shadow-xs border-transparent hover:bg-primary/90"
-                                    : "bg-muted/50 border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    ? "border-transparent text-primary-foreground font-semibold"
+                                    : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
                             )}
                             onClick={() => setActiveCategoryId('all')}
                         >
-                            All Items
-                        </Button>
-                        {categories?.map((cat: any) => (
-                            <Button 
-                                key={cat.id}
-                                type="button"
-                                variant={activeCategoryId === cat.id ? 'default' : 'outline'}
-                                className={cn(
-                                    "rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-all cursor-pointer",
-                                    activeCategoryId === cat.id
-                                        ? "bg-primary text-primary-foreground shadow-xs border-transparent hover:bg-primary/90"
-                                        : "bg-muted/50 border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                )}
-                                onClick={() => setActiveCategoryId(cat.id)}
-                            >
-                                {cat.name}
-                            </Button>
-                        ))}
+                            {activeCategoryId === 'all' && (
+                                <motion.span
+                                    layoutId="pos-category-pill"
+                                    className="absolute inset-0 rounded-full bg-primary shadow-xs"
+                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                />
+                            )}
+                            <span className="relative z-10">All Items</span>
+                        </motion.button>
+                        {categories?.map((cat: any) => {
+                            const isActive = activeCategoryId === cat.id;
+                            return (
+                                <motion.button 
+                                    key={cat.id}
+                                    type="button"
+                                    whileTap={{ scale: 0.95 }}
+                                    className={cn(
+                                        "relative rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-colors duration-200 cursor-pointer flex items-center justify-center select-none border outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+                                        isActive
+                                            ? "border-transparent text-primary-foreground font-semibold"
+                                            : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    )}
+                                    onClick={() => setActiveCategoryId(cat.id)}
+                                >
+                                    {isActive && (
+                                        <motion.span
+                                            layoutId="pos-category-pill"
+                                            className="absolute inset-0 rounded-full bg-primary shadow-xs"
+                                            transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                        />
+                                    )}
+                                    <span className="relative z-10">{cat.name}</span>
+                                </motion.button>
+                            );
+                        })}
                     </div>
                     <ScrollBar orientation="horizontal" className="hidden" />
                 </ScrollArea>

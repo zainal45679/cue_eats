@@ -1,59 +1,57 @@
 import { Head, router } from '@inertiajs/react';
-import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Card, CardContent } from '@/components/shadcn/ui/card';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
-import { Textarea } from '@/components/shadcn/ui/textarea';
 import { cn } from '@/lib/utils';
+import { motion } from 'motion/react';
 import { 
     Clock, 
     ClipboardList, 
     ChefHat, 
-    CheckCircle, 
     Search, 
     X, 
     LayoutGrid, 
     ShoppingBag, 
     Eye, 
-    User, 
-    AlertCircle
+    User
 } from 'lucide-react';
 export default function LiveOrdersScreen({ orders = [], locationId }: { orders: any[], locationId?: string | null }) {
     const [now, setNow] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing'>('all');
     
-    // Dialogs & action states
+    // Read-only order view dialog state
     const [viewOrder, setViewOrder] = useState<any | null>(null);
-    const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<any | null>(null);
-    const [cancelReason, setCancelReason] = useState('');
-    const [showCancelPrompt, setShowCancelPrompt] = useState(false);
-    const [isWasted, setIsWasted] = useState(false);
-    const [cancelItemId, setCancelItemId] = useState<string | null>(null);
 
-    // Live WebSockets updates via Echo + 30-sec polling fallback
+    // Live WebSockets updates via Echo + 15-sec polling fallback
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 60000);
 
+        let channel: any = null;
         if (window.Echo && locationId) {
-            window.Echo.channel(`orders.${locationId}`)
+            channel = window.Echo.private(`orders.${locationId}`)
                 .listen('.App\\Events\\OrderCreated', () => {
+                    router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+                })
+                .listen('.App\\Events\\OrderStatusUpdated', () => {
                     router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
                 });
         }
 
         const pollInterval = setInterval(() => {
             router.reload({ only: ['orders'], preserveState: true, preserveScroll: true });
-        }, 30000);
+        }, 15000);
 
         return () => {
             clearInterval(timer);
             clearInterval(pollInterval);
-            if (window.Echo && locationId) {
-                window.Echo.leaveChannel(`orders.${locationId}`);
+            if (channel && window.Echo && locationId) {
+                channel.stopListening('.App\\Events\\OrderCreated');
+                channel.stopListening('.App\\Events\\OrderStatusUpdated');
+                window.Echo.leave(`orders.${locationId}`);
             }
         };
     }, [locationId]);
@@ -98,16 +96,6 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
         });
     }, [orders, activeTab, searchQuery, pendingOrders, preparingOrders]);
 
-    // Status action handler
-    const updateStatus = (orderId: string, status: string) => {
-        router.post(`/menu-pos/kds/${orderId}/status`, {
-            kitchen_status: status
-        }, {
-            preserveScroll: true,
-            preserveState: true
-        });
-    };
-
     return (
         <>
             <Head title="Live Orders" />
@@ -123,7 +111,7 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                 <button
                                     type="button"
                                     onClick={() => router.get('/menu-pos/tables')}
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer select-none"
                                 >
                                     <LayoutGrid className="w-3.5 h-3.5" />
                                     <span>Dine-In</span>
@@ -131,22 +119,24 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                 <button
                                     type="button"
                                     onClick={() => router.get('/menu-pos/terminal')}
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer select-none"
                                 >
                                     <ShoppingBag className="w-3.5 h-3.5" />
                                     <span>Takeaway</span>
                                 </button>
+                                <button
+                                    type="button"
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-colors text-foreground cursor-default select-none"
+                                >
+                                    <motion.span
+                                        layoutId="pos-top-mode-pill"
+                                        className="absolute inset-0 rounded-md bg-background shadow-xs"
+                                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                    />
+                                    <ClipboardList className="w-3.5 h-3.5 text-primary relative z-10" />
+                                    <span className="relative z-10">Live Orders</span>
+                                </button>
                             </div>
-
-                            {/* Active Live Orders Button */}
-                            <Button 
-                                variant="default" 
-                                size="sm" 
-                                className="h-8 text-xs gap-1.5 px-2.5 rounded-lg shadow-xs font-semibold bg-primary text-primary-foreground cursor-default"
-                            >
-                                <ClipboardList className="w-3.5 h-3.5 text-primary-foreground" />
-                                <span>Live Orders</span>
-                            </Button>
                         </div>
 
                         {/* Middle & Right: Stats Capsule & Search */}
@@ -192,27 +182,37 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                     {/* Row 2: Status Filter Navigation Pills */}
                     <div className="flex items-center justify-between w-full mb-1">
                         <ScrollArea className="flex-1 whitespace-nowrap">
-                            <div className="flex space-x-2 pb-1">
+                            <div className="flex space-x-2 pb-1 items-center">
                                 {[
                                     { id: 'all', label: `All Active (${orders.length})` },
                                     { id: 'pending', label: `Pending (${pendingOrders.length})` },
                                     { id: 'preparing', label: `Preparing (${preparingOrders.length})` },
-                                ].map((tab) => (
-                                    <Button
-                                        key={tab.id}
-                                        type="button"
-                                        variant={activeTab === tab.id ? 'default' : 'outline'}
-                                        className={cn(
-                                            "rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-all cursor-pointer",
-                                            activeTab === tab.id
-                                                ? "bg-primary text-primary-foreground shadow-xs border-transparent hover:bg-primary/90"
-                                                : "bg-muted/50 border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                        )}
-                                        onClick={() => setActiveTab(tab.id as any)}
-                                    >
-                                        {tab.label}
-                                    </Button>
-                                ))}
+                                ].map((tab) => {
+                                    const isActive = activeTab === tab.id;
+                                    return (
+                                        <motion.button
+                                            key={tab.id}
+                                            type="button"
+                                            whileTap={{ scale: 0.95 }}
+                                            className={cn(
+                                                "relative rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-colors duration-200 cursor-pointer flex items-center justify-center select-none border outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+                                                isActive
+                                                    ? "border-transparent text-primary-foreground font-semibold"
+                                                    : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                            )}
+                                            onClick={() => setActiveTab(tab.id as any)}
+                                        >
+                                            {isActive && (
+                                                <motion.span
+                                                    layoutId="live-orders-filter-pill"
+                                                    className="absolute inset-0 rounded-full bg-primary shadow-xs"
+                                                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                                />
+                                            )}
+                                            <span className="relative z-10">{tab.label}</span>
+                                        </motion.button>
+                                    );
+                                })}
                             </div>
                             <ScrollBar orientation="horizontal" className="hidden" />
                         </ScrollArea>
@@ -236,13 +236,18 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 items-start">
+                        <motion.div 
+                            key={activeTab}
+                            initial={{ opacity: 0.7, y: 3 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 items-start"
+                        >
                             {filteredOrders.map((order) => {
                                 const orderTime = new Date(order.created_at);
                                 const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000;
                                 const isPreparing = order.kitchen_status === 'preparing';
                                 const isPending = !isPreparing;
-                                const isCancelled = order.status === 'cancelled';
                                 const tableName = order.dining_table?.name || order.diningTable?.name;
                                 const elapsedTime = getElapsedTime(order.created_at);
 
@@ -339,92 +344,35 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <div className="flex flex-col items-end shrink-0 gap-0.5">
+                                                        <div className="flex flex-col items-end shrink-0">
                                                             <span className="text-xs font-semibold text-foreground">
                                                                 ₹{parseFloat(item.subtotal || '0').toFixed(2)}
                                                             </span>
-                                                            {!isCancelled && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setCancelItemId(item.id);
-                                                                        setSelectedOrderForCancel(order);
-                                                                        setIsWasted(isPreparing);
-                                                                    }}
-                                                                    className="text-[10px] text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                                                                    title="Cancel this item"
-                                                                >
-                                                                    Cancel
-                                                                </button>
-                                                            )}
                                                         </div>
                                                     </li>
                                                 ))}
                                             </ul>
                                         </div>
 
-                                        {/* Card Footer: Action Controls */}
-                                        <div className="p-2 bg-muted/20 border-t mt-auto flex items-center gap-1.5">
-                                            {isPending ? (
-                                                <>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="flex-1 text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8 text-xs font-bold px-0 cursor-pointer"
-                                                        onClick={() => {
-                                                            setSelectedOrderForCancel(order);
-                                                            setShowCancelPrompt(true);
-                                                            setIsWasted(false);
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold px-0 cursor-pointer"
-                                                        onClick={() => updateStatus(order.id, 'preparing')}
-                                                    >
-                                                        Start Prep
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="flex-1 text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8 text-xs font-bold px-0 cursor-pointer"
-                                                        onClick={() => {
-                                                            setSelectedOrderForCancel(order);
-                                                            setShowCancelPrompt(true);
-                                                            setIsWasted(true);
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-bold px-0 cursor-pointer"
-                                                        onClick={() => updateStatus(order.id, 'ready')}
-                                                    >
-                                                        Mark Ready
-                                                    </Button>
-                                                </>
-                                            )}
-
+                                        {/* Card Footer: Read-Only Info & Details */}
+                                        <div className="p-2.5 bg-muted/20 border-t mt-auto flex items-center justify-between">
+                                            <span className="text-xs text-muted-foreground font-medium">
+                                                {order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0)} items
+                                            </span>
                                             <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 text-xs gap-1.5 px-3 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
                                                 onClick={() => setViewOrder(order)}
-                                                title="View Details"
                                             >
-                                                <Eye className="w-4 h-4" />
+                                                <Eye className="w-3.5 h-3.5" />
+                                                <span>View Details</span>
                                             </Button>
                                         </div>
                                     </div>
                                 );
                             })}
-                        </div>
+                        </motion.div>
                     )}
                 </ScrollArea>
             </div>
@@ -513,145 +461,6 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                 </DialogContent>
             </Dialog>
 
-            {/* Cancel Entire Order Dialog */}
-            <Dialog 
-                open={showCancelPrompt && !!selectedOrderForCancel} 
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setShowCancelPrompt(false);
-                        setSelectedOrderForCancel(null);
-                        setCancelReason('');
-                        setIsWasted(false);
-                    }
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Cancel Order #{selectedOrderForCancel?.order_number}</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-3 space-y-3">
-                        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                            Reason for cancellation
-                        </label>
-                        <Textarea 
-                            placeholder="e.g. Customer changed mind, incorrect order entry..."
-                            value={cancelReason}
-                            onChange={(e) => setCancelReason(e.target.value)}
-                            rows={3}
-                        />
-
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                            <input 
-                                type="checkbox" 
-                                id="waste-order"
-                                checked={isWasted}
-                                onChange={(e) => setIsWasted(e.target.checked)}
-                                className="rounded border-border text-destructive focus:ring-destructive cursor-pointer"
-                            />
-                            <label htmlFor="waste-order" className="cursor-pointer">
-                                Log as Wastage? (Do not return ingredients to inventory stock)
-                            </label>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                                setShowCancelPrompt(false);
-                                setSelectedOrderForCancel(null);
-                            }}
-                        >
-                            Back
-                        </Button>
-                        <Button 
-                            variant="destructive" 
-                            size="sm"
-                            disabled={!cancelReason.trim()}
-                            onClick={() => {
-                                router.post(`/menu-pos/live-orders/${selectedOrderForCancel.id}/cancel`, {
-                                    reason: cancelReason,
-                                    is_wasted: isWasted
-                                }, {
-                                    onSuccess: () => {
-                                        setShowCancelPrompt(false);
-                                        setSelectedOrderForCancel(null);
-                                        setCancelReason('');
-                                        setIsWasted(false);
-                                    }
-                                });
-                            }}
-                        >
-                            Confirm Cancellation
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Cancel Specific Item Dialog */}
-            <Dialog 
-                open={!!cancelItemId && !!selectedOrderForCancel} 
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setCancelItemId(null);
-                        setSelectedOrderForCancel(null);
-                        setIsWasted(false);
-                    }
-                }}
-            >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Cancel Item from Order #{selectedOrderForCancel?.order_number}</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-3 space-y-3">
-                        <p className="text-xs text-muted-foreground">
-                            Are you sure you want to cancel this item? The order totals will be automatically adjusted.
-                        </p>
-
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                            <input 
-                                type="checkbox" 
-                                id="waste-item"
-                                checked={isWasted}
-                                onChange={(e) => setIsWasted(e.target.checked)}
-                                className="rounded border-border text-destructive focus:ring-destructive cursor-pointer"
-                            />
-                            <label htmlFor="waste-item" className="cursor-pointer">
-                                Log as Wastage? (Do not return ingredients to inventory stock)
-                            </label>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                                setCancelItemId(null);
-                                setSelectedOrderForCancel(null);
-                            }}
-                        >
-                            Back
-                        </Button>
-                        <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => {
-                                router.post(`/menu-pos/live-orders/items/${cancelItemId}/cancel`, {
-                                    is_wasted: isWasted
-                                }, {
-                                    onSuccess: () => {
-                                        setCancelItemId(null);
-                                        setSelectedOrderForCancel(null);
-                                        setIsWasted(false);
-                                    }
-                                });
-                            }}
-                        >
-                            Confirm Item Cancel
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </>
     );
 }

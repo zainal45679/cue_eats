@@ -91,12 +91,6 @@ class GoodsReceiptNoteController extends Controller
             'items.*.uom_id' => 'required|exists:units_of_measure,id',
         ]);
         
-        foreach ($data['items'] as $item) {
-            if (($item['received_quantity'] + $item['rejected_quantity']) > $item['expected_quantity']) {
-                abort(422, 'Total processed quantity cannot exceed expected quantity.');
-            }
-        }
-
         if (!empty($data['po_id'])) {
             return $this->storePoGrn($data);
         }
@@ -150,27 +144,46 @@ class GoodsReceiptNoteController extends Controller
             ]);
 
             foreach ($data['items'] as $itemData) {
+                $stoItem = $stoLocked->items()
+                    ->where('ingredient_id', $itemData['ingredient_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $stoItem) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => 'A submitted ingredient does not belong to this stock transfer order.',
+                    ]);
+                }
+
+                $remainingQuantity = max(0, (float) $stoItem->dispatched_quantity
+                    - (float) $stoItem->received_quantity
+                    - (float) $stoItem->rejected_quantity);
+                $processedQuantity = (float) $itemData['received_quantity'] + (float) $itemData['rejected_quantity'];
+
+                if ($processedQuantity > $remainingQuantity) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => 'Processed quantity exceeds the remaining quantity on the stock transfer order.',
+                    ]);
+                }
+
                 $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
-                    'expected_quantity' => $itemData['expected_quantity'],
+                    'expected_quantity' => $stoItem->dispatched_quantity,
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
                     'batch_number' => $itemData['batch_number'] ?? null,
                     'mfg_date' => $itemData['mfg_date'] ?? null,
                     'expiry_date' => $itemData['expiry_date'] ?? null,
-                    'uom_id' => $itemData['uom_id'],
+                    'uom_id' => $stoItem->uom_id,
                 ]);
 
-                $uom = \App\Models\UnitOfMeasure::find($itemData['uom_id']);
+                $uom = \App\Models\UnitOfMeasure::find($stoItem->uom_id);
                 $conversionFactor = $uom && $uom->conversion_factor ? (float)$uom->conversion_factor : 1;
                 $convertedReceivedQty = $itemData['received_quantity'] * $conversionFactor;
                 $convertedRejectedQty = $itemData['rejected_quantity'] * $conversionFactor;
 
-                $stoItem = $stoLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
-                if ($stoItem) {
-                    $stoItem->increment('received_quantity', $itemData['received_quantity']);
-                    $stoItem->increment('rejected_quantity', $itemData['rejected_quantity']);
-                }
+                $stoItem->increment('received_quantity', $itemData['received_quantity']);
+                $stoItem->increment('rejected_quantity', $itemData['rejected_quantity']);
 
                 if ($convertedReceivedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
@@ -272,36 +285,55 @@ class GoodsReceiptNoteController extends Controller
             ]);
 
             foreach ($data['items'] as $itemData) {
+                $poItem = $poLocked->items()
+                    ->where('ingredient_id', $itemData['ingredient_id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $poItem) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => 'A submitted ingredient does not belong to this purchase order.',
+                    ]);
+                }
+
+                $remainingQuantity = max(0, (float) $poItem->quantity
+                    - (float) $poItem->received_quantity
+                    - (float) $poItem->rejected_quantity);
+                $processedQuantity = (float) $itemData['received_quantity'] + (float) $itemData['rejected_quantity'];
+
+                if ($processedQuantity > $remainingQuantity) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => 'Processed quantity exceeds the remaining quantity on the purchase order.',
+                    ]);
+                }
+
                 $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
-                    'expected_quantity' => $itemData['expected_quantity'],
+                    'expected_quantity' => $poItem->quantity,
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
                     'batch_number' => $itemData['batch_number'] ?? null,
                     'mfg_date' => $itemData['mfg_date'] ?? null,
                     'expiry_date' => $itemData['expiry_date'] ?? null,
-                    'uom_id' => $itemData['uom_id'],
+                    'uom_id' => $poItem->purchase_uom_id,
                 ]);
 
-                $uom = \App\Models\UnitOfMeasure::find($itemData['uom_id']);
+                $uom = \App\Models\UnitOfMeasure::find($poItem->purchase_uom_id);
                 $conversionFactor = $uom && $uom->conversion_factor ? (float)$uom->conversion_factor : 1;
                 $convertedReceivedQty = $itemData['received_quantity'] * $conversionFactor;
                 $convertedRejectedQty = $itemData['rejected_quantity'] * $conversionFactor;
 
                 // Update PO Item received quantity
-                $poItem = $poLocked->items()->where('ingredient_id', $itemData['ingredient_id'])->first();
-                if ($poItem) {
-                    $poItem->increment('received_quantity', $itemData['received_quantity']);
-                    $poItem->increment('rejected_quantity', $itemData['rejected_quantity']);
+                $poItem->increment('received_quantity', $itemData['received_quantity']);
+                $poItem->increment('rejected_quantity', $itemData['rejected_quantity']);
                     
-                    // Update supplier price tracking
-                    $supplierIngredient = \App\Models\IngredientSupplier::where('ingredient_id', $itemData['ingredient_id'])
-                        ->where('supplier_id', $poLocked->supplier_id)
-                        ->first();
+                // Update supplier price tracking
+                $supplierIngredient = \App\Models\IngredientSupplier::where('ingredient_id', $itemData['ingredient_id'])
+                    ->where('supplier_id', $poLocked->supplier_id)
+                    ->first();
                     
-                    if ($supplierIngredient) {
-                        $supplierIngredient->update(['price' => $poItem->unit_price]);
-                    }
+                if ($supplierIngredient) {
+                    $supplierIngredient->update(['price' => $poItem->unit_price]);
                 }
 
                 if ($convertedReceivedQty > 0 || $convertedRejectedQty > 0) {

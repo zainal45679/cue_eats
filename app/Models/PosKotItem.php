@@ -12,7 +12,12 @@ class PosKotItem extends Model
     use HasUuids;
 
     protected $table = 'pos_kot_items';
-    protected $fillable = ['pos_kot_id', 'menu_item_id', 'quantity', 'notes'];
+    protected $fillable = ['pos_kot_id', 'menu_item_id', 'quantity', 'notes', 'is_voided', 'void_reason', 'voided_at', 'voided_by'];
+
+    protected $casts = [
+        'is_voided' => 'boolean',
+        'voided_at' => 'datetime',
+    ];
 
     public function kot(): BelongsTo
     {
@@ -27,5 +32,10 @@ class PosKotItem extends Model
     public function modifiers(): HasMany
     {
         return $this->hasMany(PosKotItemModifier::class, 'pos_kot_item_id');
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
     }
 }

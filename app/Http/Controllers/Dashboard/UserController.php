@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\EntityEnum;
+use App\Helpers\GateHelper;
 use App\Helpers\TableHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -16,6 +18,8 @@ final class UserController extends Controller
 {
     public function index()
     {
+        GateHelper::read(EntityEnum::Users);
+
         $query = User::query()->with(['businessLocation', 'creator'])
             ->whereDoesntHave('roles', function ($query): void {
                 $query->whereIn('name', ['admin']);
@@ -36,6 +40,8 @@ final class UserController extends Controller
 
     public function create()
     {
+        GateHelper::create(EntityEnum::Users);
+
         $businessLocations = \App\Models\BusinessLocation::where('status', true)->get(['id', 'location_name']);
         
         return inertia('users/add', [
@@ -45,6 +51,8 @@ final class UserController extends Controller
 
     public function store(Request $request)
     {
+        GateHelper::create(EntityEnum::Users);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -52,6 +60,8 @@ final class UserController extends Controller
             'role' => 'required|exists:roles,name',
             'business_location_id' => 'nullable|exists:business_locations,id',
         ]);
+
+        $this->authorizeRoleAssignment($request->string('role')->toString());
 
         $locationId = $request->business_location_id;
         
@@ -76,6 +86,8 @@ final class UserController extends Controller
 
     public function show($uuid)
     {
+        GateHelper::read(EntityEnum::Users);
+
         $user = User::with(['roles', 'businessLocation'])->findByUuid($uuid);
         
         // Multi-tenancy handled by global scope
@@ -92,6 +104,8 @@ final class UserController extends Controller
 
     public function edit($uuid)
     {
+        GateHelper::update(EntityEnum::Users);
+
         $user = User::with('roles')->where('uuid', $uuid)->firstOrFail();
 
         // Multi-tenancy handled by global scope
@@ -99,7 +113,9 @@ final class UserController extends Controller
         $roleName = $user->roles->first()?->name ?? null;
         
         // Only fetch roles the user is allowed to assign (could be filtered further, but keeping simple)
-        $roles = Role::all();
+        $roles = Role::query()
+            ->when(! auth()->user()->hasRole('admin'), fn ($query) => $query->where('name', '!=', 'admin'))
+            ->get();
         $businessLocations = \App\Models\BusinessLocation::where('status', true)->get(['id', 'location_name']);
 
         return Inertia::render('users/edit', [
@@ -114,6 +130,8 @@ final class UserController extends Controller
 
     public function update(Request $request, $uuid)
     {
+        GateHelper::update(EntityEnum::Users);
+
         $user = User::findByUuid($uuid);
         
         // Multi-tenancy handled by global scope
@@ -126,6 +144,8 @@ final class UserController extends Controller
             'business_location_id' => 'nullable|exists:business_locations,id',
             'status' => 'boolean',
         ]);
+
+        $this->authorizeRoleAssignment($request->string('role')->toString());
 
         $locationId = $request->business_location_id;
         
@@ -151,6 +171,8 @@ final class UserController extends Controller
 
     public function destroy($uuid)
     {
+        GateHelper::delete(EntityEnum::Users);
+
         $user = User::findByUuid($uuid);
         
         // Multi-tenancy handled by global scope
@@ -162,6 +184,8 @@ final class UserController extends Controller
 
     public function search(Request $request)
     {
+        GateHelper::read(EntityEnum::Users);
+
         $query = User::query()
             ->whereDoesntHave('roles', function ($query): void {
                 $query->whereIn('name', ['delivery-boy', 'branch-admin']);
@@ -177,5 +201,14 @@ final class UserController extends Controller
         $users = $query->limit(50)->get(['id', 'name', 'email']);
 
         return response()->json($users);
+    }
+
+    private function authorizeRoleAssignment(string $role): void
+    {
+        abort_if(
+            $role === 'admin' && ! auth()->user()->hasRole('admin'),
+            403,
+            'Only administrators may assign the administrator role.'
+        );
     }
 }

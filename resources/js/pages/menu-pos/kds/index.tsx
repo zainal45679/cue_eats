@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
-import { Clock, CheckCircle, ChefHat, XCircle } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, XCircle, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
@@ -11,11 +11,16 @@ import { Textarea } from '@/components/shadcn/ui/textarea';
 import { XPage } from '@/components/x/page/XPage';
 
 export default function KdsScreen({ orders, locationId }: { orders: any[], locationId: string }) {
+    const [localOrders, setLocalOrders] = useState<any[]>(orders);
     const [now, setNow] = useState(new Date());
     const [rejectOrder, setRejectOrder] = useState<any | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id.toString())));
     const [isSoundReady, setIsSoundReady] = useState(false);
+
+    useEffect(() => {
+        setLocalOrders(orders);
+    }, [orders]);
     
     // Use a persistent reference for the audio element
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -34,6 +39,28 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
             } catch (e) {
                 console.warn('Audio playback failed', e);
             }
+        }
+    };
+
+    const playCancellationSound = () => {
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const time = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(520, time);
+            osc.frequency.setValueAtTime(392, time + 0.15);
+            gain.gain.setValueAtTime(0.3, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.4);
+        } catch (e) {
+            console.warn('Cancellation tone failed', e);
         }
     };
 
@@ -57,10 +84,10 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
     }, [isSoundReady]);
 
     useEffect(() => {
-        const currentIds = new Set(orders.map(o => o.id.toString()));
+        const currentIds = new Set(localOrders.map(o => o.id.toString()));
         let hasNewOrder = false;
         
-        for (const order of orders) {
+        for (const order of localOrders) {
             if (!previousOrderIds.has(order.id.toString())) {
                 hasNewOrder = true;
                 break;
@@ -72,30 +99,86 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
         }
 
         setPreviousOrderIds(currentIds);
-    }, [orders, isSoundReady]);
+    }, [localOrders, isSoundReady]);
 
-    // Update timers every minute
+    // Update timers and handle real-time sync with fast 3-sec fallback
     useEffect(() => {
         const timerInterval = setInterval(() => setNow(new Date()), 60000);
         
-        // Listen for new orders via WebSockets for this specific location
-        if (window.Echo && locationId) {
-            window.Echo.channel(`orders.${locationId}`)
-                .listen('.App\\Events\\OrderCreated', (e: any) => {
-                    playKdsBeep();
-                    router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
-                });
+        const channels: any[] = [];
+
+        if (window.Echo) {
+            const handleOrderCreated = (e: any) => {
+                playKdsBeep();
+                if (e.order) {
+                    setLocalOrders(prev => {
+                        const exists = prev.some(o => o.id === e.order.id);
+                        if (exists) {
+                            return prev.map(o => o.id === e.order.id ? { ...o, ...e.order } : o);
+                        }
+                        return [...prev, e.order];
+                    });
+                }
+                router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+            };
+
+            const handleOrderStatusUpdated = (e: any) => {
+                if (e.kitchenStatus === 'cancelled') {
+                    playCancellationSound();
+                }
+                if (e.orderId) {
+                    setLocalOrders(prev => {
+                        return prev.map(o => {
+                            if (o.id === e.orderId) {
+                                return {
+                                    ...o,
+                                    status: e.status ?? o.status,
+                                    kitchen_status: e.kitchenStatus ?? o.kitchen_status,
+                                };
+                            }
+                            return o;
+                        }).filter(o => {
+                            if (o.id === e.orderId && e.kitchenStatus === 'ready') return false;
+                            return true;
+                        });
+                    });
+                }
+                router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+            };
+
+            if (locationId) {
+                const locChannel = window.Echo.private(`orders.${locationId}`);
+                locChannel.listen('.App\\Events\\OrderCreated', handleOrderCreated);
+                locChannel.listen('.App\\Events\\OrderStatusUpdated', handleOrderStatusUpdated);
+                channels.push({ name: `orders.${locationId}`, instance: locChannel });
+            }
         }
+
+        // Fast 3-second background polling fallback
+        const pollInterval = setInterval(() => {
+            router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+        }, 3000);
         
         return () => {
             clearInterval(timerInterval);
+            clearInterval(pollInterval);
             if (window.Echo) {
-                window.Echo.leaveChannel(`orders.${locationId}`);
+                channels.forEach(ch => {
+                    ch.instance.stopListening('.App\\Events\\OrderCreated');
+                    ch.instance.stopListening('.App\\Events\\OrderStatusUpdated');
+                    window.Echo.leave(ch.name);
+                });
             }
         };
     }, [locationId]);
 
     const updateStatus = (orderId: string, status: string, reason?: string) => {
+        // Instant optimistic update
+        setLocalOrders(prev => {
+            if (status === 'ready') return prev.filter(o => o.id !== orderId);
+            return prev.map(o => o.id === orderId ? { ...o, kitchen_status: status } : o);
+        });
+
         router.post(`/menu-pos/kds/${orderId}/status`, {
             kitchen_status: status,
             rejection_reason: reason
@@ -138,17 +221,17 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     )}
                     <div className="flex gap-2">
                         <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {orders.filter(o => o.kitchen_status === 'pending').length} Pending
+                            {localOrders.filter(o => o.kitchen_status === 'pending').length} Pending
                         </Badge>
                         <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {orders.filter(o => o.kitchen_status === 'preparing').length} Preparing
+                            {localOrders.filter(o => o.kitchen_status === 'preparing').length} Preparing
                         </Badge>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-                {orders.length === 0 && (
+                {localOrders.length === 0 && (
                     <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card/50">
                         <ChefHat className="w-16 h-16 mb-4 opacity-20" />
                         <h2 className="text-xl font-medium mb-1">No Active Orders</h2>
@@ -156,10 +239,11 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     </div>
                 )}
                 
-                {orders.map((order) => {
+                {localOrders.map((order) => {
                     const orderTime = new Date(order.created_at);
                     const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000; // 15 mins
                     
+                    const isCancelled = order.kitchen_status === 'cancelled';
                     const isPreparing = order.kitchen_status === 'preparing';
                     const isPending = order.kitchen_status === 'pending';
                     const tableName = order.dining_table?.name || order.diningTable?.name;
@@ -171,15 +255,16 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     return (
                         <div key={order.id} className={cn(
                             "flex flex-col bg-card border shadow-sm rounded-lg overflow-hidden min-h-[260px]",
+                            isCancelled ? "border-t-[6px] border-t-red-600 border-red-500/40 bg-red-500/5 shadow-md" :
                             isPreparing ? "border-t-[6px] border-t-blue-600" : "border-t-[6px] border-t-amber-500",
                             isOverdue && isPending && "border-t-red-600 animate-pulse"
                         )}>
                             {/* Card Header: Primary Order & Table Info */}
-                            <div className="flex flex-col p-3 border-b bg-muted/20 space-y-1.5">
+                            <div className={cn("flex flex-col p-3 border-b space-y-1.5", isCancelled ? "bg-red-500/15" : "bg-muted/20")}>
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <div className="text-xl font-black leading-none tracking-tight text-foreground flex items-center gap-2">
-                                            <span>#{order.order_number}</span>
+                                            <span className={cn(isCancelled && "line-through text-red-600")}>#{order.order_number}</span>
                                             {tableName && (
                                                 <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
                                                     {tableName}
@@ -201,12 +286,31 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                                     </span>
                                     <span className={cn(
                                         "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
+                                        isCancelled ? "bg-red-600 text-white border-red-600 animate-pulse font-black" :
                                         isPreparing ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                                     )}>
-                                        {order.kitchen_status}
+                                        {isCancelled ? 'CANCELLED' : order.kitchen_status}
                                     </span>
                                 </div>
                             </div>
+
+                            {/* Cancelled Order Notification Banner */}
+                            {isCancelled && (
+                                <>
+                                    <div className="bg-red-600 text-white px-3 py-1.5 flex items-center justify-between text-xs font-black tracking-wide uppercase">
+                                        <div className="flex items-center gap-1.5">
+                                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Order Cancelled</span>
+                                        </div>
+                                        <span className="text-[10px] opacity-90">DO NOT PREPARE</span>
+                                    </div>
+                                    {order.rejection_reason && (
+                                        <div className="bg-red-500/10 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 font-semibold border-b border-red-500/20">
+                                            Reason: {order.rejection_reason}
+                                        </div>
+                                    )}
+                                </>
+                            )}
                             
                             {/* Card Body: Round-by-Round Submissions */}
                             <div className="flex-1 p-2.5 overflow-y-auto max-h-[340px] custom-scrollbar space-y-3">
@@ -251,7 +355,7 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                                                             {isKotReady ? '✓ PREPARED' : isKotPreparing ? '⚡ PREPARING' : '🔴 NEW'}
                                                         </span>
 
-                                                        {!isKotReady && (
+                                                        {!isKotReady && !isCancelled && (
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
@@ -266,74 +370,129 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
 
                                                 {/* Round Items List */}
                                                 <ul className="py-1 divide-y divide-border/20">
-                                                    {kot.items?.map((item: any) => (
-                                                        <li key={item.id} className="px-2.5 py-1.5 hover:bg-muted/20">
-                                                            <div className="flex items-start">
-                                                                <span className="font-extrabold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className={cn(
-                                                                        "font-bold text-sm leading-tight",
-                                                                        isKotReady ? "text-muted-foreground line-through" : "text-foreground"
-                                                                    )}>
-                                                                        {item.menu_item?.name || item.menu_item_name}
+                                                    {kot.items?.map((item: any) => {
+                                                        if (item.is_voided) {
+                                                            return (
+                                                                <li key={item.id} className="px-2.5 py-1.5 bg-red-500/10 border-l-4 border-l-red-600 my-0.5">
+                                                                    <div className="flex items-start">
+                                                                        <span className="font-extrabold text-sm w-7 shrink-0 text-red-600 line-through">{item.quantity} x</span>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="font-bold text-sm leading-tight text-red-600 line-through">
+                                                                                {item.menu_item?.name || item.menu_item_name}
+                                                                            </div>
+                                                                            <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5">
+                                                                                <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider no-underline">VOIDED</span>
+                                                                                {item.void_reason && <span className="italic truncate text-muted-foreground font-normal">Reason: {item.void_reason}</span>}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                    {item.modifiers && item.modifiers.length > 0 && (
-                                                                        <div className="mt-0.5">
-                                                                            {item.modifiers.map((mod: any) => (
-                                                                                <div key={mod.id} className="text-xs text-muted-foreground font-medium">
-                                                                                    - {mod.modifier?.name || mod.modifier_name}
-                                                                                </div>
-                                                                            ))}
+                                                                </li>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <li key={item.id} className="px-2.5 py-1.5 hover:bg-muted/20">
+                                                                <div className="flex items-start">
+                                                                    <span className="font-extrabold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className={cn(
+                                                                            "font-bold text-sm leading-tight",
+                                                                            isKotReady ? "text-muted-foreground line-through" : "text-foreground"
+                                                                        )}>
+                                                                            {item.menu_item?.name || item.menu_item_name}
                                                                         </div>
-                                                                    )}
-                                                                    {item.notes && (
-                                                                        <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
-                                                                            * {item.notes}
-                                                                        </div>
-                                                                    )}
+                                                                        {item.modifiers && item.modifiers.length > 0 && (
+                                                                            <div className="mt-0.5">
+                                                                                {item.modifiers.map((mod: any) => (
+                                                                                    <div key={mod.id} className="text-xs text-muted-foreground font-medium">
+                                                                                        - {mod.modifier?.name || mod.modifier_name}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                        {item.notes && (
+                                                                            <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
+                                                                                * {item.notes}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </li>
-                                                    ))}
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                             </div>
                                         );
                                     })
                                 ) : (
                                     <ul className="py-1">
-                                        {order.items?.map((item: any) => (
-                                            <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
-                                                <div className="flex items-start">
-                                                    <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-bold text-sm leading-tight text-foreground">
-                                                            {item.menu_item?.name}
+                                        {order.items?.map((item: any) => {
+                                            if (item.is_voided) {
+                                                return (
+                                                    <li key={item.id} className="px-2 py-1.5 bg-red-500/10 border-l-4 border-l-red-600 my-0.5">
+                                                        <div className="flex items-start">
+                                                            <span className="font-bold text-sm w-7 shrink-0 text-red-600 line-through">{item.quantity} x</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-bold text-sm leading-tight text-red-600 line-through">
+                                                                    {item.menu_item?.name}
+                                                                </div>
+                                                                <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5">
+                                                                    <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider">VOIDED</span>
+                                                                    {item.void_reason && <span className="italic truncate text-muted-foreground font-normal">Reason: {item.void_reason}</span>}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        {item.modifiers && item.modifiers.length > 0 && (
-                                                            <div className="mt-0.5">
-                                                                {item.modifiers.map((mod: any) => (
-                                                                    <div key={mod.id} className="text-xs text-muted-foreground font-medium">
-                                                                        - {mod.modifier?.name}
-                                                                    </div>
-                                                                ))}
+                                                    </li>
+                                                );
+                                            }
+
+                                            return (
+                                                <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
+                                                    <div className="flex items-start">
+                                                        <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-bold text-sm leading-tight text-foreground">
+                                                                {item.menu_item?.name}
                                                             </div>
-                                                        )}
-                                                        {item.notes && (
-                                                            <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
-                                                                * {item.notes}
-                                                            </div>
-                                                        )}
+                                                            {item.modifiers && item.modifiers.length > 0 && (
+                                                                <div className="mt-0.5">
+                                                                    {item.modifiers.map((mod: any) => (
+                                                                        <div key={mod.id} className="text-xs text-muted-foreground font-medium">
+                                                                            - {mod.modifier?.name}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {item.notes && (
+                                                                <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
+                                                                    * {item.notes}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </li>
-                                        ))}
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 )}
                             </div>
                             
                             {/* Card Footer: Overall Order Bump Controls */}
                             <div className="p-2 bg-muted/20 border-t mt-auto flex gap-2">
-                                {isPending ? (
+                                {isCancelled ? (
+                                    <Button 
+                                        variant="destructive" 
+                                        size="sm"
+                                        className="w-full bg-red-600 hover:bg-red-700 text-white h-9 text-xs font-bold shadow-sm"
+                                        onClick={() => {
+                                            setLocalOrders(prev => prev.filter(o => o.id !== order.id));
+                                            router.post(`/menu-pos/kds/${order.id}/dismiss`, {}, { preserveScroll: true });
+                                        }}
+                                    >
+                                        <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                        Acknowledge & Clear Ticket
+                                    </Button>
+                                ) : isPending ? (
                                     <>
                                         <Button 
                                             variant="outline" 

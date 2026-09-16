@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Models\Order;
-use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -22,6 +22,6 @@ class OrderCreated implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        return new Channel('orders.' . $this->order->business_location_id);
+        return new PrivateChannel('orders.' . $this->order->business_location_id);
     }
 }

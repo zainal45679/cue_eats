@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\RecipeItem;
 use App\Models\StorageLocation;
 use App\Models\Ingredient;
+use Illuminate\Support\Facades\DB;
 
 class InventoryDeductionService
 {
@@ -17,32 +18,33 @@ class InventoryDeductionService
      */
     public static function deductOrderItem(OrderItem $orderItem, string $businessLocationId, bool $allowOverride = true): void
     {
-        // Prevent double deduction for the same order item
-        $alreadyDeducted = InventoryLedger::where('reference_type', OrderItem::class)
-            ->where('reference_id', $orderItem->id)
-            ->where('transaction_type', 'sale')
-            ->exists();
+        DB::transaction(function () use ($orderItem, $businessLocationId, $allowOverride): void {
+            OrderItem::whereKey($orderItem->id)->lockForUpdate()->firstOrFail();
 
-        if ($alreadyDeducted) {
-            return;
-        }
+            $alreadyDeducted = InventoryLedger::where('reference_type', OrderItem::class)
+                ->where('reference_id', $orderItem->id)
+                ->where('transaction_type', 'sale')
+                ->exists();
 
-        // 1. Menu Item Recipes
-        $menuItemRecipes = RecipeItem::where('menu_item_id', $orderItem->menu_item_id)->get();
-        foreach ($menuItemRecipes as $recipe) {
-            $quantity = (float) $recipe->quantity * (float) $orderItem->quantity;
-            self::deductIngredient($recipe->ingredient_id, $businessLocationId, $quantity, $orderItem->id, $allowOverride);
-        }
+            if ($alreadyDeducted) {
+                return;
+            }
 
-        // 2. Modifier Recipes
-        $modifiers = $orderItem->modifiers()->with('modifier')->get();
-        foreach ($modifiers as $mod) {
-            $modRecipes = RecipeItem::where('modifier_id', $mod->modifier_id)->get();
-            foreach ($modRecipes as $recipe) {
+            $menuItemRecipes = RecipeItem::where('menu_item_id', $orderItem->menu_item_id)->get();
+            foreach ($menuItemRecipes as $recipe) {
                 $quantity = (float) $recipe->quantity * (float) $orderItem->quantity;
                 self::deductIngredient($recipe->ingredient_id, $businessLocationId, $quantity, $orderItem->id, $allowOverride);
             }
-        }
+
+            $modifiers = $orderItem->modifiers()->with('modifier')->get();
+            foreach ($modifiers as $mod) {
+                $modRecipes = RecipeItem::where('modifier_id', $mod->modifier_id)->get();
+                foreach ($modRecipes as $recipe) {
+                    $quantity = (float) $recipe->quantity * (float) $orderItem->quantity;
+                    self::deductIngredient($recipe->ingredient_id, $businessLocationId, $quantity, $orderItem->id, $allowOverride);
+                }
+            }
+        });
     }
 
     /**
@@ -54,16 +56,15 @@ class InventoryDeductionService
             return;
         }
 
-        // Priority 1: Storage location in this branch with highest available stock for this ingredient
-        $targetBalance = InventoryBalance::whereHas('storageLocation', function ($q) use ($businessLocationId) {
+        $balances = InventoryBalance::whereHas('storageLocation', function ($q) use ($businessLocationId) {
             $q->where('business_location_id', $businessLocationId);
         })
-        ->where('ingredient_id', $ingredientId)
-        ->orderByDesc('available_qty')
-        ->first();
+            ->where('ingredient_id', $ingredientId)
+            ->orderByDesc('available_qty')
+            ->lockForUpdate()
+            ->get();
 
-        // Priority 2: Storage location of type Kitchen or Kitchen in name
-        if (!$targetBalance) {
+        if ($balances->isEmpty()) {
             $storageLoc = StorageLocation::where('business_location_id', $businessLocationId)
                 ->where(function ($q) {
                     $q->where('storage_type', 'Kitchen')
@@ -76,28 +77,56 @@ class InventoryDeductionService
                     ['storage_type' => 'Kitchen', 'status' => 1]
                 );
 
-            $targetBalance = InventoryBalance::firstOrCreate(
+            $balances = collect([InventoryBalance::firstOrCreate(
                 ['ingredient_id' => $ingredientId, 'storage_location_id' => $storageLoc->id],
                 ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
-            );
+            )]);
         }
 
-        if ((float) $targetBalance->available_qty < $quantity && !$allowOverride) {
+        $totalAvailable = (float) $balances->sum(fn ($balance) => max(0, (float) $balance->available_qty));
+        if ($totalAvailable < $quantity && !$allowOverride) {
             $ingredient = Ingredient::find($ingredientId);
             throw new \Exception("Insufficient stock for ingredient: " . ($ingredient ? $ingredient->name : 'Unknown'));
         }
 
-        $targetBalance->decrement('available_qty', $quantity);
+        $remaining = $quantity;
+        foreach ($balances as $balance) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $deduction = min(max(0, (float) $balance->available_qty), $remaining);
+            if ($deduction <= 0) {
+                continue;
+            }
+
+            self::recordDeduction($balance, $ingredientId, $businessLocationId, $orderItemId, $deduction);
+            $remaining -= $deduction;
+        }
+
+        if ($remaining > 0) {
+            self::recordDeduction($balances->first(), $ingredientId, $businessLocationId, $orderItemId, $remaining);
+        }
+    }
+
+    private static function recordDeduction(
+        InventoryBalance $balance,
+        string $ingredientId,
+        string $businessLocationId,
+        string $orderItemId,
+        float $quantity
+    ): void {
+        $balance->decrement('available_qty', $quantity);
 
         InventoryLedger::create([
             'business_location_id' => $businessLocationId,
-            'storage_location_id' => $targetBalance->storage_location_id,
+            'storage_location_id' => $balance->storage_location_id,
             'ingredient_id' => $ingredientId,
             'transaction_type' => 'sale',
             'reference_type' => OrderItem::class,
             'reference_id' => $orderItemId,
             'quantity' => -$quantity,
-            'running_balance' => $targetBalance->fresh()->available_qty,
+            'running_balance' => $balance->fresh()->available_qty,
             'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
         ]);
     }
@@ -131,17 +160,30 @@ class InventoryDeductionService
      */
     public static function revertOrderItem(OrderItem $orderItem, bool $isWasted = false): void
     {
-        $deductions = InventoryLedger::where('reference_type', OrderItem::class)
+        DB::transaction(function () use ($orderItem, $isWasted): void {
+            OrderItem::whereKey($orderItem->id)->lockForUpdate()->firstOrFail();
+
+            $alreadyReverted = InventoryLedger::where('reference_type', OrderItem::class)
+                ->where('reference_id', $orderItem->id)
+                ->whereIn('transaction_type', ['sale_refund', 'wastage'])
+                ->exists();
+
+            if ($alreadyReverted) {
+                return;
+            }
+
+            $deductions = InventoryLedger::where('reference_type', OrderItem::class)
             ->where('reference_id', $orderItem->id)
             ->where('transaction_type', 'sale')
             ->get();
 
-        foreach ($deductions as $deduction) {
-            $qtyToRevert = abs((float)$deduction->quantity);
+            foreach ($deductions as $deduction) {
+                $qtyToRevert = abs((float)$deduction->quantity);
 
-            $balance = InventoryBalance::where('storage_location_id', $deduction->storage_location_id)
-                ->where('ingredient_id', $deduction->ingredient_id)
-                ->first();
+                $balance = InventoryBalance::where('storage_location_id', $deduction->storage_location_id)
+                    ->where('ingredient_id', $deduction->ingredient_id)
+                    ->lockForUpdate()
+                    ->first();
 
             if ($balance) {
                 // 1. Refund the sale
@@ -175,7 +217,8 @@ class InventoryDeductionService
                         'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
                     ]);
                 }
+                }
             }
-        }
+        });
     }
 }

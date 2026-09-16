@@ -111,7 +111,7 @@ export default function Dashboard({
                         <ChevronDown className="w-4 h-4 ml-2 text-zinc-500" />
                     </Button>
                     <Link href="/menu-pos/terminal">
-                        <Button className="bg-[#f97316] hover:bg-[#ea580c] text-white border-0 font-medium px-5">
+                        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 font-medium px-5 shadow-xs">
                             <Monitor className="w-4 h-4 mr-2" />
                             Open POS
                         </Button>
@@ -122,11 +122,11 @@ export default function Dashboard({
             {/* SECTION 1: TOP KPI CARDS */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                 {/* Gross Revenue */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-orange-500/40 dark:border-orange-500/40 shadow-sm flex flex-col justify-between">
+                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-primary/40 dark:border-primary/40 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Gross Revenue</div>
-                        <div className="w-8 h-8 rounded bg-orange-500/10 border border-orange-500/30 flex items-center justify-center">
-                            <BarChart3 className="w-4 h-4 text-[#f97316]" />
+                        <div className="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center">
+                            <BarChart3 className="w-4 h-4 text-primary" />
                         </div>
                     </div>
                     <div>
@@ -321,9 +321,9 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-6">
-                        <div className="rounded-lg border border-[#f97316]/30 bg-[#f97316]/10 p-3 flex flex-col items-center justify-center">
+                        <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 flex flex-col items-center justify-center">
                             <div className="text-[28px] font-bold text-zinc-900 dark:text-white leading-none mb-2">{kitchen.pending}</div>
-                            <div className="flex items-center gap-1.5 text-[#f97316]">
+                            <div className="flex items-center gap-1.5 text-primary">
                                 <Clock className="w-3.5 h-3.5" />
                                 <span className="text-xs font-medium">Pending</span>
                             </div>
@@ -344,7 +344,7 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div className="mt-auto">
-                        <Link href="/kitchen" className="text-sm font-medium text-[#f97316] hover:text-[#ea580c] flex items-center transition-colors">
+                        <Link href="/kitchen" className="text-sm font-medium text-primary hover:opacity-80 flex items-center transition-opacity">
                             View kitchen <ArrowRight className="w-4 h-4 ml-1" />
                         </Link>
                     </div>
@@ -386,7 +386,7 @@ export default function Dashboard({
                         <div className="text-sm font-bold text-zinc-900 dark:text-white">All stock levels are healthy.</div>
                     </div>
                     <div className="mt-auto">
-                        <Link href="/inventory/live-stock" className="text-sm font-medium text-[#f97316] hover:text-[#ea580c] flex items-center transition-colors">
+                        <Link href="/inventory/live-stock" className="text-sm font-medium text-primary hover:opacity-80 flex items-center transition-opacity">
                             View inventory <ArrowRight className="w-4 h-4 ml-1" />
                         </Link>
                     </div>

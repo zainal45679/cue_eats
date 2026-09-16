@@ -137,6 +137,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('kds', [\App\Http\Controllers\Dashboard\KdsController::class, 'index'])->name('pos.kds');
         Route::post('kds/{order}/status', [\App\Http\Controllers\Dashboard\KdsController::class, 'updateStatus'])->name('pos.kds.update-status');
         Route::post('kds/kot/{kot}/status', [\App\Http\Controllers\Dashboard\KdsController::class, 'updateKotStatus'])->name('pos.kds.kot-update-status');
+        Route::post('kds/{order}/dismiss', [\App\Http\Controllers\Dashboard\KdsController::class, 'dismissOrder'])->name('pos.kds.dismiss');
 
         // Live Orders (Manager)
         Route::get('live-orders', [\App\Http\Controllers\Dashboard\LiveOrdersController::class, 'index'])->name('live-orders.index');

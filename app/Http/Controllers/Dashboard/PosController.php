@@ -188,6 +188,7 @@ class PosController extends Controller
             'customer_name' => 'nullable|string',
             'order_type' => 'required|string',
             'payment_method' => 'nullable|string',
+            'tendered_amount' => 'nullable|numeric|min:0',
             'dining_table_id' => 'nullable|exists:dining_tables,id',
             'waiter_id' => 'nullable|exists:users,id',
             'pax' => 'nullable|integer|min:1',
@@ -326,13 +327,43 @@ class PosController extends Controller
                     $kotItemsPayload = [];
 
                     foreach ($validated['cart'] as $item) {
+                        $menuItemModel = MenuItem::with('modifierGroups.modifiers')
+                            ->where('is_active', true)
+                            ->where('is_available', true)
+                            ->findOrFail($item['menu_item_id']);
+
+                        $outletOverride = $menuItemModel->outletOverrides()
+                            ->where('business_location_id', $locationId)
+                            ->where('is_active', true)
+                            ->first();
+
+                        if ($outletOverride && ! $outletOverride->is_available) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'cart' => $menuItemModel->name.' is not available at this outlet.',
+                            ]);
+                        }
+
+                        $basePrice = (float) ($outletOverride?->price ?? $menuItemModel->price);
+                        $allowedModifiers = $menuItemModel->modifierGroups
+                            ->flatMap(fn ($group) => $group->modifiers)
+                            ->where('is_active', true)
+                            ->keyBy('id');
+
                         $modAdjustment = 0;
                         if (!empty($item['modifiers'])) {
                             foreach ($item['modifiers'] as $mod) {
-                                $modAdjustment += floatval($mod['price_adjustment'] ?? 0);
+                                $modifier = $allowedModifiers->get($mod['modifier_id']);
+
+                                if (! $modifier) {
+                                    throw \Illuminate\Validation\ValidationException::withMessages([
+                                        'cart' => 'A selected modifier is not available for '.$menuItemModel->name.'.',
+                                    ]);
+                                }
+
+                                $modAdjustment += (float) $modifier->price_adjustment;
                             }
                         }
-                        $unitPriceWithMods = floatval($item['price']) + $modAdjustment;
+                        $unitPriceWithMods = $basePrice + $modAdjustment;
 
                         $orderItem = OrderItem::create([
                             'pos_order_id' => $order->id,
@@ -355,26 +386,23 @@ class PosController extends Controller
 
                         if (!empty($item['modifiers'])) {
                             foreach ($item['modifiers'] as $mod) {
+                                $modifier = $allowedModifiers->get($mod['modifier_id']);
+
                                 OrderItemModifier::create([
                                     'pos_order_item_id' => $orderItem->id,
                                     'modifier_id' => $mod['modifier_id'],
-                                    'price_adjustment' => $mod['price_adjustment'],
+                                    'price_adjustment' => $modifier->price_adjustment,
                                 ]);
 
                                 \App\Models\PosKotItemModifier::create([
                                     'pos_kot_item_id' => $kotItem->id,
                                     'modifier_id' => $mod['modifier_id'],
-                                    'price_adjustment' => $mod['price_adjustment'],
+                                    'price_adjustment' => $modifier->price_adjustment,
                                 ]);
 
-                                $modModel = \App\Models\Modifier::find($mod['modifier_id']);
-                                if ($modModel) {
-                                    $modifierDetails[] = ['modifier_name' => $modModel->name];
-                                }
+                                $modifierDetails[] = ['modifier_name' => $modifier->name];
                             }
                         }
-
-                        $menuItemModel = \App\Models\MenuItem::find($item['menu_item_id']);
 
                         $kotItemsPayload[] = [
                             'id' => $kotItem->id,
@@ -410,6 +438,7 @@ class PosController extends Controller
                 if ($order->items->count() > 0) {
                     $subtotal = 0;
                     foreach ($order->items as $item) {
+                        if ($item->is_voided) continue;
                         $subtotal += floatval($item->subtotal);
                     }
                     
@@ -431,8 +460,8 @@ class PosController extends Controller
                 // Update Status based on action
                 if ($validated['action'] === 'settle') {
                     if (($validated['payment_method'] ?? null) === 'Cash') {
-                        $tendered = floatval($request->input('tendered_amount', 0));
-                        if ($tendered > 0 && round($tendered, 2) < round($order->grand_total, 2)) {
+                        $tendered = (float) ($validated['tendered_amount'] ?? 0);
+                        if (round($tendered, 2) < round($order->grand_total, 2)) {
                             throw \Illuminate\Validation\ValidationException::withMessages([
                                 'tendered_amount' => 'Insufficient cash tendered. Total due is $' . number_format($order->grand_total, 2)
                             ]);
@@ -477,15 +506,36 @@ class PosController extends Controller
 
             $order = $result['order'];
             $recentKot = $result['recent_kot'];
-            $order->load(['items.menuItem', 'items.modifiers.modifier', 'location', 'cashier']);
+            $order->load([
+                'items.menuItem', 
+                'items.modifiers.modifier', 
+                'items.voidedBy',
+                'kots.items.menuItem',
+                'kots.items.modifiers.modifier',
+                'kots.items.voidedBy',
+                'diningTable',
+                'waiter',
+                'location', 
+                'cashier'
+            ]);
             
-            // Broadcast KOT only if there were new items
+            // Broadcast KOT if there were new items
             if (!empty($validated['cart'])) {
                 try {
                     event(new \App\Events\OrderCreated($order));
                 } catch (\Throwable $e) {
                     \Log::warning('Broadcast failed for OrderCreated: ' . $e->getMessage());
                 }
+            }
+
+            // Always broadcast order status and table status updates
+            try {
+                event(new \App\Events\OrderStatusUpdated($order));
+                if ($order->dining_table_id) {
+                    event(new \App\Events\TableStatusUpdated($order->dining_table_id, $order->business_location_id));
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Broadcast failed for OrderStatusUpdated/TableStatusUpdated: ' . $e->getMessage());
             }
             
             // Redirect based on action and order type

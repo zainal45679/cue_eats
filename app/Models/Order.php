@@ -12,7 +12,29 @@ class Order extends Model
 {
     use HasUuids;
     protected $table = 'pos_orders';
-    protected $fillable = ['order_number', 'business_location_id', 'user_id', 'customer_name', 'order_type', 'status', 'kitchen_status', 'rejection_reason', 'subtotal', 'tax_total', 'discount_total', 'grand_total', 'payment_method', 'dining_table_id', 'waiter_id', 'pax'];
+    protected $fillable = [
+        'order_number', 
+        'business_location_id', 
+        'user_id', 
+        'customer_name', 
+        'order_type', 
+        'status', 
+        'kitchen_status', 
+        'rejection_reason', 
+        'kitchen_dismissed_at',
+        'subtotal', 
+        'tax_total', 
+        'discount_total', 
+        'grand_total', 
+        'payment_method', 
+        'dining_table_id', 
+        'waiter_id', 
+        'pax'
+    ];
+
+    protected $casts = [
+        'kitchen_dismissed_at' => 'datetime',
+    ];
 
     public function items() { return $this->hasMany(OrderItem::class, 'pos_order_id'); }
     public function location() { return $this->belongsTo(BusinessLocation::class, 'business_location_id'); }

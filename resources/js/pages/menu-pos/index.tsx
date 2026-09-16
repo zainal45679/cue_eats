@@ -1,5 +1,6 @@
 import { Head, router, usePage, Link } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { XPage } from '@/components/x/page/XPage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/ui/table';
 import { Button } from '@/components/shadcn/ui/button';
@@ -460,97 +461,72 @@ export default function MenuManagement({
         {/* PETPOOJA HORIZONTAL NAVIGATION TABS STRIP */}
         <div className="bg-[#f0f9ff]/70 dark:bg-muted/30 border-y border-border/60 -mx-6 px-6 mb-6 flex items-center justify-between overflow-x-auto">
           <div className="flex items-center gap-1 sm:gap-2 py-1">
-            <button
-              onClick={() => handleTabChange('items')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap",
-                activeTab === 'items'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span>Items</span>
-              <ChevronDown className="w-3 h-3 opacity-70" />
-            </button>
-
-            <button
-              onClick={() => handleTabChange('categories')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'categories'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Categories
-            </button>
-
-            <button
-              onClick={() => handleTabChange('variants')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'variants'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Variants
-            </button>
-
-            <button
-              onClick={() => handleTabChange('modifiers')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'modifiers'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Addons
-            </button>
+            {[
+              { id: 'items', label: 'Items', icon: true },
+              { id: 'categories', label: 'Categories' },
+              { id: 'variants', label: 'Variants' },
+              { id: 'modifiers', label: 'Addons' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <motion.button
+                  key={tab.id}
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "relative px-3 py-2 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap select-none",
+                    isActive ? "text-[#0284c7] font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {tab.icon && <ChevronDown className="w-3 h-3 opacity-70" />}
+                  {isActive && (
+                    <motion.div
+                      layoutId="menu-pos-active-tab-bar"
+                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#0284c7] rounded-full"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
 
             <Link
               href="/menu-pos/tables"
-              className="px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors whitespace-nowrap"
+              className="px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors whitespace-nowrap active:scale-95"
             >
               Tables/Areas
             </Link>
 
-            <button
-              onClick={() => handleTabChange('outlet-menu')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'outlet-menu'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Outlet Menu
-            </button>
-
-            <button
-              onClick={() => handleTabChange('taxes')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'taxes'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Taxes
-            </button>
-
-            <button
-              onClick={() => handleTabChange('discounts')}
-              className={cn(
-                "px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap",
-                activeTab === 'discounts'
-                  ? "text-[#0284c7] font-bold border-b-2 border-[#0284c7] rounded-b-none"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Discounts
-            </button>
+            {[
+              { id: 'outlet-menu', label: 'Outlet Menu' },
+              { id: 'taxes', label: 'Taxes' },
+              { id: 'discounts', label: 'Discounts' },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <motion.button
+                  key={tab.id}
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    "relative px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap select-none",
+                    isActive ? "text-[#0284c7] font-bold" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span>{tab.label}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="menu-pos-active-tab-bar"
+                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#0284c7] rounded-full"
+                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
 

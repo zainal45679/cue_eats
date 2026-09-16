@@ -3,7 +3,7 @@
 namespace App\Events;
 
 use App\Models\DiningTable;
-use Illuminate\Broadcasting\Channel;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -24,6 +24,6 @@ class TableStatusUpdated implements ShouldBroadcastNow
 
     public function broadcastOn()
     {
-        return new Channel('tables.' . $this->locationId);
+        return new PrivateChannel('tables.' . $this->locationId);
     }
 }

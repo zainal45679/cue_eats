@@ -113,38 +113,38 @@ function CollapsibleNavItem({
         <SidebarMenuButton
           asChild
           className={cn(
-            "group cursor-pointer !text-[13px] !font-medium !h-10 px-3 transition-colors border",
+            "relative group cursor-pointer !text-[13px] !font-medium !h-10 px-3 transition-all duration-200 border rounded-md flex items-center select-none overflow-hidden active:scale-[0.98]",
             isActive 
-              ? "bg-[#f97316]/10 border-[#f97316]/30 text-[#f97316] hover:bg-[#f97316]/20 hover:text-[#f97316]" 
+              ? "bg-primary/10 border-primary/20 text-primary font-semibold hover:bg-primary/15 hover:text-primary shadow-xs" 
               : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white border-transparent"
           )}
           tooltip={{ children: item.title }}
         >
           {firstHref ? (
-            <Link href={firstHref} prefetch onClick={handleHeaderClick}>
+            <Link href={firstHref} prefetch onClick={handleHeaderClick} className="flex items-center w-full">
               {item.icon && (
                 <item.icon
                   className={cn(
-                    "mr-3 h-4 w-4 transition-colors",
-                    isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                    "mr-3 h-4 w-4 transition-colors duration-200 shrink-0",
+                    isActive ? "text-primary" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
                   )}
                 />
               )}
-              <span className="flex-1">{item.title}</span>
-              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-[#f97316]" : "opacity-50")} />
+              <span className="flex-1 truncate">{item.title}</span>
+              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-primary" : "opacity-50")} />
             </Link>
           ) : (
-            <CollapsibleTrigger className="w-full flex items-center">
+            <CollapsibleTrigger className="flex items-center w-full">
               {item.icon && (
                 <item.icon
                   className={cn(
-                    "mr-3 h-4 w-4 transition-colors",
-                    isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                    "mr-3 h-4 w-4 transition-colors duration-200 shrink-0",
+                    isActive ? "text-primary" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
                   )}
                 />
               )}
-              <span className="flex-1">{item.title}</span>
-              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-[#f97316]" : "opacity-50")} />
+              <span className="flex-1 truncate">{item.title}</span>
+              <ChevronRight className={cn("ml-auto h-4 w-4 transition-transform duration-200", isOpen ? "rotate-90" : "rotate-0", isActive ? "text-primary" : "opacity-50")} />
             </CollapsibleTrigger>
           )}
         </SidebarMenuButton>
@@ -158,14 +158,14 @@ function CollapsibleNavItem({
                     asChild
                     isActive={isChildActive}
                     className={cn(
-                      "!text-[13px] !h-9 px-3 transition-colors rounded-md flex items-center bg-transparent border-transparent",
+                      "relative !text-[13px] !h-8 px-2 transition-colors duration-150 flex items-center select-none !bg-transparent hover:!bg-transparent active:!bg-transparent data-[active=true]:!bg-transparent !border-0 !shadow-none",
                       isChildActive
-                        ? "!text-[#f97316] font-semibold !bg-transparent !border-transparent"
-                        : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white"
+                        ? "!text-primary font-semibold hover:!text-primary data-[active=true]:!text-primary"
+                        : "text-zinc-500 dark:text-zinc-400 font-normal hover:text-zinc-900 dark:hover:text-zinc-100"
                     )}
                   >
-                    <Link href={child.href as string} prefetch>
-                      {child.title}
+                    <Link href={child.href as string} prefetch className="flex items-center w-full">
+                      <span className="transition-colors duration-150 truncate">{child.title}</span>
                     </Link>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
@@ -230,23 +230,23 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                     <SidebarMenuButton
                       asChild
                       className={cn(
-                        "!text-[13px] !font-medium !h-10 px-3 transition-colors",
+                        "relative !text-[13px] !font-medium !h-10 px-3 transition-all duration-200 border rounded-md flex items-center select-none overflow-hidden active:scale-[0.98]",
                         isActive 
-                          ? "bg-[#f97316]/10 border border-[#f97316]/30 text-[#f97316] hover:bg-[#f97316]/20 hover:text-[#f97316]" 
-                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white border border-transparent"
+                          ? "bg-primary/10 border-primary/20 text-primary font-semibold hover:bg-primary/15 hover:text-primary shadow-xs" 
+                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#18181b] hover:text-zinc-900 dark:hover:text-white border-transparent"
                       )}
                       tooltip={{ children: item.title }}
                     >
-                      <Link href={item.href as string} prefetch>
+                      <Link href={item.href as string} prefetch className="flex items-center w-full">
                         {item.icon && (
                           <item.icon
                             className={cn(
-                              "mr-3 h-4 w-4 transition-colors",
-                              isActive ? "text-[#f97316]" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
+                              "mr-3 h-4 w-4 transition-colors duration-200 shrink-0",
+                              isActive ? "text-primary" : "text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-300"
                             )}
                           />
                         )}
-                        <span>{item.title}</span>
+                        <span className="flex-1 truncate">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

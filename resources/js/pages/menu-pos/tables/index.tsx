@@ -9,6 +9,7 @@ import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
+import { motion } from 'motion/react';
 
 const getMergeSpan = (tableName: string) => {
     if (!tableName) return "col-span-2 sm:col-span-2 md:col-span-2";
@@ -62,18 +63,34 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
 
     useEffect(() => {
         if (!auth.user) return;
-        const locId = auth.user.business_location_id || 1; // Fallback or dynamic based on active loc
+        const locId = selectedLocationId || auth.user.business_location_id;
+        if (!locId) return;
         
-        const channel = window.Echo.channel(`tables.${locId}`)
-            .listen('.App\\Events\\TableStatusUpdated', () => {
-                router.reload({ only: ['zones'] });
-            });
+        let channel: any = null;
+        if (window.Echo) {
+            channel = window.Echo.private(`tables.${locId}`)
+                .listen('.App\\Events\\TableStatusUpdated', () => {
+                    router.reload({ only: ['zones'], preserveScroll: true, preserveState: true });
+                })
+                .listen('.App\\Events\\OrderStatusUpdated', () => {
+                    router.reload({ only: ['zones'], preserveScroll: true, preserveState: true });
+                });
+        }
+
+        // Silent 15-second background polling fallback
+        const pollInterval = setInterval(() => {
+            router.reload({ only: ['zones'], preserveScroll: true, preserveState: true });
+        }, 15000);
 
         return () => {
-            channel.stopListening('.App\\Events\\TableStatusUpdated');
-            window.Echo.leaveChannel(`tables.${locId}`);
+            clearInterval(pollInterval);
+            if (channel && window.Echo) {
+                channel.stopListening('.App\\Events\\TableStatusUpdated');
+                channel.stopListening('.App\\Events\\OrderStatusUpdated');
+                window.Echo.leave(`tables.${locId}`);
+            }
         };
-    }, [auth.user]);
+    }, [auth.user, selectedLocationId]);
 
     const activeZoneData = visibleZones.find((z: any) => z.id === activeZone);
 
@@ -133,31 +150,33 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             <div className="inline-flex items-center p-0.5 bg-muted/60 border border-border/60 rounded-lg shadow-2xs">
                                 <button
                                     type="button"
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all bg-background text-foreground shadow-xs cursor-default"
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md transition-colors text-foreground cursor-default select-none"
                                 >
-                                    <LayoutGrid className="w-3.5 h-3.5 text-primary" />
-                                    <span>Dine-In</span>
+                                    <motion.span
+                                        layoutId="pos-top-mode-pill"
+                                        className="absolute inset-0 rounded-md bg-background shadow-xs"
+                                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                    />
+                                    <LayoutGrid className="w-3.5 h-3.5 text-primary relative z-10" />
+                                    <span className="relative z-10">Dine-In</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => router.get('/menu-pos/terminal')}
-                                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all text-muted-foreground hover:text-foreground cursor-pointer"
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer select-none"
                                 >
                                     <ShoppingBag className="w-3.5 h-3.5" />
                                     <span>Takeaway</span>
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => router.get('/menu-pos/live-orders')}
+                                    className="relative flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-colors text-muted-foreground hover:text-foreground cursor-pointer select-none"
+                                >
+                                    <ClipboardList className="w-3.5 h-3.5" />
+                                    <span>Live Orders</span>
+                                </button>
                             </div>
-
-                            {/* Live Orders button right along with the mode toggle */}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 text-xs text-muted-foreground hover:text-foreground gap-1.5 px-2.5 border border-border/50 rounded-lg hover:bg-muted"
-                                onClick={() => router.get('/menu-pos/live-orders')}
-                            >
-                                <ClipboardList className="w-3.5 h-3.5 text-primary" />
-                                <span>Live Orders</span>
-                            </Button>
                         </div>
                         
                         {/* Stats Summary */}
@@ -261,22 +280,33 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     <div className="flex items-center justify-between w-full mb-1">
                         {visibleZones.length > 0 ? (
                             <ScrollArea className="flex-1 whitespace-nowrap mr-4">
-                                <div className="flex space-x-2 pb-1">
-                                    {visibleZones.map((zone: any) => (
-                                        <Button 
-                                            key={zone.id}
-                                            variant={activeZone === zone.id ? 'default' : 'outline'}
-                                            className={cn(
-                                                "rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-all cursor-pointer",
-                                                activeZone === zone.id 
-                                                    ? "bg-primary text-primary-foreground shadow-xs border-transparent hover:bg-primary/90" 
-                                                    : "bg-muted/50 border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                            )}
-                                            onClick={() => setActiveZone(zone.id)}
-                                        >
-                                            {zone.name}
-                                        </Button>
-                                    ))}
+                                <div className="flex space-x-2 pb-1 items-center">
+                                    {visibleZones.map((zone: any) => {
+                                        const isActive = activeZone === zone.id;
+                                        return (
+                                            <motion.button 
+                                                key={zone.id}
+                                                type="button"
+                                                whileTap={{ scale: 0.95 }}
+                                                className={cn(
+                                                    "relative rounded-full px-5 h-8 text-xs shrink-0 font-medium transition-colors duration-200 cursor-pointer flex items-center justify-center select-none border outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
+                                                    isActive 
+                                                        ? "border-transparent text-primary-foreground font-semibold" 
+                                                        : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                )}
+                                                onClick={() => setActiveZone(zone.id)}
+                                            >
+                                                {isActive && (
+                                                    <motion.span
+                                                        layoutId="tables-active-zone-pill"
+                                                        className="absolute inset-0 rounded-full bg-primary shadow-xs"
+                                                        transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                                                    />
+                                                )}
+                                                <span className="relative z-10">{zone.name}</span>
+                                            </motion.button>
+                                        );
+                                    })}
                                 </div>
                                 <ScrollBar orientation="horizontal" className="hidden" />
                             </ScrollArea>
@@ -314,7 +344,13 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             <p className="text-sm mt-1">Please set up your dining zones and tables in the admin panel.</p>
                         </div>
                     ) : activeZoneData ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4 pb-8">
+                        <motion.div 
+                            key={activeZone}
+                            initial={{ opacity: 0.7, y: 3 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 p-4 pb-8"
+                        >
                             {activeZoneData.tables?.map((table: any) => {
                                 const order = table.active_order;
                                 const isAvailable = !order;
@@ -423,7 +459,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     </div>
                                 );
                             })}
-                        </div>
+                        </motion.div>
                     ) : null}
                 </ScrollArea>
             </div>

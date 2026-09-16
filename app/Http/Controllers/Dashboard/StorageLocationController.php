@@ -38,7 +38,9 @@ final class StorageLocationController extends Controller
     {
         GateHelper::create(EntityEnum::StorageLocations);
 
-        $businessLocations = BusinessLocation::where('status', true)->get();
+        $businessLocations = BusinessLocation::where('status', true)
+            ->when(! auth()->user()->hasRole('admin'), fn ($query) => $query->whereKey(auth()->user()->business_location_id))
+            ->get();
 
         return inertia('inventory-setup/storage-locations/add', [
             'businessLocations' => $businessLocations,
@@ -58,6 +60,10 @@ final class StorageLocationController extends Controller
             'status' => ['required', 'boolean'],
         ]);
 
+        if (! auth()->user()->hasRole('admin')) {
+            $validated['business_location_id'] = auth()->user()->business_location_id;
+        }
+
         StorageLocation::create($validated);
 
         return redirect()->route('storage-locations.index')
@@ -69,6 +75,7 @@ final class StorageLocationController extends Controller
         GateHelper::read(EntityEnum::StorageLocations);
         
         $storageLocation = StorageLocation::with('businessLocation')->findOrFail($id);
+        $this->authorizeLocationAccess($storageLocation);
 
         return inertia('inventory-setup/storage-locations/show', [
             'storageLocation' => $storageLocation,
@@ -80,7 +87,10 @@ final class StorageLocationController extends Controller
         GateHelper::update(EntityEnum::StorageLocations);
 
         $storageLocation = StorageLocation::findOrFail($id);
-        $businessLocations = BusinessLocation::where('status', true)->get();
+        $this->authorizeLocationAccess($storageLocation);
+        $businessLocations = BusinessLocation::where('status', true)
+            ->when(! auth()->user()->hasRole('admin'), fn ($query) => $query->whereKey(auth()->user()->business_location_id))
+            ->get();
 
         return inertia('inventory-setup/storage-locations/edit', [
             'storageLocation' => $storageLocation,
@@ -93,6 +103,7 @@ final class StorageLocationController extends Controller
         GateHelper::update(EntityEnum::StorageLocations);
 
         $storageLocation = StorageLocation::findOrFail($id);
+        $this->authorizeLocationAccess($storageLocation);
 
         $validated = $request->validate([
             'business_location_id' => ['required', 'exists:business_locations,id'],
@@ -102,6 +113,10 @@ final class StorageLocationController extends Controller
             'default_issue_location' => ['nullable', 'string', 'max:255'],
             'status' => ['required', 'boolean'],
         ]);
+
+        if (! auth()->user()->hasRole('admin')) {
+            $validated['business_location_id'] = auth()->user()->business_location_id;
+        }
 
         $storageLocation->update($validated);
 
@@ -114,6 +129,7 @@ final class StorageLocationController extends Controller
         GateHelper::delete(EntityEnum::StorageLocations);
 
         $storageLocation = StorageLocation::findOrFail($id);
+        $this->authorizeLocationAccess($storageLocation);
         $storageLocation->delete();
 
         return redirect()->route('storage-locations.index')
@@ -143,6 +159,9 @@ final class StorageLocationController extends Controller
 
         $fromStorage = StorageLocation::findOrFail($validated['from_storage_location_id']);
         $toStorage = StorageLocation::findOrFail($validated['to_storage_location_id']);
+
+        $this->authorizeLocationAccess($fromStorage);
+        $this->authorizeLocationAccess($toStorage);
 
         if ($fromStorage->business_location_id !== $toStorage->business_location_id) {
             return back()->withErrors(['error' => 'Inter-storage transfers can only occur within the same branch location.']);
@@ -201,5 +220,16 @@ final class StorageLocationController extends Controller
         });
 
         return back()->with('success', 'Stock transferred successfully.');
+    }
+
+    private function authorizeLocationAccess(StorageLocation $storageLocation): void
+    {
+        $user = auth()->user();
+
+        abort_if(
+            ! $user->hasRole('admin') && $user->business_location_id !== $storageLocation->business_location_id,
+            403,
+            'You are not authorized to manage storage for this outlet.'
+        );
     }
 }
