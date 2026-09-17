@@ -1,5 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 
 import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
@@ -43,6 +43,108 @@ export default function PosTerminal({
     const [isWasted, setIsWasted] = useState(false);
     const [activeCategoryId, setActiveCategoryId] = useState<number | 'all'>('all');
     const [isActiveOrdersOpen, setIsActiveOrdersOpen] = useState(false);
+    const menuGridRef = useRef<HTMLDivElement>(null);
+    const touchStartYRef = useRef<number | null>(null);
+    const categoryScrollLockRef = useRef(false);
+    const categoryScrollDistanceRef = useRef(0);
+
+    const switchCategoryFromMenuScroll = (direction: 1 | -1) => {
+        if (categoryScrollLockRef.current) {
+            return false;
+        }
+
+        const categoryIds: Array<number | 'all'> = [
+            'all',
+            ...categories.map((category: any) => category.id),
+        ];
+        const currentIndex = categoryIds.indexOf(activeCategoryId);
+        const nextIndex = Math.min(
+            Math.max(currentIndex + direction, 0),
+            categoryIds.length - 1,
+        );
+        const nextCategoryId = categoryIds[nextIndex];
+
+        if (nextCategoryId === activeCategoryId) {
+            return false;
+        }
+
+        categoryScrollLockRef.current = true;
+        setActiveCategoryId(nextCategoryId);
+        window.setTimeout(() => {
+            categoryScrollLockRef.current = false;
+        }, 450);
+        return true;
+    };
+
+    const getMenuViewport = () =>
+        menuGridRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]') ?? null;
+
+    const handleMenuWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+        if (event.deltaY === 0) return;
+
+        const viewport = getMenuViewport();
+        if (!viewport) return;
+
+        const atTop = viewport.scrollTop <= 2;
+        const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2;
+        const isScrollingPastCategoryBoundary = event.deltaY > 0 ? atBottom : atTop;
+
+        if (!isScrollingPastCategoryBoundary) {
+            categoryScrollDistanceRef.current = 0;
+            return;
+        }
+
+        if (
+            categoryScrollDistanceRef.current !== 0 &&
+            Math.sign(categoryScrollDistanceRef.current) !== Math.sign(event.deltaY)
+        ) {
+            categoryScrollDistanceRef.current = 0;
+        }
+
+        categoryScrollDistanceRef.current += event.deltaY;
+        if (Math.abs(categoryScrollDistanceRef.current) < 240) {
+            return;
+        }
+
+        const movedCategory = event.deltaY > 0
+            ? switchCategoryFromMenuScroll(1)
+            : switchCategoryFromMenuScroll(-1);
+
+        if (movedCategory) {
+            categoryScrollDistanceRef.current = 0;
+            event.preventDefault();
+        }
+    };
+
+    const handleMenuTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+        touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const handleMenuTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+        const startY = touchStartYRef.current;
+        const endY = event.changedTouches[0]?.clientY;
+        touchStartYRef.current = null;
+
+        if (startY === null || endY === undefined || Math.abs(endY - startY) < 120) {
+            return;
+        }
+
+        const viewport = getMenuViewport();
+        if (!viewport) return;
+
+        const atTop = viewport.scrollTop <= 2;
+        const atBottom = viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 2;
+        if (endY < startY && atBottom) {
+            switchCategoryFromMenuScroll(1);
+        } else if (endY > startY && atTop) {
+            switchCategoryFromMenuScroll(-1);
+        }
+    };
+
+    useEffect(() => {
+        const viewport = getMenuViewport();
+        viewport?.scrollTo({ top: 0, behavior: 'auto' });
+    }, [activeCategoryId]);
 
     const handleSelectOrder = (orderId: string) => {
         router.get('/menu-pos/terminal', { order_id: orderId }, {
@@ -416,7 +518,14 @@ export default function PosTerminal({
                 {/* Left Side: Main POS Area */}
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     {/* Item Grid */}
-                    <ScrollArea className="flex-1 p-3.5 min-h-0 bg-muted/10">
+                    <div
+                        ref={menuGridRef}
+                        className="flex-1 min-h-0"
+                        onWheel={handleMenuWheel}
+                        onTouchStart={handleMenuTouchStart}
+                        onTouchEnd={handleMenuTouchEnd}
+                    >
+                    <ScrollArea className="h-full p-3.5 bg-muted/10">
                         <motion.div 
                             key={activeCategoryId}
                             initial={{ opacity: 0.7, y: 3 }}
@@ -506,6 +615,7 @@ export default function PosTerminal({
                             </div>
                         )}
                     </ScrollArea>
+                    </div>
                 </div>
                 
                 {/* Right Side: Enhanced Cart & Billing (Hidden by default, shown when items in cart or active order) */}

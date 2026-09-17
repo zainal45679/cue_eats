@@ -33,6 +33,38 @@ export function DineInTopBar({
     const currentWaiterName = waiters?.find((w: any) => w.id === waiterId)?.name || 'Unknown Waiter';
     const readyCount = runningOrders?.filter((o: any) => o.kitchen_status === 'ready').length || 0;
 
+    const handleCategoryWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+        if (Math.abs(event.deltaY) < Math.abs(event.deltaX) || event.deltaY === 0) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const categoryIds: Array<number | 'all'> = [
+            'all',
+            ...(categories || []).map((category: any) => category.id),
+        ];
+        const currentIndex = categoryIds.indexOf(activeCategoryId);
+        const nextIndex = Math.min(
+            Math.max(currentIndex + (event.deltaY > 0 ? 1 : -1), 0),
+            categoryIds.length - 1,
+        );
+        const nextCategoryId = categoryIds[nextIndex];
+
+        if (nextCategoryId === activeCategoryId) {
+            return;
+        }
+
+        setActiveCategoryId(nextCategoryId);
+
+        const categoryStrip = event.currentTarget;
+        window.requestAnimationFrame(() => {
+            categoryStrip
+                .querySelector<HTMLElement>(`[data-category-id="${nextCategoryId}"]`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        });
+    };
+
     return (
         <div className="bg-background border-b p-3 space-y-3 shadow-sm z-10 shrink-0">
             {/* Row 1: Mode Switch, Table Info, Order Status & Search */}
@@ -262,7 +294,11 @@ export function DineInTopBar({
 
             {/* Row 2: Category Navigation Pills */}
             <div className="flex items-center justify-between w-full mb-1">
-                <div className="flex-1 overflow-x-auto no-scrollbar">
+                <div
+                    className="flex-1 overflow-x-auto no-scrollbar"
+                    onWheel={handleCategoryWheel}
+                    title="Scroll to switch menu categories"
+                >
                     <div className="flex space-x-2 pb-1 items-center">
                         <motion.button 
                             type="button"
@@ -274,6 +310,7 @@ export function DineInTopBar({
                                     : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
                             )}
                             onClick={() => setActiveCategoryId('all')}
+                            data-category-id="all"
                         >
                             {activeCategoryId === 'all' && (
                                 <motion.span
@@ -298,6 +335,7 @@ export function DineInTopBar({
                                             : "border-border/70 bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
                                     )}
                                     onClick={() => setActiveCategoryId(cat.id)}
+                                    data-category-id={cat.id}
                                 >
                                     {isActive && (
                                         <motion.span

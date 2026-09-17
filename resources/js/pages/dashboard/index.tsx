@@ -103,14 +103,14 @@ export default function Dashboard({
     const p2 = dineInPct + takeawayPct;
 
     return (
-        <div className="flex-1 p-4 sm:p-5 lg:p-6 pb-16 bg-slate-100 dark:bg-[#0c0c0e] min-h-screen text-zinc-900 dark:text-zinc-100 w-full font-sans transition-colors">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 pb-16 bg-[#f5f6f8] dark:bg-[#0c0c0e] min-h-screen text-zinc-900 dark:text-zinc-100 w-full font-sans transition-colors">
             <Head title="Dashboard" />
             
             {/* Header Section */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800/80 pb-5 mb-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/85 dark:bg-[#121214] p-5 lg:p-6 shadow-sm mb-6">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2.5 mb-1.5">
-                        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">Dashboard</h2>
+                        <h2 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-white leading-none">Dashboard</h2>
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-green-500/20 bg-green-500/10">
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                             <span className="text-xs font-medium text-green-500 tracking-wide">Live</span>
@@ -133,9 +133,9 @@ export default function Dashboard({
             </div>
 
             {/* SECTION 1: TOP KPI CARDS */}
-            <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4 mb-5">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
                 {/* Gross Revenue */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-primary/40 dark:border-primary/40 shadow-sm flex flex-col justify-between">
+                <div className="min-h-[142px] p-5 rounded-2xl bg-white dark:bg-[#121214] border border-primary/30 dark:border-primary/30 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Gross Revenue</div>
                         <div className="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center">
@@ -143,7 +143,7 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div>
-                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1">
+                        <div className="text-[34px] font-bold tracking-tight text-zinc-950 dark:text-white leading-none mb-1">
                             ${metrics.todaysRevenue.toFixed(2)}
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">{metrics.todaysOrders === 0 ? "No orders yet" : "Today"}</div>
@@ -151,7 +151,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Total Orders */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
+                <div className="min-h-[142px] p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Total Orders</div>
                         <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center">
@@ -159,7 +159,7 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div>
-                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1">
+                        <div className="text-[34px] font-bold tracking-tight text-zinc-950 dark:text-white leading-none mb-1">
                             {metrics.todaysOrders}
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">{metrics.todaysOrders === 0 ? "No orders yet" : "Today"}</div>
@@ -167,7 +167,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Average Order Value */}
-                <div className="p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
+                <div className="min-h-[142px] p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400">Average Order Value</div>
                         <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/50 flex items-center justify-center">
@@ -175,7 +175,7 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div>
-                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1">
+                        <div className="text-[34px] font-bold tracking-tight text-zinc-950 dark:text-white leading-none mb-1">
                             ${metrics.aov.toFixed(2)}
                         </div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400">Today</div>
@@ -186,7 +186,7 @@ export default function Dashboard({
                 <button
                     type="button"
                     onClick={() => setCanceledDialogOpen(true)}
-                    className="w-full p-4 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between text-left cursor-pointer hover:border-red-500/40 hover:shadow-md transition-all group"
+                    className="min-h-[142px] w-full p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col justify-between text-left cursor-pointer hover:border-red-500/40 hover:shadow-md transition-all group"
                 >
                     <div className="flex justify-between items-start mb-2">
                         <div className="text-[14px] font-medium text-zinc-500 dark:text-zinc-400 group-hover:text-red-500 transition-colors">Canceled Orders</div>
@@ -195,7 +195,7 @@ export default function Dashboard({
                         </div>
                     </div>
                     <div>
-                        <div className="text-[32px] font-bold tracking-tight text-zinc-900 dark:text-white leading-none mb-1 flex items-baseline justify-between">
+                        <div className="text-[34px] font-bold tracking-tight text-zinc-950 dark:text-white leading-none mb-1 flex items-baseline justify-between">
                             <span>{metrics.canceledOrders}</span>
                             {metrics.canceledOrders > 0 && (
                                 <span className="text-[11px] font-semibold text-red-500 group-hover:underline">View details →</span>
@@ -207,18 +207,18 @@ export default function Dashboard({
             </div>
             
             {/* SECTION 2: CHARTS */}
-            <div className="grid gap-3.5 lg:grid-cols-3 mb-5">
+            <div className="grid gap-4 lg:grid-cols-3 mb-6">
                 {/* Revenue Overview */}
-                <div className="lg:col-span-2 p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
-                    <div className="flex justify-between items-start mb-8">
+                <div className="lg:col-span-2 p-5 rounded-2xl bg-gradient-to-br from-[#222b38] via-[#18212c] to-[#10151d] border border-white/5 shadow-xl shadow-zinc-900/10 flex flex-col">
+                    <div className="flex justify-between items-start mb-6">
                         <div className="flex gap-3">
-                            <BarChart3 className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
+                            <BarChart3 className="w-5 h-5 text-emerald-400 mt-1" />
                             <div>
-                                <h3 className="text-base font-semibold text-zinc-900 dark:text-white leading-tight">Revenue Overview</h3>
-                                <p className="text-[13px] text-zinc-500 dark:text-zinc-400">Total gross revenue for the last 7 days.</p>
+                                <h3 className="text-base font-semibold text-white leading-tight">Revenue Overview</h3>
+                                <p className="text-[13px] text-zinc-400">Total gross revenue for the last 7 days.</p>
                             </div>
                         </div>
-                        <div className="h-8 flex items-center rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-[#18181b] px-3 text-xs text-zinc-600 dark:text-zinc-400">
+                        <div className="h-8 flex items-center rounded-lg border border-white/10 bg-white/10 px-3 text-xs text-zinc-300">
                             Last 7 days
                         </div>
                     </div>
@@ -226,11 +226,11 @@ export default function Dashboard({
                     <div className="h-[200px] w-full mt-auto flex items-end justify-between px-4 gap-4 relative">
                         {/* Background Grid Lines */}
                         <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-                            <div className="w-full border-b border-dashed border-zinc-200 dark:border-zinc-800/60 flex-1"></div>
-                            <div className="w-full border-b border-dashed border-zinc-200 dark:border-zinc-800/60 flex-1"></div>
-                            <div className="w-full border-b border-dashed border-zinc-200 dark:border-zinc-800/60 flex-1"></div>
-                            <div className="w-full border-b border-dashed border-zinc-200 dark:border-zinc-800/60 flex-1"></div>
-                            <div className="w-full border-b border-dashed border-zinc-200 dark:border-zinc-800/60"></div>
+                            <div className="w-full border-b border-dashed border-white/10 flex-1"></div>
+                            <div className="w-full border-b border-dashed border-white/10 flex-1"></div>
+                            <div className="w-full border-b border-dashed border-white/10 flex-1"></div>
+                            <div className="w-full border-b border-dashed border-white/10 flex-1"></div>
+                            <div className="w-full border-b border-dashed border-white/10"></div>
                         </div>
 
                         {/* Bars */}
@@ -250,7 +250,7 @@ export default function Dashboard({
                                             style={{ height: `${h}%` }}
                                         ></div>
                                     </div>
-                                    <div className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mt-2 h-4">{day.name}</div>
+                                    <div className="text-[11px] font-medium text-zinc-400 mt-2 h-4">{day.name}</div>
                                 </div>
                             );
                         })}
@@ -258,8 +258,8 @@ export default function Dashboard({
                 </div>
 
                 {/* Sales by Type */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col">
-                    <div className="flex gap-3 mb-8">
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col">
+                    <div className="flex gap-3 mb-6">
                         <PieChart className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
                             <h3 className="text-base font-semibold text-zinc-900 dark:text-white leading-tight">Sales by Type</h3>
@@ -327,9 +327,9 @@ export default function Dashboard({
             </div>
 
             {/* SECTION 3: BOTTOM CARDS */}
-            <div className="grid gap-3.5 lg:grid-cols-3">
+            <div className="grid gap-4 lg:grid-cols-3">
                 {/* Kitchen Load */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex gap-3 mb-6">
                         <ChefHat className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
@@ -368,7 +368,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Cashier Leaderboard */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex gap-3 mb-6">
                         <Users className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />
                         <div>
@@ -399,7 +399,7 @@ export default function Dashboard({
                 </div>
 
                 {/* Inventory Health */}
-                <div className="p-5 rounded-xl bg-white dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
+                <div className="p-5 rounded-2xl bg-white dark:bg-[#121214] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col relative group">
                     <div className="flex justify-between items-start mb-6">
                         <div className="flex gap-3">
                             <Package className="w-5 h-5 text-zinc-500 dark:text-zinc-400 mt-1" />

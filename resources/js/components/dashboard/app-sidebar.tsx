@@ -12,7 +12,6 @@ import {
 } from "@/components/shadcn/ui/sidebar";
 import { Configs } from "@/config";
 import { dashboard } from "@/generated/routes";
-import { AdvancedScrollArea } from "../shadcn/ui/advanced-scroll-area";
 import AppLogo from "./app-logo";
 
 export function AppSidebar() {
@@ -64,14 +63,9 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <AdvancedScrollArea
-        className="flex min-h-0 flex-1 flex-col gap-1"
-        withNavigation
-      >
-        <SidebarContent>
-          <NavMain items={filteredMenu} />
-        </SidebarContent>
-      </AdvancedScrollArea>
+      <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll overscroll-contain touch-pan-y [scrollbar-gutter:stable]">
+        <NavMain items={filteredMenu} />
+      </SidebarContent>
 
       <SidebarFooter>
         <NavUser />

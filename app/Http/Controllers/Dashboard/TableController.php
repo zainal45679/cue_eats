@@ -46,6 +46,16 @@ class TableController extends Controller
                     
                     $table->name = $table->name . ' + ' . $childNames;
                     $table->seating_capacity += $childCapacity;
+
+                    // If parent activeOrder is missing, check if any child table holds the active order
+                    if (!$table->activeOrder) {
+                        foreach ($table->children as $child) {
+                            if ($child->activeOrder) {
+                                $table->setRelation('activeOrder', $child->activeOrder);
+                                break;
+                            }
+                        }
+                    }
                 }
                 return $table;
             });
@@ -63,17 +73,19 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'description' => 'nullable|string',
+            'business_location_id' => 'nullable|exists:business_locations,id'
         ]);
 
-        $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', \App\Models\BusinessLocation::first()?->id) 
-            : auth()->user()->business_location_id;
+        $locationId = $validated['business_location_id'] ?? auth()->user()->business_location_id;
+        if (!$locationId && auth()->user()->hasRole('admin')) {
+            $locationId = session('active_location_id', \App\Models\BusinessLocation::first()?->id);
+        }
 
         DiningZone::create([
-            'business_location_id' => $locationId,
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'business_location_id' => $locationId,
         ]);
 
         return back()->with('success', 'Dining Zone created successfully.');
@@ -85,7 +97,7 @@ class TableController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
+            'description' => 'nullable|string',
         ]);
 
         $zone->update($validated);
@@ -97,8 +109,11 @@ class TableController extends Controller
     {
         $this->authorizeZoneAccess($zone);
 
-        // Safety check: Prevent deleting zone if active orders exist in its tables
-        $hasActiveOrders = $zone->tables()->whereHas('activeOrder')->exists();
+        // Check if any table in this zone has active orders
+        $hasActiveOrders = $zone->tables()->whereHas('orders', function ($q) {
+            $q->whereIn('status', ['draft', 'running', 'billed']);
+        })->exists();
+
         if ($hasActiveOrders) {
             return back()->withErrors(['error' => 'Cannot delete zone with active table orders.']);
         }
@@ -168,21 +183,64 @@ class TableController extends Controller
             'table_ids.*' => 'exists:dining_tables,id'
         ]);
 
-        $tables = DiningTable::with('zone')->whereIn('id', $request->table_ids)->get();
+        $tables = DiningTable::with(['zone', 'activeOrder', 'children'])->whereIn('id', $request->table_ids)->get();
         abort_unless($tables->count() === count($request->table_ids), 422, 'One or more tables were not found.');
         $tables->each(fn (DiningTable $table) => $this->authorizeTableAccess($table));
         abort_if($tables->pluck('zone.business_location_id')->unique()->count() !== 1, 422, 'Tables must belong to the same outlet.');
 
-        $tableIds = $request->table_ids;
-        $parentTableId = array_shift($tableIds); // The first table becomes the parent
+        // Check if multiple tables have active orders
+        $tablesWithOrders = $tables->filter(fn ($t) => $t->activeOrder !== null);
+        if ($tablesWithOrders->count() > 1) {
+            return back()->withErrors([
+                'error' => 'Cannot merge tables: Multiple selected tables have active orders. Please settle or cancel extra orders before merging.'
+            ]);
+        }
 
-        \App\Models\DiningTable::whereIn('id', $tableIds)->update(['parent_table_id' => $parentTableId]);
+        // Determine parent table: If one table has an active order, it must be the parent.
+        // Otherwise, the first table selected becomes the parent.
+        if ($tablesWithOrders->count() === 1) {
+            $parentTable = $tablesWithOrders->first();
+            $parentTableId = $parentTable->id;
+        } else {
+            $parentTableId = $request->table_ids[0];
+            $parentTable = $tables->firstWhere('id', $parentTableId);
+        }
 
-        $parentTable = \App\Models\DiningTable::find($parentTableId);
-        if ($parentTable) {
-            $locationId = $parentTable->zone?->business_location_id;
+        $childTableIds = array_values(array_diff($request->table_ids, [$parentTableId]));
+
+        // Re-parent any existing children of the tables being merged to the new parent
+        \App\Models\DiningTable::whereIn('parent_table_id', $request->table_ids)
+            ->where('id', '!=', $parentTableId)
+            ->update(['parent_table_id' => $parentTableId]);
+
+        // Reassign any active orders on child tables to the parent table
+        \App\Models\Order::whereIn('dining_table_id', $childTableIds)
+            ->whereIn('status', ['draft', 'running', 'billed'])
+            ->update(['dining_table_id' => $parentTableId]);
+
+        // Set child tables' parent_table_id
+        \App\Models\DiningTable::whereIn('id', $childTableIds)->update([
+            'parent_table_id' => $parentTableId,
+            'status' => 'occupied'
+        ]);
+
+        // Ensure parent table has parent_table_id = null
+        $parentTable->parent_table_id = null;
+        if ($parentTable->activeOrder()->exists()) {
+            $orderStatus = $parentTable->activeOrder->status;
+            $parentTable->status = $orderStatus === 'billed' ? 'billed' : 'occupied';
+        } else {
+            $parentTable->status = 'available';
+        }
+        $parentTable->save();
+
+        $locationId = $parentTable->zone?->business_location_id;
+        if ($locationId) {
             try {
                 event(new \App\Events\TableStatusUpdated($parentTableId, $locationId));
+                foreach ($childTableIds as $cId) {
+                    event(new \App\Events\TableStatusUpdated($cId, $locationId));
+                }
             } catch (\Throwable $e) {
                 \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
             }
@@ -197,14 +255,37 @@ class TableController extends Controller
             'parent_table_id' => 'required|exists:dining_tables,id'
         ]);
 
-        $parentTable = \App\Models\DiningTable::find($request->parent_table_id);
-        $this->authorizeTableAccess($parentTable);
-        \App\Models\DiningTable::where('parent_table_id', $request->parent_table_id)->update(['parent_table_id' => null]);
+        $table = DiningTable::with(['children', 'zone'])->find($request->parent_table_id);
+        $this->authorizeTableAccess($table);
 
-        if ($parentTable) {
-            $locationId = $parentTable->zone?->business_location_id;
+        // If the provided table is actually a child, resolve its parent
+        $parentTable = $table->parent_table_id ? DiningTable::with(['children', 'zone'])->find($table->parent_table_id) : $table;
+
+        if (!$parentTable) {
+            return back()->withErrors(['error' => 'Parent table not found.']);
+        }
+
+        $childTableIds = $parentTable->children->pluck('id')->toArray();
+
+        // Unmerge all children and reset their status to available
+        \App\Models\DiningTable::where('parent_table_id', $parentTable->id)->update([
+            'parent_table_id' => null,
+            'status' => 'available'
+        ]);
+
+        // If parent table has no active order, reset its status to available
+        if (!$parentTable->activeOrder()->exists()) {
+            $parentTable->status = 'available';
+            $parentTable->save();
+        }
+
+        $locationId = $parentTable->zone?->business_location_id;
+        if ($locationId) {
             try {
                 event(new \App\Events\TableStatusUpdated($parentTable->id, $locationId));
+                foreach ($childTableIds as $cId) {
+                    event(new \App\Events\TableStatusUpdated($cId, $locationId));
+                }
             } catch (\Throwable $e) {
                 \Log::warning('Broadcast failed for TableStatusUpdated: ' . $e->getMessage());
             }
