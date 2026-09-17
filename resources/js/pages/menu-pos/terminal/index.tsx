@@ -342,7 +342,7 @@ export default function PosTerminal({
 
     const addToCart = (item: any, selectedModifiers: Record<string, any[]>) => {
         if (!checkInventory(item, selectedModifiers, 1)) {
-            alert('Insufficient stock for this item or its modifiers.');
+            toast.warning('Insufficient stock for this item or its modifiers.');
             return;
         }
 
@@ -372,7 +372,7 @@ export default function PosTerminal({
             if (cartItem.cart_id === cartId) {
                 if (delta > 0) {
                     if (!checkInventory(cartItem, cartItem.selectedModifiers, delta)) {
-                        alert('Insufficient stock to increase quantity.');
+                        toast.warning('Insufficient stock to increase quantity.');
                         return cartItem;
                     }
                 }

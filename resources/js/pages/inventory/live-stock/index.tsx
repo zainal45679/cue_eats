@@ -11,6 +11,7 @@ import { Badge } from "@/components/shadcn/ui/badge";
 import { Button } from "@/components/shadcn/ui/button";
 
 import { StorageTransferDialog } from './StorageTransferDialog';
+import { BatchDetailsDialog } from './batch-details-dialog';
 import { ArrowRightLeft } from 'lucide-react';
 
 export default function InventoryBalancesIndex({
@@ -40,6 +41,7 @@ export default function InventoryBalancesIndex({
   const [showCategorySidebar, setShowCategorySidebar] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedRowForTransfer, setSelectedRowForTransfer] = useState<any>(null);
+  const [selectedBatchBalance, setSelectedBatchBalance] = useState<any>(null);
 
   // Derive selected category from server filters
   const selectedCategory = useMemo(() => {
@@ -156,7 +158,7 @@ export default function InventoryBalancesIndex({
         const exp = new Date(item.nearest_expiry_date);
         exp.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return diffDays <= 2;
+        return diffDays >= 0 && diffDays <= 2;
       });
     }
 
@@ -423,16 +425,30 @@ export default function InventoryBalancesIndex({
                 cell: ({ row }) => {
                   const expiryDate = row.original.nearest_expiry_date;
                   const isPerishable = row.original.ingredient?.is_perishable;
+                  const lots = row.original.lots || [];
+
+                  const batchButton = lots.length > 0 ? (
+                    <button
+                      type="button"
+                      className="text-[11px] font-medium text-primary hover:underline"
+                      onClick={() => setSelectedBatchBalance(row.original)}
+                    >
+                      {lots.length} {lots.length === 1 ? 'batch' : 'batches'}
+                    </button>
+                  ) : null;
 
                   if (!expiryDate) {
                     if (isPerishable) {
                       return (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                          ⏳ Perishable {row.original.ingredient?.shelf_life_days ? `(${row.original.ingredient.shelf_life_days}d)` : ''}
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                            ⏳ Perishable {row.original.ingredient?.shelf_life_days ? `(${row.original.ingredient.shelf_life_days}d)` : ''}
+                          </span>
+                          {batchButton}
+                        </div>
                       );
                     }
-                    return <span className="text-xs text-muted-foreground">Standard</span>;
+                    return <div className="flex flex-col items-start gap-1"><span className="text-xs text-muted-foreground">Standard</span>{batchButton}</div>;
                   }
 
                   const today = new Date();
@@ -443,23 +459,11 @@ export default function InventoryBalancesIndex({
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                   if (diffDays < 0) {
-                    return (
-                      <Badge variant="destructive" className="text-[11px] font-semibold gap-1">
-                        🔴 Expired ({Math.abs(diffDays)}d ago)
-                      </Badge>
-                    );
+                    return <div className="flex flex-col items-start gap-1"><Badge variant="destructive" className="text-[11px] font-semibold gap-1">🔴 Expired ({Math.abs(diffDays)}d ago)</Badge>{batchButton}</div>;
                   } else if (diffDays <= 2) {
-                    return (
-                      <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 text-[11px] font-semibold gap-1">
-                        🟡 Expiring ({diffDays === 0 ? 'Today' : `${diffDays}d left`})
-                      </Badge>
-                    );
+                    return <div className="flex flex-col items-start gap-1"><Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 text-[11px] font-semibold gap-1">🟡 Expiring ({diffDays === 0 ? 'Today' : `${diffDays}d left`})</Badge>{batchButton}</div>;
                   } else {
-                    return (
-                      <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 text-[11px] font-medium gap-1">
-                        🟢 Fresh ({diffDays}d left)
-                      </Badge>
-                    );
+                    return <div className="flex flex-col items-start gap-1"><Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 text-[11px] font-medium gap-1">🟢 Fresh ({diffDays}d left)</Badge>{batchButton}</div>;
                   }
                 },
               },
@@ -516,6 +520,11 @@ export default function InventoryBalancesIndex({
         allInventoryBalances={allInventoryBalances}
         allIngredients={ingredients}
         preselectedBalance={selectedRowForTransfer}
+      />
+      <BatchDetailsDialog
+        open={Boolean(selectedBatchBalance)}
+        onOpenChange={(open) => !open && setSelectedBatchBalance(null)}
+        balance={selectedBatchBalance}
       />
     </XPage>
   );

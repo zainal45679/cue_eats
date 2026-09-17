@@ -44,6 +44,31 @@ class PurchaseOrder extends Model
         static::addGlobalScope(new TenantScope);
     }
 
+    /**
+     * Generate a short, customer-facing PO number with a daily sequence.
+     *
+     * Example: PO-20260917-001
+     */
+    public static function nextNumber(): string
+    {
+        $prefix = 'PO-' . now()->format('Ymd') . '-';
+
+        $lastNumber = static::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('po_number', 'like', $prefix . '%')
+            ->lockForUpdate()
+            ->orderByDesc('po_number')
+            ->value('po_number');
+
+        $sequence = 1;
+
+        if (is_string($lastNumber) && preg_match('/^(?:' . preg_quote($prefix, '/') . ')(\d+)$/', $lastNumber, $matches)) {
+            $sequence = ((int) $matches[1]) + 1;
+        }
+
+        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'uuid';

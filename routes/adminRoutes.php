@@ -118,6 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [\App\Http\Controllers\Dashboard\MenuManagementController::class, 'index'])->name('menu-management.index');
         
         Route::post('items/outlet-overrides', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'saveOutletOverride'])->name('items.outlet-overrides');
+        Route::patch('items/{item}/availability', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'updateAvailability'])->name('items.availability');
         Route::post('items/bulk-update', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'bulkUpdate'])->name('items.bulk-update');
         Route::get('items/export-csv', [\App\Http\Controllers\Dashboard\MenuItemController::class, 'exportCsv'])->name('items.export-csv');
 

@@ -33,6 +33,11 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 received_quantity: expectedQty,
                 rejected_quantity: 0,
                 pending_quantity: 0,
+                source_batches: (item.lot_allocations || []).map((allocation: any) => ({
+                    batch_number: allocation.lot?.batch_number || allocation.lot?.internal_lot_number,
+                    expiry_date: allocation.lot?.expiry_date || null,
+                    quantity: Math.max(0, Number(allocation.dispatched_quantity || 0) - Number(allocation.received_quantity || 0) - Number(allocation.rejected_quantity || 0)),
+                })).filter((batch: any) => batch.quantity > 0),
                 batch_number: "",
                 mfg_date: "",
                 expiry_date: "",
@@ -195,16 +200,26 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <Input 
-                                                        type="text" 
-                                                        placeholder="Batch #" 
-                                                        className="w-28 text-xs text-center mx-auto" 
-                                                        value={item.batch_number}
-                                                        onChange={(e) => handleFieldChange(index, 'batch_number', e.target.value)}
-                                                    />
+                                                    {isPO ? (
+                                                        <Input 
+                                                            type="text" 
+                                                            placeholder="Batch #" 
+                                                            className="w-28 text-xs text-center mx-auto" 
+                                                            value={item.batch_number}
+                                                            onChange={(e) => handleFieldChange(index, 'batch_number', e.target.value)}
+                                                        />
+                                                    ) : (
+                                                        <div className="space-y-1 text-xs">
+                                                            {item.source_batches.map((batch: any, batchIndex: number) => (
+                                                                <div key={`${batch.batch_number}-${batchIndex}`} className="font-medium">
+                                                                    {batch.batch_number || 'Unverified batch'} · {batch.quantity}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-center">
-                                                    <div className="flex items-center gap-2 justify-center">
+                                                    {isPO ? <div className="flex items-center gap-2 justify-center">
                                                         <div className="flex flex-col items-start">
                                                             <span className="text-[9px] text-muted-foreground uppercase font-semibold">Mfg</span>
                                                             <Input 
@@ -223,7 +238,15 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                                 onChange={(e) => handleFieldChange(index, 'expiry_date', e.target.value)}
                                                             />
                                                         </div>
-                                                    </div>
+                                                    </div> : (
+                                                        <div className="space-y-1 text-xs text-muted-foreground">
+                                                            {item.source_batches.map((batch: any, batchIndex: number) => (
+                                                                <div key={`${batch.expiry_date}-${batchIndex}`}>
+                                                                    {batch.expiry_date ? `Expires ${batch.expiry_date}` : 'No expiry recorded'}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right text-muted-foreground">{item.uom_name || '-'}</TableCell>
                                             </TableRow>

@@ -99,7 +99,7 @@ class DummyInventorySeeder extends Seeder
         // Top up inventory
         foreach ($locations as $location) {
             $po = PurchaseOrder::create([
-                'po_number' => 'PO-' . time() . '-' . $location->id,
+                'po_number' => PurchaseOrder::nextNumber(),
                 'supplier_id' => $supplier->id,
                 'business_location_id' => $location->id,
                 'status' => 'approved',
@@ -168,4 +168,3 @@ class DummyInventorySeeder extends Seeder
         }
     }
 }
-

@@ -1,5 +1,5 @@
 import { router, usePage } from "@inertiajs/react";
-import { Edit, Plus, Settings, Shield, Trash2, Users } from "lucide-react";
+import { Edit, Plus, Settings, Shield, Trash2, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/shadcn/ui/badge";
 import { Button } from "@/components/shadcn/ui/button";
 import {
@@ -13,7 +13,18 @@ import { Separator } from "@/components/shadcn/ui/separator";
 import { XPage } from "@/components/x/page/XPage";
 import { useAbility } from "@/hooks/use-ability";
 import { Action, Entity } from "@/lib/permissions";
+import { 
+  AlertDialog, 
+  AlertDialogContent, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogAction, 
+  AlertDialogCancel 
+} from "@/components/shadcn/ui/alert-dialog";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface Permission {
   id: number;
@@ -44,18 +55,26 @@ interface PageProps {
 export default function RolesPermissionsManager() {
   const { permissions, roles } = usePage<PageProps>().props;
   const ability = useAbility();
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteRole = (roleId: number) => {
-    if (!confirm("Are you sure you want to delete this role?")) {
-      return;
-    }
+  const handleDeleteRole = (role: Role) => {
+    setRoleToDelete(role);
+  };
 
-    router.delete(`/roles/${roleId}`, {
+  const confirmDeleteRole = () => {
+    if (!roleToDelete || isDeleting) return;
+    setIsDeleting(true);
+    router.delete(`/roles/${roleToDelete.id}`, {
       preserveScroll: true,
       onSuccess: () => {
+        setIsDeleting(false);
+        setRoleToDelete(null);
         toast.success("Role deleted successfully");
       },
       onError: (errors) => {
+        setIsDeleting(false);
+        setRoleToDelete(null);
         console.error("Failed to delete role:", errors);
         toast.error("Failed to delete role");
       },
@@ -155,7 +174,7 @@ export default function RolesPermissionsManager() {
                     {ability.can(Action.Delete, Entity.Roles) && (
                       <Button
                         className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteRole(role.id)}
+                        onClick={() => handleDeleteRole(role)}
                         size="sm"
                         variant="ghost"
                       >
@@ -214,6 +233,31 @@ export default function RolesPermissionsManager() {
           ))}
         </div>
       </div>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+              Delete Role
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete role <strong>{roleToDelete?.name}</strong>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+              onClick={confirmDeleteRole}
+            >
+              {isDeleting ? "Deleting..." : "Delete Role"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </XPage>
   );
 }

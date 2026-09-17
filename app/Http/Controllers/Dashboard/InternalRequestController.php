@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\InternalRequest;
+use App\Models\StockTransferLotAllocation;
+use App\Services\InventoryLotService;
 
 class InternalRequestController extends Controller
 {
@@ -322,15 +324,36 @@ class InternalRequestController extends Controller
 
                     $targetStorage = \App\Models\StorageLocation::find($targetStorageId);
                     $ingredient = \App\Models\Ingredient::find($dItem['ingredient_id']);
+                    $uom = \App\Models\UnitOfMeasure::find($dItem['uom_id']);
+                    $conversionFactor = $uom && $uom->conversion_factor ? (float) $uom->conversion_factor : 1;
+                    $baseDispatchedQuantity = (float) $dItem['dispatched_quantity'] * $conversionFactor;
 
                     // Enforce Non-Negative Dispatch Validation
-                    if ((float) $balance->available_qty < (float) $dItem['dispatched_quantity']) {
+                    if ((float) $balance->available_qty < $baseDispatchedQuantity) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
                             'items' => "Cannot dispatch {$dItem['dispatched_quantity']} of " . ($ingredient ? $ingredient->name : 'ingredient') . ". Only {$balance->available_qty} available in " . ($targetStorage ? $targetStorage->storage_name : 'storage') . "."
                         ]);
                     }
 
-                    $balance->decrement('available_qty', $dItem['dispatched_quantity']);
+                    $lotAllocations = InventoryLotService::deductFefo(
+                        $dItem['ingredient_id'],
+                        $targetStorageId,
+                        $baseDispatchedQuantity,
+                        'transfer_out',
+                        $stoItem,
+                        auth()->id()
+                    );
+
+                    foreach ($lotAllocations as $allocation) {
+                        StockTransferLotAllocation::create([
+                            'stock_transfer_order_item_id' => $stoItem->id,
+                            'inventory_lot_id' => $allocation['lot']->id,
+                            'from_storage_location_id' => $targetStorageId,
+                            'dispatched_quantity' => $allocation['quantity'],
+                        ]);
+                    }
+
+                    $balance->decrement('available_qty', $baseDispatchedQuantity);
 
                     \App\Models\InventoryLedger::create([
                         'business_location_id' => $fromLocation->id,
@@ -339,7 +362,7 @@ class InternalRequestController extends Controller
                         'transaction_type' => 'transfer_out',
                         'reference_type' => \App\Models\StockTransferOrder::class,
                         'reference_id' => $sto->id,
-                        'quantity' => -$dItem['dispatched_quantity'],
+                        'quantity' => -$baseDispatchedQuantity,
                         'running_balance' => $balance->fresh()->available_qty,
                         'created_by' => auth()->id() ?? \App\Models\User::first()?->id,
                     ]);

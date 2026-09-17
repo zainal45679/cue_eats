@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, router } from '@inertiajs/react';
 import {
   Dialog,
@@ -9,12 +9,23 @@ import {
   DialogTitle,
 } from '@/components/shadcn/ui/dialog';
 import { Button } from '@/components/shadcn/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/shadcn/ui/input';
 import { Label } from '@/components/shadcn/ui/label';
 import { Switch } from '@/components/shadcn/ui/switch';
 import { Textarea } from '@/components/shadcn/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 
 export function CategoryFormDialog({
   isOpen,
@@ -30,6 +41,7 @@ export function CategoryFormDialog({
   parentCategories?: any[];
 }) {
   const isEditing = !!category;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data, setData, post, put, processing, errors, reset } = useForm({
     parent_id: initialParentId ? initialParentId.toString() : '',
@@ -57,11 +69,21 @@ export function CategoryFormDialog({
   }, [category, isOpen, initialParentId]);
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this category? All items inside it might be affected.")) {
-      router.delete(`/menu-pos/categories/${category.id}`, {
-        onSuccess: () => setIsOpen(false),
-      });
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    router.delete(`/menu-pos/categories/${category.id}`, {
+      onSuccess: () => {
+        setShowDeleteConfirm(false);
+        setIsOpen(false);
+        toast.success('Category deleted successfully.');
+      },
+      onError: (err: any) => {
+        setShowDeleteConfirm(false);
+        toast.error(err?.error || 'Failed to delete category.');
+      }
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -155,6 +177,31 @@ export function CategoryFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+              Delete Category
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete category <strong>{category?.name}</strong>? All items inside it might be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={processing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={processing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+              onClick={confirmDelete}
+            >
+              {processing ? 'Deleting...' : 'Delete Category'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

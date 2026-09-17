@@ -32,8 +32,17 @@ class PosController extends Controller
         ];
 
         if ($request->table_id) {
-            $table = \App\Models\DiningTable::find($request->table_id);
+            $table = \App\Models\DiningTable::with('children')->find($request->table_id);
             if ($table) {
+                if ($table->parent_table_id) {
+                    $table = \App\Models\DiningTable::with('children')->find($table->parent_table_id);
+                }
+                if ($table && $table->children && $table->children->count() > 0) {
+                    $table->is_merged = true;
+                    $childNames = $table->children->pluck('name')->implode(' + ');
+                    $table->name = $table->name . ' + ' . $childNames;
+                    $table->seating_capacity += $table->children->sum('seating_capacity');
+                }
                 $activeOrder = \App\Models\Order::with($orderWith)
                     ->where('dining_table_id', $table->id)
                     ->whereIn('status', ['draft', 'running', 'billed'])
@@ -45,7 +54,13 @@ class PosController extends Controller
                 ->whereIn('status', ['draft', 'running', 'billed'])
                 ->find($request->order_id);
             if ($activeOrder && $activeOrder->dining_table_id) {
-                $table = $activeOrder->diningTable;
+                $table = \App\Models\DiningTable::with('children')->find($activeOrder->dining_table_id);
+                if ($table && $table->children && $table->children->count() > 0) {
+                    $table->is_merged = true;
+                    $childNames = $table->children->pluck('name')->implode(' + ');
+                    $table->name = $table->name . ' + ' . $childNames;
+                    $table->seating_capacity += $table->children->sum('seating_capacity');
+                }
             }
         }
         // Eager load recipe items to check inventory

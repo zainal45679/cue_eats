@@ -5,6 +5,7 @@ import { router } from "@inertiajs/react";
 import { useState } from "react";
 import { type SubmitHandler, useForm } from "react-hook-form";
 import type { z } from "zod";
+import { toast } from "sonner";
 
 export type UseLaravelFormOptions<T extends z.ZodType<any, any, any>> = {
   schema: T;
@@ -69,7 +70,8 @@ export function useLaravelForm<T extends z.ZodType<any, any, any>>({
     form,
     handleSubmit: form.handleSubmit(onSubmit, (errors) => {
       console.error("Frontend Validation Errors:", errors);
-      alert("Validation failed:\n\n" + JSON.stringify(errors, null, 2));
+      const firstError = Object.values(errors)[0]?.message || "Validation failed. Please check form fields.";
+      toast.error(typeof firstError === 'string' ? firstError : "Validation failed. Please check form fields.");
     }),
     processing,
     schema,

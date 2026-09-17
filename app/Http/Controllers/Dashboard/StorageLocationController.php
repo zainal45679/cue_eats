@@ -10,6 +10,7 @@ use App\Helpers\TableHelper;
 use App\Http\Controllers\Controller;
 use App\Models\BusinessLocation;
 use App\Models\StorageLocation;
+use App\Services\InventoryLotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -186,6 +187,26 @@ final class StorageLocationController extends Controller
                 ['storage_location_id' => $toStorage->id, 'ingredient_id' => $validated['ingredient_id']],
                 ['available_qty' => 0, 'reserved_qty' => 0]
             );
+
+            $lotAllocations = InventoryLotService::deductFefo(
+                $validated['ingredient_id'],
+                $fromStorage->id,
+                $qty,
+                'storage_transfer_out',
+                $toStorage,
+                auth()->id()
+            );
+
+            foreach ($lotAllocations as $allocation) {
+                InventoryLotService::addExistingLotToStorage(
+                    $allocation['lot'],
+                    $toStorage->id,
+                    $allocation['quantity'],
+                    'storage_transfer_in',
+                    $fromStorage,
+                    auth()->id()
+                );
+            }
 
             // Deduct from Source
             $fromBalance->decrement('available_qty', $qty);

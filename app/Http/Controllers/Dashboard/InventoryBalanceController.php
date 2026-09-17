@@ -7,7 +7,9 @@ use App\Enums\EntityEnum;
 use App\Helpers\GateHelper;
 use App\Helpers\TableHelper;
 use App\Models\InventoryBalance;
+use App\Models\InventoryLotBalance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class InventoryBalanceController extends Controller
@@ -92,6 +94,35 @@ class InventoryBalanceController extends Controller
                 }
             })
             ->get();
+
+        if (Schema::hasTable('inventory_lot_balances')) {
+            $rows = collect($data['rows']);
+            $lotBalances = InventoryLotBalance::query()
+                ->with('lot')
+                ->where('available_qty', '>', 0)
+                ->whereIn('storage_location_id', $rows->pluck('storage_location_id')->filter()->unique())
+                ->whereHas('lot', fn ($lotQuery) => $lotQuery->whereIn('ingredient_id', $rows->pluck('ingredient_id')->filter()->unique()))
+                ->get()
+                ->groupBy(fn (InventoryLotBalance $lotBalance) =>
+                    $lotBalance->lot->ingredient_id . ':' . $lotBalance->storage_location_id
+                );
+
+            $rows->each(function (InventoryBalance $balance) use ($lotBalances): void {
+                $lots = $lotBalances->get($balance->ingredient_id . ':' . $balance->storage_location_id, collect())
+                    ->sortBy(fn (InventoryLotBalance $lotBalance) => $lotBalance->lot->expiry_date?->format('Y-m-d') ?? '9999-12-31')
+                    ->map(fn (InventoryLotBalance $lotBalance): array => [
+                        'id' => $lotBalance->lot->id,
+                        'internal_lot_number' => $lotBalance->lot->internal_lot_number,
+                        'batch_number' => $lotBalance->lot->batch_number,
+                        'mfg_date' => $lotBalance->lot->mfg_date?->format('Y-m-d'),
+                        'expiry_date' => $lotBalance->lot->expiry_date?->format('Y-m-d'),
+                        'available_qty' => (float) $lotBalance->available_qty,
+                        'traceability_status' => $lotBalance->lot->traceability_status,
+                    ])->values()->all();
+
+                $balance->setAttribute('lots', $lots);
+            });
+        }
 
         $allBalances = $globalQuery->with('ingredient.category')->get();
         $balanceCategories = $allBalances->groupBy(function($item) {

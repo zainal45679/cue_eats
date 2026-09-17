@@ -92,7 +92,7 @@ class PurchaseOrderController extends Controller
                 foreach ($groupedItems as $supplierId => $supplierItems) {
                     $poData = $data;
                     $poData['supplier_id'] = $supplierId;
-                    $poData['po_number'] = 'PO-' . time() . '-' . $supplierId;
+                    $poData['po_number'] = PurchaseOrder::nextNumber();
                     
                     // Calculate total for this specific PO
                     $poData['grand_total'] = $supplierItems->sum(function ($item) {
@@ -121,7 +121,7 @@ class PurchaseOrderController extends Controller
                 }
             } else {
                 // Supplier mode (Single PO)
-                $data['po_number'] = 'PO-' . time();
+                $data['po_number'] = PurchaseOrder::nextNumber();
                 $data['grand_total'] = collect($items)->sum(function ($item) {
                     return $item['quantity'] * $item['unit_price'];
                 });

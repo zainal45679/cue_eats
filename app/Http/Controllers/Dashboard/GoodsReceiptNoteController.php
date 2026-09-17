@@ -9,6 +9,7 @@ use App\Models\GoodsReceiptNote;
 use App\Models\StockTransferOrder;
 use App\Models\InventoryBalance;
 use App\Models\InventoryLedger;
+use App\Services\InventoryLotService;
 use Illuminate\Support\Facades\DB;
 
 class GoodsReceiptNoteController extends Controller
@@ -46,7 +47,7 @@ class GoodsReceiptNoteController extends Controller
         $poId = $request->query('po_id');
         
         if ($stoId) {
-            $sto = StockTransferOrder::with('items.ingredient', 'items.unitOfMeasure', 'fromLocation', 'toLocation')->findOrFail($stoId);
+            $sto = StockTransferOrder::with('items.ingredient', 'items.unitOfMeasure', 'items.lotAllocations.lot', 'fromLocation', 'toLocation')->findOrFail($stoId);
             
             $canReceive = auth()->user()->hasRole('admin') || auth()->user()->business_location_id === $sto->to_location_id;
             if (!$canReceive) {
@@ -166,7 +167,7 @@ class GoodsReceiptNoteController extends Controller
                     ]);
                 }
 
-                $grn->items()->create([
+                $grnItem = $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
                     'expected_quantity' => $stoItem->dispatched_quantity,
                     'received_quantity' => $itemData['received_quantity'],
@@ -185,6 +186,7 @@ class GoodsReceiptNoteController extends Controller
                 $stoItem->increment('received_quantity', $itemData['received_quantity']);
                 $stoItem->increment('rejected_quantity', $itemData['rejected_quantity']);
 
+                $storageLocation = null;
                 if ($convertedReceivedQty > 0) {
                     $storageLocation = \App\Models\StorageLocation::firstOrCreate(
                         [
@@ -196,7 +198,61 @@ class GoodsReceiptNoteController extends Controller
                             'status' => 1,
                         ]
                     );
+                }
 
+                $remainingReceived = $convertedReceivedQty;
+                $remainingRejected = $convertedRejectedQty;
+                $lotAllocations = $stoItem->lotAllocations()
+                    ->with('lot')
+                    ->orderBy('created_at')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($lotAllocations as $allocation) {
+                    $outstanding = max(0, (float) $allocation->dispatched_quantity
+                        - (float) $allocation->received_quantity
+                        - (float) $allocation->rejected_quantity);
+
+                    if ($remainingReceived > 0 && $outstanding > 0) {
+                        $receivedFromLot = min($remainingReceived, $outstanding);
+                        InventoryLotService::addExistingLotToStorage(
+                            $allocation->lot,
+                            $storageLocation->id,
+                            $receivedFromLot,
+                            'transfer_in',
+                            $grnItem,
+                            auth()->id()
+                        );
+                        $allocation->increment('received_quantity', $receivedFromLot);
+                        $remainingReceived -= $receivedFromLot;
+                        $outstanding -= $receivedFromLot;
+                    }
+
+                    if ($remainingRejected > 0 && $outstanding > 0) {
+                        $rejectedFromLot = min($remainingRejected, $outstanding);
+                        $allocation->increment('rejected_quantity', $rejectedFromLot);
+                        $remainingRejected -= $rejectedFromLot;
+                    }
+                }
+
+                if ($remainingReceived > 0.001 || $remainingRejected > 0.001) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'items' => 'The received quantities could not be matched to the dispatched batches.',
+                    ]);
+                }
+
+                if ($lotAllocations->count() === 1) {
+                    $sourceLot = $lotAllocations->first()->lot;
+                    $grnItem->update([
+                        'batch_number' => $sourceLot->batch_number,
+                        'mfg_date' => $sourceLot->mfg_date,
+                        'expiry_date' => $sourceLot->expiry_date,
+                    ]);
+                } else {
+                    $grnItem->update(['batch_number' => null, 'mfg_date' => null, 'expiry_date' => null]);
+                }
+
+                if ($convertedReceivedQty > 0) {
                     $balance = InventoryBalance::firstOrCreate(
                         [
                             'storage_location_id' => $storageLocation->id,
@@ -206,13 +262,6 @@ class GoodsReceiptNoteController extends Controller
                     );
                     
                     $balance->increment('available_qty', $convertedReceivedQty);
-
-                    if (!empty($itemData['expiry_date'])) {
-                        $incomingExpiry = $itemData['expiry_date'];
-                        if (is_null($balance->nearest_expiry_date) || $incomingExpiry < $balance->nearest_expiry_date) {
-                            $balance->update(['nearest_expiry_date' => $incomingExpiry]);
-                        }
-                    }
 
                     InventoryLedger::create([
                         'business_location_id' => $targetLocationId,
@@ -307,7 +356,7 @@ class GoodsReceiptNoteController extends Controller
                     ]);
                 }
 
-                $grn->items()->create([
+                $grnItem = $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
                     'expected_quantity' => $poItem->quantity,
                     'received_quantity' => $itemData['received_quantity'],
@@ -367,12 +416,13 @@ class GoodsReceiptNoteController extends Controller
                     if ($convertedReceivedQty > 0) {
                         $balance->increment('available_qty', $convertedReceivedQty);
 
-                        if (!empty($itemData['expiry_date'])) {
-                            $incomingExpiry = $itemData['expiry_date'];
-                            if (is_null($balance->nearest_expiry_date) || $incomingExpiry < $balance->nearest_expiry_date) {
-                                $balance->update(['nearest_expiry_date' => $incomingExpiry]);
-                            }
-                        }
+                        InventoryLotService::receive(
+                            $grnItem,
+                            $storageLocation,
+                            $convertedReceivedQty,
+                            $poLocked->supplier_id,
+                            auth()->id()
+                        );
 
                         InventoryLedger::create([
                             'business_location_id' => $targetLocationId,

@@ -22,7 +22,9 @@ import {
     ClipboardList,
     Printer,
     Eye,
-    Save
+    Save,
+    Unlink,
+    AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { ScrollArea } from '@/components/shadcn/ui/scroll-area';
@@ -30,6 +32,17 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { motion } from 'motion/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
+import { 
+    AlertDialog, 
+    AlertDialogContent, 
+    AlertDialogHeader, 
+    AlertDialogTitle, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogAction, 
+    AlertDialogCancel 
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 import { PrintReceipt } from '../terminal/components/PrintReceipt';
 
 export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
@@ -64,6 +77,10 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
 
     // Direct Receipt Printing Trigger
     const [orderToPrint, setOrderToPrint] = useState<any | null>(null);
+
+    // Unmerge confirmation dialog state
+    const [tableToUnmerge, setTableToUnmerge] = useState<any>(null);
+    const [isUnmerging, setIsUnmerging] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -106,6 +123,29 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
             ? null 
             : visibleZones.find((z: any) => z.id === activeZone);
     }, [activeZone, visibleZones]);
+
+    const handleUnmergeTable = (table: any) => {
+        setTableToUnmerge(table);
+    };
+
+    const confirmUnmergeTable = () => {
+        if (!tableToUnmerge || isUnmerging) return;
+        setIsUnmerging(true);
+        const targetTable = tableToUnmerge;
+        router.post('/menu-pos/tables/unmerge', { parent_table_id: targetTable.id }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsUnmerging(false);
+                setTableToUnmerge(null);
+                toast.success(`Table ${targetTable.name} unmerged successfully.`);
+            },
+            onError: (errors: any) => {
+                setIsUnmerging(false);
+                setTableToUnmerge(null);
+                toast.error(errors.error || Object.values(errors)[0] || 'Failed to unmerge tables.');
+            }
+        });
+    };
 
     const handleTableClick = (table: any) => {
         if (mergeMode) {
@@ -166,51 +206,100 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                 onClick={() => (!isLockedByOther || mergeMode) && handleTableClick(table)}
                 className={cn(
                     "relative rounded-xl flex flex-col items-center justify-center select-none transition-all duration-150 group h-[78px] sm:h-[84px] cursor-pointer",
-                    // Petpooja authentic palette
+                    table.is_merged ? "col-span-2 min-w-[176px]" : "col-span-1",
+                    // Status palette - distinct from Petpooja
                     isAvailable && "border-2 border-dashed border-slate-300 dark:border-slate-700 bg-card/60 dark:bg-muted/20 text-slate-700 dark:text-slate-300 hover:border-slate-400 hover:bg-card/90",
-                    isDraft && "bg-[#bbf7d0] text-emerald-950 border border-emerald-300/80 shadow-2xs hover:brightness-95",
-                    isRunning && "bg-[#bde3fc] text-sky-950 border border-sky-300/80 shadow-2xs hover:brightness-95",
-                    isBilled && "bg-[#fef08a] text-amber-950 border border-yellow-300/80 shadow-2xs hover:brightness-95",
+                    isDraft && "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 border border-emerald-300/80 dark:border-emerald-700/80 shadow-2xs hover:brightness-95",
+                    isRunning && "bg-orange-50 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 border border-orange-300/80 dark:border-orange-700/80 shadow-2xs hover:brightness-95",
+                    isBilled && "bg-purple-50 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 border border-purple-300/80 dark:border-purple-700/80 shadow-2xs hover:brightness-95",
                     // Merge selection state
-                    selectedTablesToMerge.includes(table.id) && "ring-2 ring-primary ring-offset-2 scale-[1.03]",
+                    selectedTablesToMerge.includes(table.id) && "ring-2 ring-indigo-500 ring-offset-2 scale-[1.03] border-indigo-400 dark:border-indigo-500 shadow-md",
                     isLockedByOther && !mergeMode && "opacity-80"
                 )}
             >
-                {/* Subtle Edit button on hover */}
-                <button 
-                    type="button"
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setEditingTable(table); 
-                        setSelectedZoneForTable(zone.id || ''); 
-                        setTableDialogOpen(true); 
-                    }} 
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 dark:text-slate-300 hover:text-foreground p-1 rounded hover:bg-black/10 z-10 cursor-pointer"
-                    title="Edit Table"
-                >
-                    <Edit className="w-3 h-3" />
-                </button>
+                {/* Seating capacity badge on merged table */}
+                {table.is_merged && !mergeMode && (
+                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 bg-background/70 px-1.5 py-0.5 rounded-md border border-border/50 shadow-2xs">
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span>{table.seating_capacity}</span>
+                    </div>
+                )}
+
+                {/* Merge mode selection number badge */}
+                {mergeMode && (
+                    <div className="absolute top-1 right-1 z-10 pointer-events-none">
+                        <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all",
+                            selectedTablesToMerge.includes(table.id)
+                                ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                : "bg-background/90 text-muted-foreground border-border/80"
+                        )}>
+                            {selectedTablesToMerge.includes(table.id) 
+                                ? selectedTablesToMerge.indexOf(table.id) + 1 
+                                : ""}
+                        </div>
+                    </div>
+                )}
+
+                {/* Subtle Edit button on hover (disabled during merge mode) */}
+                {!mergeMode && !table.is_merged && (
+                    <button 
+                        type="button"
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setEditingTable(table); 
+                            setSelectedZoneForTable(zone.id || ''); 
+                            setTableDialogOpen(true); 
+                        }} 
+                        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 dark:text-slate-300 hover:text-foreground p-1 rounded hover:bg-black/10 z-10 cursor-pointer"
+                        title="Edit Table"
+                    >
+                        <Edit className="w-3 h-3" />
+                    </button>
+                )}
 
                 {/* Table Name */}
-                <span className="text-xs sm:text-[13px] font-semibold tracking-tight text-center truncate px-2 text-slate-800 dark:text-slate-100">
+                <span className={cn(
+                    "font-semibold tracking-tight text-center truncate px-2 text-slate-800 dark:text-slate-100",
+                    table.is_merged ? "text-sm font-bold px-4" : "text-xs sm:text-[13px]"
+                )}>
                     {table.name}
                 </span>
 
-                {table.is_merged && (
-                    <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 mt-0.5">
-                        🔗 Merged
+                {/* Unmerge Table Action on Merged Table */}
+                {table.is_merged && !mergeMode ? (
+                    <button 
+                        type="button"
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            handleUnmergeTable(table); 
+                        }} 
+                        className="mt-1 flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/35 text-amber-950 dark:text-amber-200 border border-amber-500/40 transition-all shadow-2xs z-10 cursor-pointer active:scale-95"
+                        title="Click to unmerge this table group"
+                    >
+                        <Unlink className="w-2.5 h-2.5 text-amber-700 dark:text-amber-300" />
+                        <span>Unmerge Table</span>
+                        {order && (
+                            <span className="text-primary font-bold ml-0.5">
+                                • ₹{Number(order.grand_total || order.total || 0).toFixed(0)}
+                            </span>
+                        )}
+                    </button>
+                ) : table.is_merged && mergeMode ? (
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                        Unmerge Table
                     </span>
-                )}
+                ) : null}
 
                 {/* Lock indicator */}
-                {isLockedByOther && !mergeMode && (
+                {isLockedByOther && !mergeMode && !table.is_merged && (
                     <div className="absolute top-1 left-1.5 flex items-center gap-0.5 text-[9px] font-bold text-slate-600 dark:text-slate-300">
                         <Lock size={10} />
                     </div>
                 )}
 
-                {/* Petpooja Floating Action Pills at Bottom Edge */}
-                {isDraft && (
+                {/* Petpooja Floating Action Pills at Bottom Edge (hidden during merge mode to keep card clicks clean) */}
+                {!mergeMode && isDraft && (
                     <div 
                         onClick={(e) => {
                             e.stopPropagation();
@@ -223,7 +312,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     </div>
                 )}
 
-                {isRunning && (
+                {!mergeMode && isRunning && (
                     <div 
                         onClick={(e) => {
                             e.stopPropagation();
@@ -236,7 +325,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     </div>
                 )}
 
-                {isBilled && (
+                {!mergeMode && isBilled && (
                     <div className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1">
                         <button 
                             type="button"
@@ -314,7 +403,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             </div>
                         </div>
                         
-                        {/* Petpooja Color Coded Status Legend & Counts */}
+                        {/* Status Legend & Counts - Distinct Colors */}
                         <div className="flex items-center gap-4">
                             <div className="text-xs font-medium hidden md:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-3.5">
                                 <div className="flex items-center gap-1.5">
@@ -322,15 +411,15 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                     <span className="text-muted-foreground">Blank: <strong className="text-foreground font-semibold">{available}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-3.5 h-3.5 rounded bg-[#bbf7d0] border border-emerald-400/60"></span>
+                                    <span className="w-3.5 h-3.5 rounded bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-400/80 dark:border-emerald-600"></span>
                                     <span className="text-muted-foreground">Seated: <strong className="text-foreground font-semibold">{seated}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-3.5 h-3.5 rounded bg-[#bde3fc] border border-sky-400/60"></span>
+                                    <span className="w-3.5 h-3.5 rounded bg-orange-100 dark:bg-orange-900/60 border border-orange-400/80 dark:border-orange-600"></span>
                                     <span className="text-muted-foreground">Running: <strong className="text-foreground font-semibold">{running}</strong></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <span className="w-3.5 h-3.5 rounded bg-[#fef08a] border border-yellow-400/60"></span>
+                                    <span className="w-3.5 h-3.5 rounded bg-purple-100 dark:bg-purple-900/60 border border-purple-400/80 dark:border-purple-600"></span>
                                     <span className="text-muted-foreground">Billed: <strong className="text-foreground font-semibold">{billed}</strong></span>
                                 </div>
                                 <div className="text-foreground font-bold pl-2 border-l border-border/60">
@@ -376,6 +465,9 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             <div className="flex items-center gap-2">
                                 {mergeMode ? (
                                     <>
+                                        <span className="text-xs text-muted-foreground hidden lg:inline-block font-medium">
+                                            Select 2 or more tables to combine
+                                        </span>
                                         <Button 
                                             variant="outline" 
                                             size="sm" 
@@ -393,10 +485,14 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                                     onSuccess: () => {
                                                         setMergeMode(false);
                                                         setSelectedTablesToMerge([]);
+                                                        toast.success('Tables merged successfully.');
+                                                    },
+                                                    onError: (errors: any) => {
+                                                        toast.error(errors.error || Object.values(errors)[0] || 'Failed to merge tables.');
                                                     }
                                                 });
                                             }}
-                                            className="h-8 bg-primary text-primary-foreground font-bold hover:bg-primary/90 cursor-pointer"
+                                            className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold cursor-pointer shadow-xs"
                                         >
                                             Confirm Merge ({selectedTablesToMerge.length})
                                         </Button>
@@ -637,6 +733,31 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                     onPrinted={() => setOrderToPrint(null)} 
                 />
             )}
+
+            {/* Unmerge Confirmation Dialog */}
+            <AlertDialog open={!!tableToUnmerge} onOpenChange={(open) => !open && setTableToUnmerge(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                            Unmerge Table
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to unmerge <strong>{tableToUnmerge?.name}</strong>? The tables will be split back into individual tables.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isUnmerging}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={isUnmerging}
+                            className="bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                            onClick={confirmUnmergeTable}
+                        >
+                            {isUnmerging ? 'Unmerging...' : 'Unmerge Table'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {zoneDialogOpen && (
                 <ZoneFormDialog 

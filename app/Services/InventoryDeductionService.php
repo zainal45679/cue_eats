@@ -9,7 +9,10 @@ use App\Models\OrderItem;
 use App\Models\RecipeItem;
 use App\Models\StorageLocation;
 use App\Models\Ingredient;
+use App\Models\InventoryLotBalance;
+use App\Models\InventoryLotMovement;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class InventoryDeductionService
 {
@@ -116,6 +119,24 @@ class InventoryDeductionService
         string $orderItemId,
         float $quantity
     ): void {
+        if (Schema::hasTable('inventory_lot_balances')) {
+            $hasTrackedLots = InventoryLotBalance::query()
+                ->where('storage_location_id', $balance->storage_location_id)
+                ->whereHas('lot', fn ($query) => $query->where('ingredient_id', $ingredientId))
+                ->exists();
+
+            if ($hasTrackedLots) {
+                InventoryLotService::deductFefo(
+                    $ingredientId,
+                    $balance->storage_location_id,
+                    $quantity,
+                    'sale',
+                    OrderItem::findOrFail($orderItemId),
+                    auth()->id()
+                );
+            }
+        }
+
         $balance->decrement('available_qty', $quantity);
 
         InventoryLedger::create([
@@ -186,6 +207,38 @@ class InventoryDeductionService
                     ->first();
 
             if ($balance) {
+                if (! $isWasted && Schema::hasTable('inventory_lot_movements')) {
+                    $lotDeductions = InventoryLotMovement::query()
+                        ->with('lot')
+                        ->where('reference_type', OrderItem::class)
+                        ->where('reference_id', $orderItem->id)
+                        ->where('movement_type', 'sale')
+                        ->where('from_storage_location_id', $deduction->storage_location_id)
+                        ->where('quantity', '<', 0)
+                        ->get();
+
+                    foreach ($lotDeductions->groupBy('inventory_lot_id') as $lotMovements) {
+                        $lotDeduction = $lotMovements->first();
+                        $alreadyRestored = InventoryLotMovement::query()
+                            ->where('inventory_lot_id', $lotDeduction->inventory_lot_id)
+                            ->where('reference_type', OrderItem::class)
+                            ->where('reference_id', $orderItem->id)
+                            ->where('movement_type', 'sale_refund')
+                            ->exists();
+
+                        if (! $alreadyRestored) {
+                            InventoryLotService::addExistingLotToStorage(
+                                $lotDeduction->lot,
+                                $deduction->storage_location_id,
+                                abs((float) $lotMovements->sum('quantity')),
+                                'sale_refund',
+                                $orderItem,
+                                auth()->id()
+                            );
+                        }
+                    }
+                }
+
                 // 1. Refund the sale
                 $balance->increment('available_qty', $qtyToRevert);
 

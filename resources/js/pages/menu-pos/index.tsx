@@ -1,6 +1,5 @@
-import { Head, router, usePage, Link } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { XPage } from '@/components/x/page/XPage';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/shadcn/ui/table';
 import { Button } from '@/components/shadcn/ui/button';
@@ -20,21 +19,20 @@ import {
   Percent, 
   X, 
   Layers, 
-  CheckCircle2, 
-  XCircle,
   BookOpen,
   Bike,
   Package,
   UtensilsCrossed,
   QrCode,
   ChevronRight,
-  ArrowLeft,
   Tag,
   Receipt,
   RotateCcw,
   Sparkles,
   ExternalLink,
-  ChefHat
+  ChefHat,
+  MoreHorizontal,
+  AlertTriangle
 } from 'lucide-react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { cn } from '@/lib/utils';
@@ -47,6 +45,17 @@ import { Input } from '@/components/shadcn/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { Switch } from '@/components/shadcn/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/shadcn/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 import React from 'react';
 
 class ErrorBoundary extends React.Component<{children: any}, {hasError: boolean, error: any}> {
@@ -148,46 +157,50 @@ export default function MenuManagement({
     if (tab === 'variants') return 'variants';
     if (tab === 'modifiers' || tab === 'addons') return 'modifiers';
     if (tab === 'outlet-menu') return 'outlet-menu';
-    if (tab === 'availability' || tab === 'stock-86') return 'availability';
+    if (tab === 'availability' || tab === 'stock-86') return 'items';
     if (tab === 'taxes') return 'taxes';
     if (tab === 'discounts') return 'discounts';
     return 'items';
   };
 
   const getChannelFromUrl = (currentUrl: string) => {
-    if (!currentUrl) return null;
+    if (!currentUrl) return 'base';
     const queryPart = currentUrl.includes('?') ? currentUrl.split('?')[1] : '';
     const params = new URLSearchParams(queryPart);
     const channel = params.get('channel');
     if (['base', 'delivery', 'parcel', 'dine_in', 'qr'].includes(channel || '')) {
       return channel;
     }
-    return null;
+    return 'base';
   };
 
   const [activeTab, setActiveTab] = useState<string>(() => getTabFromUrl(url));
-  const [selectedChannel, setSelectedChannel] = useState<string | null>(() => getChannelFromUrl(url));
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(() =>
+    getTabFromUrl(url) === 'items' ? getChannelFromUrl(url) : null
+  );
 
   useEffect(() => {
     const nextTab = getTabFromUrl(url);
-    const nextChannel = getChannelFromUrl(url);
+    const nextChannel = nextTab === 'items' ? getChannelFromUrl(url) : null;
     setActiveTab(nextTab);
     setSelectedChannel(nextChannel);
   }, [url]);
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
-    setSelectedChannel(null);
-    router.get(`/menu-pos?tab=${newTab}`, {}, { preserveState: true, replace: true });
+    const nextChannel = newTab === 'items' ? 'base' : null;
+    setSelectedChannel(nextChannel);
+    router.get(
+      newTab === 'items' ? '/menu-pos?tab=items&channel=base' : `/menu-pos?tab=${newTab}`,
+      {},
+      { preserveState: true, replace: true }
+    );
   };
 
   const handleChannelSelect = (channelId: string | null) => {
-    setSelectedChannel(channelId);
-    if (channelId) {
-      router.get(`/menu-pos?tab=items&channel=${channelId}`, {}, { preserveState: true, replace: true });
-    } else {
-      router.get(`/menu-pos?tab=items`, {}, { preserveState: true, replace: true });
-    }
+    const nextChannel = channelId || 'base';
+    setSelectedChannel(nextChannel);
+    router.get(`/menu-pos?tab=items&channel=${nextChannel}`, {}, { preserveState: true, replace: true });
   };
 
   // Selected outlet for outlet menu view
@@ -218,7 +231,6 @@ export default function MenuManagement({
   // Statistics
   const stats = useMemo(() => {
     const totalItems = items.length;
-    const activeItems = items.filter((i: any) => i.is_active && i.is_available).length;
     const outOfStockItems = items.filter((i: any) => !i.is_available).length;
     const vegCount = items.filter((i: any) => i.food_type === 'veg' || i.food_type === 'vegan').length;
     const nonVegCount = items.filter((i: any) => i.food_type === 'non_veg' || i.food_type === 'egg').length;
@@ -228,7 +240,6 @@ export default function MenuManagement({
 
     return {
       totalItems,
-      activeItems,
       outOfStockItems,
       vegCount,
       nonVegCount,
@@ -248,8 +259,8 @@ export default function MenuManagement({
     return items.filter((item: any) => {
       // Category filter
       if (categoryFilter !== 'all') {
-        const catId = Number(categoryFilter);
-        if (item.menu_category_id !== catId && item.sub_category_id !== catId) {
+        const catId = String(categoryFilter);
+        if (String(item.menu_category_id) !== catId && String(item.sub_category_id) !== catId) {
           return false;
         }
       }
@@ -316,33 +327,35 @@ export default function MenuManagement({
     setIsOverrideModalOpen(true);
   };
 
+  const [deleteTarget, setDeleteTarget] = useState<{ url: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = (deleteUrl: string, title = 'item') => {
-    if (confirm(`Are you sure you want to delete this ${title}? This action cannot be undone.`)) {
-      router.delete(deleteUrl, { preserveScroll: true });
-    }
+    setDeleteTarget({ url: deleteUrl, title });
+  };
+
+  const confirmDeleteAction = () => {
+    if (!deleteTarget || isDeleting) return;
+    setIsDeleting(true);
+    const target = deleteTarget;
+    router.delete(target.url, {
+      preserveScroll: true,
+      onSuccess: () => {
+        setIsDeleting(false);
+        setDeleteTarget(null);
+        toast.success(`${target.title.charAt(0).toUpperCase() + target.title.slice(1)} deleted successfully.`);
+      },
+      onError: (errors: any) => {
+        setIsDeleting(false);
+        setDeleteTarget(null);
+        toast.error(errors?.error || `Failed to delete ${target.title}.`);
+      }
+    });
   };
 
   const toggleItemAvailability = (item: any, isAvailable: boolean) => {
-    router.put(`/menu-pos/items/${item.id}`, {
-      menu_category_id: item.menu_category_id,
-      sub_category_id: item.sub_category_id,
-      item_code: item.item_code,
-      name: item.name,
-      price: item.price,
-      description: item.description,
-      food_type: item.food_type || 'veg',
-      spice_level: item.spice_level ?? 0,
-      is_chef_special: item.is_chef_special ?? false,
-      is_best_seller: item.is_best_seller ?? false,
-      is_jain: item.is_jain ?? false,
-      is_tax_inclusive: item.is_tax_inclusive ?? false,
-      tax_rate: item.tax_rate ?? '5.00',
-      kitchen_station_id: item.kitchen_station_id,
-      has_variants: item.has_variants ?? false,
-      is_active: item.is_active ?? true,
+    router.patch(`/menu-pos/items/${item.id}/availability`, {
       is_available: isAvailable,
-      modifier_group_ids: item.modifier_groups?.map((g: any) => g.id) || [],
-      image: item.image,
     }, {
       preserveScroll: true
     });
@@ -353,9 +366,7 @@ export default function MenuManagement({
     router.post('/menu-pos/items/outlet-overrides', {
       business_location_id: selectedLocationId,
       menu_item_id: item.id,
-      price: item.price,
       is_available: isAvailable,
-      is_active: true,
     }, {
       preserveScroll: true
     });
@@ -398,6 +409,14 @@ export default function MenuManagement({
   };
 
   const currentActiveChannel = CHANNELS.find(c => c.id === selectedChannel);
+  const activeTabLabel: Record<string, string> = {
+    categories: 'Categories',
+    modifiers: 'Add-ons & Choices',
+    'outlet-menu': 'Outlet Settings',
+    variants: 'Variants',
+    taxes: 'Taxes',
+    discounts: 'Discounts',
+  };
 
   return (
     <ErrorBoundary>
@@ -406,130 +425,10 @@ export default function MenuManagement({
         fullWidth={true}
         breadcrumbs={[
           { label: 'Menu', href: '/menu-pos' },
-          ...(selectedChannel ? [{ label: currentActiveChannel?.title || 'Menu' }] : []),
-          ...(activeTab !== 'items' ? [{ label: activeTab.charAt(0).toUpperCase() + activeTab.slice(1) }] : []),
+          ...(selectedChannel && selectedChannel !== 'base' ? [{ label: currentActiveChannel?.title || 'Menu' }] : []),
+          ...(activeTab !== 'items' ? [{ label: activeTabLabel[activeTab] || activeTab }] : []),
         ]}
       >
-        {/* PETPOOJA TOP BREADCRUMB & BACK ACTION ROW */}
-        <div className="flex items-center justify-between pb-3 mb-3 border-b text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Link href="/dashboard" className="hover:text-foreground flex items-center gap-1">
-              <span>🏠</span>
-            </Link>
-            <span>&gt;</span>
-            <button 
-              onClick={() => handleChannelSelect(null)} 
-              className={cn("hover:underline", !selectedChannel && activeTab === 'items' && "font-bold text-foreground")}
-            >
-              Menu
-            </button>
-            {activeTab !== 'items' && (
-              <>
-                <span>&gt;</span>
-                <span className="font-bold text-foreground capitalize">{activeTab}</span>
-              </>
-            )}
-            {selectedChannel && (
-              <>
-                <span>&gt;</span>
-                <span className="font-bold text-foreground">{currentActiveChannel?.title}</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {selectedChannel ? (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => handleChannelSelect(null)} 
-                className="h-8 text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Back to Menus
-              </Button>
-            ) : (
-              <Link 
-                href="/dashboard" 
-                className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
-              >
-                &lt; Back
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* PETPOOJA HORIZONTAL NAVIGATION TABS STRIP */}
-        <div className="bg-[#f0f9ff]/70 dark:bg-muted/30 border-y border-border/60 -mx-6 px-6 mb-6 flex items-center justify-between overflow-x-auto">
-          <div className="flex items-center gap-1 sm:gap-2 py-1">
-            {[
-              { id: 'items', label: 'Items', icon: true },
-              { id: 'categories', label: 'Categories' },
-              { id: 'variants', label: 'Variants' },
-              { id: 'modifiers', label: 'Addons' },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <motion.button
-                  key={tab.id}
-                  type="button"
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={cn(
-                    "relative px-3 py-2 text-xs font-semibold rounded-md transition-colors flex items-center gap-1.5 whitespace-nowrap select-none",
-                    isActive ? "text-[#0284c7] font-bold" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span>{tab.label}</span>
-                  {tab.icon && <ChevronDown className="w-3 h-3 opacity-70" />}
-                  {isActive && (
-                    <motion.div
-                      layoutId="menu-pos-active-tab-bar"
-                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#0284c7] rounded-full"
-                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                </motion.button>
-              );
-            })}
-
-            <Link
-              href="/menu-pos/tables"
-              className="px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-md transition-colors whitespace-nowrap active:scale-95"
-            >
-              Tables/Areas
-            </Link>
-
-            {[
-              { id: 'outlet-menu', label: 'Outlet Menu' },
-              { id: 'taxes', label: 'Taxes' },
-              { id: 'discounts', label: 'Discounts' },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <motion.button
-                  key={tab.id}
-                  type="button"
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={cn(
-                    "relative px-3 py-2 text-xs font-semibold rounded-md transition-colors whitespace-nowrap select-none",
-                    isActive ? "text-[#0284c7] font-bold" : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <span>{tab.label}</span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="menu-pos-active-tab-bar"
-                      className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#0284c7] rounded-full"
-                      transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                    />
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* ======================================================== */}
         {/* PETPOOJA TAB 1: ITEMS (CHANNEL CARDS OR DISH CATALOG)     */}
         {/* ======================================================== */}
@@ -583,48 +482,22 @@ export default function MenuManagement({
         {activeTab === 'items' && selectedChannel && (
           <div className="space-y-4">
             
-            {/* CHANNEL HEADER & SWITCHER */}
+            {/* CATALOG HEADER */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-4 rounded-xl border shadow-xs">
               <div className="flex items-center gap-3">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={() => handleChannelSelect(null)} 
-                  className="h-9 w-9 shrink-0" 
-                  title="Back to All Channel Menus"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-foreground tracking-tight">{currentActiveChannel?.title}</h2>
+                    <h2 className="text-lg font-bold text-foreground tracking-tight">Menu Catalog</h2>
                     <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
                       {filteredItems.length} dishes
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">{currentActiveChannel?.description}</p>
+                  <p className="text-xs text-muted-foreground">Search and maintain the shared catalog used by the POS.</p>
                 </div>
               </div>
 
-              {/* QUICK CHANNEL PILLS & ACTIONS */}
+              {/* CATALOG ACTIONS */}
               <div className="flex items-center flex-wrap gap-2">
-                <div className="bg-muted p-1 rounded-lg flex items-center gap-1 text-xs font-medium">
-                  {CHANNELS.map(ch => (
-                    <button
-                      key={ch.id}
-                      onClick={() => handleChannelSelect(ch.id)}
-                      className={cn(
-                        "px-2.5 py-1 rounded-md transition-all",
-                        selectedChannel === ch.id 
-                          ? "bg-card text-foreground font-bold shadow-xs" 
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {ch.title}
-                    </button>
-                  ))}
-                </div>
-
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 font-medium text-xs">
@@ -642,20 +515,20 @@ export default function MenuManagement({
                 </DropdownMenu>
 
                 <Button size="sm" className="h-8 bg-[#f97316] hover:bg-[#ea580c] text-white font-medium text-xs px-3 shadow-sm" onClick={() => openItemModal()}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add New Item
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Dish
                 </Button>
               </div>
             </div>
 
             {/* UNIFIED FILTER TOOLBAR */}
-            <div className="bg-card p-3.5 rounded-xl border shadow-xs space-y-3">
+            <div className="bg-card p-3.5 rounded-xl border shadow-xs">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 
                 {/* SEARCH INPUT */}
                 <div className="relative flex-1 min-w-[240px] max-w-md">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by dish name, SKU code..."
+                    placeholder="Search dishes..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-9 text-xs"
@@ -712,8 +585,8 @@ export default function MenuManagement({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active / In Stock</SelectItem>
-                      <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                      <SelectItem value="active">Available</SelectItem>
+                      <SelectItem value="out_of_stock">Sold Out</SelectItem>
                       <SelectItem value="inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
@@ -732,30 +605,21 @@ export default function MenuManagement({
                 </div>
               </div>
 
-              {/* METRICS STRIP */}
-              <div className="flex flex-wrap items-center gap-4 text-xs pt-2.5 border-t text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Total Dishes: <strong className="text-foreground font-semibold">{stats.totalItems}</strong>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Veg: <strong className="text-foreground font-semibold">{stats.vegCount}</strong>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                  Non-Veg: <strong className="text-foreground font-semibold">{stats.nonVegCount}</strong>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                  Categories: <strong className="text-foreground font-semibold">{stats.totalCategories}</strong>
-                </span>
-                {stats.outOfStockItems > 0 && (
-                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-semibold ml-auto">
-                    ⚠️ {stats.outOfStockItems} dishes currently marked Out of Stock
-                  </span>
-                )}
-              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+              <span>
+                Showing <strong className="text-foreground">{filteredItems.length}</strong> of {items.length} dishes
+              </span>
+              {stats.outOfStockItems > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('out_of_stock')}
+                  className="font-medium text-amber-600 hover:text-amber-700 hover:underline dark:text-amber-400"
+                >
+                  {stats.outOfStockItems} sold out — view dishes
+                </button>
+              )}
             </div>
 
             {/* FULL-WIDTH PETPOOJA DISH TABLE */}
@@ -763,27 +627,26 @@ export default function MenuManagement({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="w-[320px]">Dish & Details</TableHead>
-                    <TableHead className="w-[180px]">Category</TableHead>
+                    <TableHead className="w-[320px]">Dish</TableHead>
+                    <TableHead className="hidden lg:table-cell w-[180px]">Category</TableHead>
                     <TableHead className="w-[110px]">
                       {selectedChannel === 'base' ? 'Base Price' : `${currentActiveChannel?.title} Price`}
                     </TableHead>
-                    <TableHead className="w-[120px]">Variations</TableHead>
-                    <TableHead className="w-[110px]">Tax Slab</TableHead>
-                    <TableHead className="w-[130px] text-center">In Stock</TableHead>
-                    <TableHead className="w-[110px] text-right">Actions</TableHead>
+                    <TableHead className="hidden xl:table-cell w-[120px]">Sizes</TableHead>
+                    <TableHead className="w-[130px] text-center">Available</TableHead>
+                    <TableHead className="w-[150px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-44 text-center">
+                      <TableCell colSpan={6} className="h-44 text-center">
                         <div className="flex flex-col items-center justify-center text-muted-foreground space-y-2">
                           <Utensils className="w-8 h-8 opacity-40" />
                           <p className="text-sm font-medium">No dishes match your active filters.</p>
                           {hasActiveFilters && (
                             <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs h-8">
-                              Clear All Filters
+                              Clear filters
                             </Button>
                           )}
                         </div>
@@ -798,7 +661,7 @@ export default function MenuManagement({
                         <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                           
                           {/* DISH & DETAILS */}
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             <div className="flex items-start gap-3">
                               <div className="pt-0.5">
                                 {renderFoodTypeIcon(item.food_type || 'veg')}
@@ -836,7 +699,7 @@ export default function MenuManagement({
                           </TableCell>
 
                           {/* CATEGORY (CLEAN SINGLE CATEGORY) */}
-                          <TableCell>
+                          <TableCell className="hidden xl:table-cell">
                             <span className="font-medium text-xs text-foreground">{item.category?.name || 'Unassigned'}</span>
                           </TableCell>
 
@@ -861,13 +724,6 @@ export default function MenuManagement({
                             )}
                           </TableCell>
 
-                          {/* TAX SLAB */}
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">
-                              {item.tax_rate ? `${item.tax_rate}%` : '5%'} GST {item.is_tax_inclusive ? '(Inc)' : ''}
-                            </span>
-                          </TableCell>
-
                           {/* STOCK STATUS (AVAILABILITY SWITCH) */}
                           <TableCell className="text-center">
                             <div className="inline-flex items-center gap-2">
@@ -879,25 +735,37 @@ export default function MenuManagement({
                                 "text-[10px] font-semibold",
                                 item.is_available ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
                               )}>
-                                {item.is_available ? 'In Stock' : 'Out of Stock'}
+                                {item.is_available ? 'Available' : 'Sold Out'}
                               </span>
                             </div>
                           </TableCell>
 
                           {/* ACTIONS */}
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              {locations.length > 0 && (
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openOverrideModal(item)} title="Outlet Price Override">
-                                  <Building2 className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                                </Button>
-                              )}
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openItemModal(item)} title="Edit Item">
-                                <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={() => openItemModal(item)}>
+                                <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(`/menu-pos/items/${item.id}`, 'menu item')} title="Delete Item">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`More actions for ${item.name}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {locations.length > 0 && (
+                                    <DropdownMenuItem onClick={() => openOverrideModal(item)}>
+                                      <Building2 className="h-4 w-4 mr-2" /> Outlet price
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handleDelete(`/menu-pos/items/${item.id}`, 'menu item')}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete dish
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -916,8 +784,19 @@ export default function MenuManagement({
         {activeTab === 'categories' && (
           <div className="space-y-4">
             
-            {/* SEARCH & ACTIONS */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-4 rounded-xl border shadow-xs">
+            <div className="bg-card p-4 rounded-xl border shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold tracking-tight">Categories</h2>
+                    <Badge variant="secondary" className="text-xs">{filteredCategoriesList.length}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Organize how dishes are grouped in the POS menu.</p>
+                </div>
+                <Button size="sm" className="h-9 bg-[#f97316] hover:bg-[#ea580c] text-white font-medium text-xs px-3.5" onClick={() => openCategoryModal()}>
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Category
+                </Button>
+              </div>
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -932,15 +811,6 @@ export default function MenuManagement({
                   </button>
                 )}
               </div>
-
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium">
-                  Total Categories: <strong className="text-foreground">{filteredCategoriesList.length}</strong>
-                </span>
-                <Button size="sm" className="h-9 bg-[#f97316] hover:bg-[#ea580c] text-white font-medium text-xs px-3.5" onClick={() => openCategoryModal()}>
-                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Category
-                </Button>
-              </div>
             </div>
 
             {/* FLAT CATEGORIES TABLE */}
@@ -948,18 +818,16 @@ export default function MenuManagement({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40 hover:bg-muted/40">
-                    <TableHead className="w-[60px]">#</TableHead>
                     <TableHead>Category Name</TableHead>
                     <TableHead className="w-[160px]">Dishes Inside</TableHead>
-                    <TableHead className="w-[140px]">Display Sort Order</TableHead>
-                    <TableHead className="w-[120px] text-center">Status</TableHead>
-                    <TableHead className="w-[120px] text-right">Actions</TableHead>
+                    <TableHead className="hidden md:table-cell w-[140px]">POS Order</TableHead>
+                    <TableHead className="w-[150px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCategoriesList.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-36 text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="h-36 text-center text-muted-foreground">
                         <FolderOpen className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm font-medium">No categories found.</p>
                         <Button size="sm" className="mt-3 text-xs bg-[#f97316] text-white" onClick={() => openCategoryModal()}>
@@ -972,7 +840,6 @@ export default function MenuManagement({
                       const count = items.filter((i: any) => i.menu_category_id === cat.id || i.sub_category_id === cat.id).length;
                       return (
                         <TableRow key={cat.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-600 flex items-center justify-center shrink-0">
@@ -989,22 +856,29 @@ export default function MenuManagement({
                               {count} {count === 1 ? 'dish' : 'dishes'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            Order #{cat.sort_order ?? idx + 1}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] px-2 py-0.5">
-                              Active
-                            </Badge>
+                          <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
+                            {cat.sort_order ?? idx + 1}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openCategoryModal(cat)} title="Edit Category">
-                                <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={() => openCategoryModal(cat)}>
+                                <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(`/menu-pos/categories/${cat.id}`, 'category')} title="Delete Category">
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`More actions for ${cat.name}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => handleDelete(`/menu-pos/categories/${cat.id}`, 'category')}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete category
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1092,13 +966,13 @@ export default function MenuManagement({
         {/* ======================================================== */}
         {activeTab === 'modifiers' && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center bg-card p-4 rounded-xl border shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border shadow-xs">
               <div>
-                <h3 className="font-bold text-sm text-foreground">Add-ons & Modifiers</h3>
-                <p className="text-xs text-muted-foreground">Configure extra toppings, preparation notes, and add-on price adjustments.</p>
+                <h3 className="font-bold text-lg text-foreground tracking-tight">Add-ons & Choices</h3>
+                <p className="text-xs text-muted-foreground">Create reusable choices such as size, spice level, toppings, and extras.</p>
               </div>
               <Button size="sm" className="h-9 bg-[#f97316] hover:bg-[#ea580c] text-white font-medium text-xs px-3.5" onClick={() => openGroupModal()}>
-                <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Modifier Group
+                <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Choice Group
               </Button>
             </div>
 
@@ -1106,9 +980,10 @@ export default function MenuManagement({
               {modifierGroups.length === 0 ? (
                 <div className="col-span-full p-12 text-center border rounded-xl bg-card text-muted-foreground">
                   <SlidersHorizontal className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No modifier groups configured yet.</p>
+                  <p className="text-sm font-medium">No choice groups yet.</p>
+                  <p className="text-xs mt-1">Create one once, then attach it to any dish.</p>
                   <Button size="sm" className="mt-3 text-xs bg-[#f97316] text-white" onClick={() => openGroupModal()}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Modifier Group
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Choice Group
                   </Button>
                 </div>
               ) : (
@@ -1119,25 +994,37 @@ export default function MenuManagement({
                         <div>
                           <h4 className="font-bold text-sm text-foreground">{group.name}</h4>
                           <div className="flex items-center gap-1.5 mt-1">
-                            {group.min_selection > 0 ? (
+                            {group.min_selections > 0 ? (
                               <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[9px] px-1.5 py-0">
-                                Mandatory (Min: {group.min_selection})
+                                Required (choose at least {group.min_selections})
                               </Badge>
                             ) : (
                               <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
                                 Optional
                               </Badge>
                             )}
-                            <span className="text-[11px] text-muted-foreground">Max: {group.max_selection}</span>
+                            <span className="text-[11px] text-muted-foreground">Choose up to {group.max_selections}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openGroupModal(group)}>
-                            <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                        <div className="flex items-center gap-1.5">
+                          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={() => openGroupModal(group)}>
+                            <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(`/menu-pos/modifier-groups/${group.id}`, 'modifier group')}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`More actions for ${group.name}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDelete(`/menu-pos/modifiers/${group.id}`, 'choice group')}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete group
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
 
@@ -1147,7 +1034,7 @@ export default function MenuManagement({
                           <div key={mod.id} className="flex justify-between items-center text-xs p-1.5 rounded bg-muted/40">
                             <span>{mod.name}</span>
                             <span className="font-semibold text-foreground">
-                              {Number(mod.price) > 0 ? `+$${Number(mod.price).toFixed(2)}` : 'Free'}
+                              {Number(mod.price_adjustment) > 0 ? `+$${Number(mod.price_adjustment).toFixed(2)}` : 'Free'}
                             </span>
                           </div>
                         ))}
@@ -1170,10 +1057,10 @@ export default function MenuManagement({
                 <Store className="w-5 h-5 text-amber-600 shrink-0" />
                 <div>
                   <h3 className="font-bold text-xs text-foreground">
-                    Customizing Menu for: <span className="underline">{locations.find(l => l.id.toString() === selectedLocationId)?.name || 'Selected Outlet'}</span>
+                    Outlet Settings: <span className="underline">{locations.find(l => l.id.toString() === selectedLocationId)?.name || 'Selected Outlet'}</span>
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Any prices or stock toggled here only apply to this branch. Master menu defaults remain intact for other outlets.
+                    Prices and availability changed here apply only to this outlet. Other outlets keep their current settings.
                   </p>
                 </div>
               </div>
@@ -1200,7 +1087,7 @@ export default function MenuManagement({
                     <TableHead className="w-[180px]">Category</TableHead>
                     <TableHead className="w-[130px]">Master Price</TableHead>
                     <TableHead className="w-[160px]">Outlet Price</TableHead>
-                    <TableHead className="w-[150px] text-center">Outlet Stock</TableHead>
+                    <TableHead className="w-[150px] text-center">Outlet Availability</TableHead>
                     <TableHead className="w-[130px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1246,7 +1133,7 @@ export default function MenuManagement({
                         </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openOverrideModal(item)}>
-                            <Edit className="w-3 h-3 mr-1" /> Override Price
+                            <Edit className="w-3 h-3 mr-1" /> Edit Settings
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1342,70 +1229,6 @@ export default function MenuManagement({
           </div>
         )}
 
-        {/* ======================================================== */}
-        {/* PETPOOJA ONLINE MENU ON/OFF (ITEM AVAILABILITY)           */}
-        {/* ======================================================== */}
-        {activeTab === 'availability' && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-3.5 rounded-xl border shadow-xs">
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search dishes to toggle availability..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 text-xs"
-                />
-              </div>
-
-              <div className="flex items-center gap-4 text-xs font-semibold">
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" /> {stats.activeItems} In Stock
-                </span>
-                <span className="flex items-center gap-1.5 text-red-500">
-                  <XCircle className="w-4 h-4" /> {stats.outOfStockItems} Out of Stock
-                </span>
-              </div>
-            </div>
-
-            {/* RAPID TOGGLE CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredItems.map(item => (
-                <div 
-                  key={item.id} 
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-xl border bg-card transition-all",
-                    !item.is_available && "border-red-300 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/10"
-                  )}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    {renderFoodTypeIcon(item.food_type || 'veg')}
-                    <div className="min-w-0">
-                      <span className="font-semibold text-xs block truncate text-foreground">{item.name}</span>
-                      <span className="text-[10px] text-muted-foreground block truncate">
-                        {item.category?.name} • ${Number(item.price).toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={cn(
-                      "text-[10px] font-bold tracking-tight",
-                      item.is_available ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                    )}>
-                      {item.is_available ? 'IN STOCK' : 'OUT OF STOCK'}
-                    </span>
-                    <Switch
-                      checked={item.is_available}
-                      onCheckedChange={(val) => toggleItemAvailability(item, val)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* DIALOG MODALS */}
         <MenuItemFormDialog
           isOpen={isItemModalOpen}
@@ -1437,6 +1260,7 @@ export default function MenuManagement({
           setIsOpen={setIsOverrideModalOpen}
           item={selectedItem}
           locations={locations}
+          initialLocationId={selectedLocationId}
         />
 
         <BulkActionDialog
@@ -1444,6 +1268,31 @@ export default function MenuManagement({
           setIsOpen={setIsBulkModalOpen}
           categories={flatCategories}
         />
+
+        {/* Delete Confirmation Alert Dialog */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                Delete {deleteTarget?.title ? deleteTarget.title.charAt(0).toUpperCase() + deleteTarget.title.slice(1) : 'Item'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this {deleteTarget?.title || 'item'}? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                onClick={confirmDeleteAction}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </XPage>
     </ErrorBoundary>
   );

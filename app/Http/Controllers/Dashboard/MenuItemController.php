@@ -181,28 +181,40 @@ class MenuItemController extends Controller
         return back()->with('success', 'Menu Item deleted.');
     }
 
+    public function updateAvailability(Request $request, MenuItem $item)
+    {
+        $validated = $request->validate([
+            'is_available' => 'required|boolean',
+        ]);
+
+        $item->update(['is_available' => $validated['is_available']]);
+
+        return back()->with('success', $validated['is_available'] ? 'Item marked available.' : 'Item marked sold out.');
+    }
+
     // Save or update Outlet Override
     public function saveOutletOverride(Request $request)
     {
         $validated = $request->validate([
             'business_location_id' => 'required|exists:business_locations,id',
             'menu_item_id' => 'required|exists:menu_items,id',
-            'price' => 'nullable|numeric|min:0',
-            'is_available' => 'boolean',
-            'is_active' => 'boolean',
+            'price' => 'sometimes|nullable|numeric|min:0',
+            'is_available' => 'sometimes|boolean',
+            'is_active' => 'sometimes|boolean',
         ]);
 
-        OutletMenuItemOverride::updateOrCreate(
-            [
-                'business_location_id' => $validated['business_location_id'],
-                'menu_item_id' => $validated['menu_item_id'],
-            ],
-            [
-                'price' => $validated['price'],
-                'is_available' => $validated['is_available'] ?? true,
-                'is_active' => $validated['is_active'] ?? true,
-            ]
-        );
+        $override = OutletMenuItemOverride::firstOrNew([
+            'business_location_id' => $validated['business_location_id'],
+            'menu_item_id' => $validated['menu_item_id'],
+        ]);
+
+        foreach (['price', 'is_available', 'is_active'] as $field) {
+            if ($request->exists($field)) {
+                $override->{$field} = $validated[$field];
+            }
+        }
+
+        $override->save();
 
         return back()->with('success', 'Outlet menu override saved.');
     }

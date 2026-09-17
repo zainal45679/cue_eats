@@ -187,3 +187,76 @@ test('tables can be merged, unmerged manually, and automatically unmerged upon o
     // T2 should now be automatically unmerged (parent_table_id = null) and available
     $this->assertDatabaseHas('dining_tables', ['id' => $t2->id, 'parent_table_id' => null, 'status' => 'available']);
 });
+
+test('merging tables preserves active order on the table that has an order', function () {
+    $this->actingAs($this->user);
+
+    $zone = DiningZone::create([
+        'business_location_id' => $this->location->id,
+        'name' => 'Garden',
+    ]);
+
+    $t1 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'G1', 'seating_capacity' => 2, 'status' => 'available']);
+    $t2 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'G2', 'seating_capacity' => 4, 'status' => 'occupied']);
+
+    $order = Order::create([
+        'order_number' => 'ORD-G2-ACTIVE',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'dining_table_id' => $t2->id,
+        'status' => 'running',
+        'kitchen_status' => 'pending',
+        'subtotal' => 100.00,
+        'grand_total' => 100.00,
+    ]);
+
+    // Merge G1 and G2 (G1 passed first, but G2 has the active order)
+    $response = $this->post('/menu-pos/tables/merge', [
+        'table_ids' => [$t1->id, $t2->id]
+    ]);
+    $response->assertSessionHasNoErrors();
+
+    // G2 with the active order should be parent, G1 should be child
+    $this->assertDatabaseHas('dining_tables', ['id' => $t1->id, 'parent_table_id' => $t2->id]);
+    $this->assertDatabaseHas('dining_tables', ['id' => $t2->id, 'parent_table_id' => null]);
+    $this->assertDatabaseHas('pos_orders', ['id' => $order->id, 'dining_table_id' => $t2->id]);
+});
+
+test('merging tables rejects when multiple tables have active orders', function () {
+    $this->actingAs($this->user);
+
+    $zone = DiningZone::create([
+        'business_location_id' => $this->location->id,
+        'name' => 'Terrace',
+    ]);
+
+    $t1 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'TR1', 'seating_capacity' => 2, 'status' => 'occupied']);
+    $t2 = DiningTable::create(['dining_zone_id' => $zone->id, 'name' => 'TR2', 'seating_capacity' => 2, 'status' => 'occupied']);
+
+    Order::create([
+        'order_number' => 'ORD-TR1',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'dining_table_id' => $t1->id,
+        'status' => 'running',
+        'subtotal' => 50.00,
+        'grand_total' => 50.00,
+    ]);
+
+    Order::create([
+        'order_number' => 'ORD-TR2',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'dining_table_id' => $t2->id,
+        'status' => 'running',
+        'subtotal' => 70.00,
+        'grand_total' => 70.00,
+    ]);
+
+    // Try to merge TR1 and TR2
+    $response = $this->post('/menu-pos/tables/merge', [
+        'table_ids' => [$t1->id, $t2->id]
+    ]);
+
+    $response->assertSessionHasErrors(['error']);
+});

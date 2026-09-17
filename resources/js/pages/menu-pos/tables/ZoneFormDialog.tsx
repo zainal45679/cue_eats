@@ -8,9 +8,20 @@ import {
     DialogFooter,
 } from '@/components/shadcn/ui/dialog';
 import { Button } from '@/components/shadcn/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/shadcn/ui/input';
 import { Label } from '@/components/shadcn/ui/label';
+import { 
+    AlertDialog, 
+    AlertDialogContent, 
+    AlertDialogHeader, 
+    AlertDialogTitle, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogAction, 
+    AlertDialogCancel 
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface ZoneFormDialogProps {
     open: boolean;
@@ -23,6 +34,7 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [submitting, setSubmitting] = React.useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -37,14 +49,23 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
 
 
     const handleDelete = () => {
-        if (!confirm('Are you sure you want to delete this dining zone? All tables inside it will also be removed.')) return;
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = () => {
         setSubmitting(true);
         router.delete(`/menu-pos/zones/${zone.id}`, {
             onSuccess: () => {
                 setSubmitting(false);
+                setShowDeleteConfirm(false);
                 onOpenChange(false);
+                toast.success('Dining zone deleted successfully.');
             },
-            onError: () => setSubmitting(false),
+            onError: (errors: any) => {
+                setSubmitting(false);
+                setShowDeleteConfirm(false);
+                toast.error(errors?.error || 'Failed to delete dining zone.');
+            },
         });
     };
 
@@ -125,6 +146,31 @@ export function ZoneFormDialog({ open, onOpenChange, zone }: ZoneFormDialogProps
                     </DialogFooter>
                 </form>
             </DialogContent>
+
+            {/* Delete Confirmation Alert Dialog */}
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                            Delete Dining Zone
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete dining zone <strong>{zone?.name}</strong>? All tables inside it will also be removed.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={submitting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                            onClick={confirmDelete}
+                        >
+                            {submitting ? 'Deleting...' : 'Delete Zone'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     );
 }

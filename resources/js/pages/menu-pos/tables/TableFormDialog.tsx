@@ -8,7 +8,7 @@ import {
     DialogFooter,
 } from '@/components/shadcn/ui/dialog';
 import { Button } from '@/components/shadcn/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/shadcn/ui/input';
 import { Label } from '@/components/shadcn/ui/label';
 import {
@@ -18,6 +18,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/shadcn/ui/select';
+import { 
+    AlertDialog, 
+    AlertDialogContent, 
+    AlertDialogHeader, 
+    AlertDialogTitle, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogAction, 
+    AlertDialogCancel 
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface TableFormDialogProps {
     open: boolean;
@@ -33,6 +44,7 @@ export function TableFormDialog({ open, onOpenChange, table, zones, defaultZoneI
     const [seatingCapacity, setSeatingCapacity] = React.useState<number>(4);
     const [diningZoneId, setDiningZoneId] = React.useState<string>('');
     const [submitting, setSubmitting] = React.useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -49,14 +61,23 @@ export function TableFormDialog({ open, onOpenChange, table, zones, defaultZoneI
 
 
     const handleDelete = () => {
-        if (!confirm('Are you sure you want to delete this table?')) return;
+        setShowDeleteConfirm(true);
+    };
+
+    const confirmDelete = () => {
         setSubmitting(true);
         router.delete(`/menu-pos/tables/${table.id}`, {
             onSuccess: () => {
                 setSubmitting(false);
+                setShowDeleteConfirm(false);
                 onOpenChange(false);
+                toast.success('Table deleted successfully.');
             },
-            onError: () => setSubmitting(false),
+            onError: (errors: any) => {
+                setSubmitting(false);
+                setShowDeleteConfirm(false);
+                toast.error(errors?.error || 'Failed to delete table.');
+            },
         });
     };
 
@@ -161,6 +182,31 @@ export function TableFormDialog({ open, onOpenChange, table, zones, defaultZoneI
                     </DialogFooter>
                 </form>
             </DialogContent>
+
+            {/* Delete Confirmation Alert Dialog */}
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                            Delete Table
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete table <strong>{table?.name}</strong>? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={submitting}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                            onClick={confirmDelete}
+                        >
+                            {submitting ? 'Deleting...' : 'Delete Table'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     );
 }

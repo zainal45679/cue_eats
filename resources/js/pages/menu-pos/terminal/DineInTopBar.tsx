@@ -1,12 +1,23 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/ui/select';
 import { Input } from '@/components/shadcn/ui/input';
-import { Users, UserCircle, XCircle, LayoutGrid, ShoppingBag, ClipboardList, UtensilsCrossed, Search, X, ChefHat, Bell, Plus } from 'lucide-react';
+import { Users, UserCircle, XCircle, LayoutGrid, ShoppingBag, ClipboardList, UtensilsCrossed, Search, X, ChefHat, Bell, Plus, Unlink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { router } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
+import { 
+    AlertDialog, 
+    AlertDialogContent, 
+    AlertDialogHeader, 
+    AlertDialogTitle, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogAction, 
+    AlertDialogCancel 
+} from '@/components/shadcn/ui/alert-dialog';
+import { toast } from 'sonner';
 
 export function DineInTopBar({ 
     table, 
@@ -29,6 +40,11 @@ export function DineInTopBar({
     const handleBackClick = () => {
         router.get('/menu-pos/tables');
     };
+
+    const [showUnmergeDialog, setShowUnmergeDialog] = React.useState(false);
+    const [isUnmerging, setIsUnmerging] = React.useState(false);
+    const [showReleaseDialog, setShowReleaseDialog] = React.useState(false);
+    const [isReleasing, setIsReleasing] = React.useState(false);
 
     const currentWaiterName = waiters?.find((w: any) => w.id === waiterId)?.name || 'Unknown Waiter';
     const readyCount = runningOrders?.filter((o: any) => o.kitchen_status === 'ready').length || 0;
@@ -166,6 +182,20 @@ export function DineInTopBar({
                                 <span>{table.name}</span>
                             </Badge>
 
+                            {table.is_merged && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowUnmergeDialog(true)}
+                                    className="h-8 px-2.5 text-xs font-semibold rounded-full text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 bg-amber-500/15 hover:bg-amber-500/25 gap-1.5 cursor-pointer shadow-2xs"
+                                    title="Unmerge these tables back into individual tables"
+                                >
+                                    <Unlink className="w-3 h-3" />
+                                    <span>Unmerge Table</span>
+                                </Button>
+                            )}
+
                             <div className="flex items-center gap-1 bg-muted/50 border border-border/50 rounded-full px-2.5 h-8">
                                 <Users className="w-3.5 h-3.5 text-muted-foreground" />
                                 <input 
@@ -227,9 +257,9 @@ export function DineInTopBar({
                             <Badge className={cn(
                                 "text-xs h-8 px-3 rounded-full font-medium shadow-2xs",
                                 activeOrder.kitchen_status === 'ready' ? 'bg-emerald-600 text-white' :
-                                activeOrder.status === 'billed' ? 'bg-amber-500 text-white' :
+                                activeOrder.status === 'billed' ? 'bg-purple-600 text-white' :
                                 activeOrder.status === 'Completed' ? 'bg-emerald-600 text-white' :
-                                'bg-blue-600 text-white'
+                                'bg-orange-600 text-white'
                             )}>
                                 {activeOrder.kitchen_status === 'ready' ? 'Ready!' :
                                  activeOrder.status === 'billed' ? 'Billed' : activeOrder.status || 'Running'}
@@ -253,16 +283,8 @@ export function DineInTopBar({
                         <Button 
                             variant="destructive" 
                             size="sm" 
-                            className="h-8 rounded-full px-3 text-xs font-semibold"
-                            onClick={() => {
-                                if (window.confirm("Are you sure you want to cancel and free this table?")) {
-                                    router.post('/menu-pos/terminal/checkout', {
-                                        action: 'cancel_draft',
-                                        order_id: activeOrder.id,
-                                        order_type: 'Dine-in'
-                                    });
-                                }
-                            }}
+                            className="h-8 rounded-full px-3 text-xs font-semibold cursor-pointer"
+                            onClick={() => setShowReleaseDialog(true)}
                         >
                             <XCircle className="w-3.5 h-3.5 mr-1" />
                             Release
@@ -351,6 +373,94 @@ export function DineInTopBar({
                     </div>
                 </div>
             </div>
+
+            {/* Unmerge Confirmation Dialog */}
+            {table && (
+                <AlertDialog open={showUnmergeDialog} onOpenChange={setShowUnmergeDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                                Unmerge Tables
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to unmerge tables <strong>{table?.name}</strong>? The tables will be split back into individual tables.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isUnmerging}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                disabled={isUnmerging}
+                                className="bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+                                onClick={() => {
+                                    setIsUnmerging(true);
+                                    router.post('/menu-pos/tables/unmerge', { parent_table_id: table.id }, {
+                                        preserveScroll: true,
+                                        onSuccess: () => {
+                                            setIsUnmerging(false);
+                                            setShowUnmergeDialog(false);
+                                            toast.success(`Tables ${table.name} unmerged successfully.`);
+                                            router.get('/menu-pos/tables');
+                                        },
+                                        onError: (errors: any) => {
+                                            setIsUnmerging(false);
+                                            setShowUnmergeDialog(false);
+                                            toast.error(errors.error || Object.values(errors)[0] || 'Failed to unmerge tables.');
+                                        }
+                                    });
+                                }}
+                            >
+                                {isUnmerging ? 'Unmerging...' : 'Unmerge Tables'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+
+            {/* Release Table Confirmation Dialog */}
+            {activeOrder && (
+                <AlertDialog open={showReleaseDialog} onOpenChange={setShowReleaseDialog}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                                Release Table
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to cancel and free this table? Any unsaved items in this ticket will be discarded.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isReleasing}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                disabled={isReleasing}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                                onClick={() => {
+                                    setIsReleasing(true);
+                                    router.post('/menu-pos/terminal/checkout', {
+                                        action: 'cancel_draft',
+                                        order_id: activeOrder.id,
+                                        order_type: 'Dine-in'
+                                    }, {
+                                        onSuccess: () => {
+                                            setIsReleasing(false);
+                                            setShowReleaseDialog(false);
+                                            toast.success('Table released successfully.');
+                                        },
+                                        onError: (errors: any) => {
+                                            setIsReleasing(false);
+                                            setShowReleaseDialog(false);
+                                            toast.error(errors.error || Object.values(errors)[0] || 'Failed to release table.');
+                                        }
+                                    });
+                                }}
+                            >
+                                {isReleasing ? 'Releasing...' : 'Release Table'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
         </div>
     );
 }

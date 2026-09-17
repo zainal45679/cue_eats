@@ -122,9 +122,10 @@ export const Configs: TConfigs = {
       group: "MANAGEMENT",
       adminOnly: true,
       children: [
-        { title: "Menu & Discounts", href: "/menu-pos" },
-        { title: "Online Menu on/off", href: "/menu-pos?tab=availability" },
-        { title: "Outlet Menu", href: "/menu-pos?tab=outlet-menu" },
+        { title: "Menu Catalog", href: "/menu-pos" },
+        { title: "Categories", href: "/menu-pos?tab=categories" },
+        { title: "Add-ons & Choices", href: "/menu-pos?tab=modifiers" },
+        { title: "Outlet Settings", href: "/menu-pos?tab=outlet-menu" },
       ]
     },
     {
