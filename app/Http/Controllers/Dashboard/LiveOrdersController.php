@@ -12,28 +12,32 @@ class LiveOrdersController extends Controller
 {
     public function index()
     {
+        $defaultLocation = \App\Models\BusinessLocation::where('is_sales_enabled', true)->first()?->id 
+            ?? \App\Models\BusinessLocation::first()?->id;
+
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id') 
+            ? session('active_location_id', $defaultLocation) 
             : auth()->user()->business_location_id;
 
         // Fetch only active live kitchen orders (pending and preparing)
         $orders = Order::with([
             'items.menuItem', 
             'items.modifiers.modifier', 
+            'items.voidedBy',
             'kots.items.menuItem', 
             'kots.items.modifiers.modifier', 
+            'kots.items.voidedBy',
             'diningTable', 
             'waiter', 
             'cashier'
         ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
-            ->where('status', '!=', 'draft')
+            ->whereIn('status', ['running', 'billed'])
             ->whereHas('items')
             ->where(function ($query) {
                 $query->whereIn('kitchen_status', ['pending', 'preparing'])
                       ->orWhereNull('kitchen_status');
             })
-            ->where('status', '!=', 'cancelled')
             ->orderBy('created_at', 'desc')
             ->get();
 

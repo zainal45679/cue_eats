@@ -3,13 +3,15 @@ import { XPage } from "@/components/x/page/XPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/ui/card";
 import { Button } from "@/components/shadcn/ui/button";
 import { Badge } from "@/components/shadcn/ui/badge";
-import { MapPin, Printer, ClipboardCheck } from "lucide-react";
+import { Link } from "@inertiajs/react";
+import { MapPin, Printer, ClipboardCheck, Package, PackageSearch } from "lucide-react";
 
 export default function ShowGrnPage({ grn }: { grn: any }) {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'draft': return <Badge variant="secondary" className="bg-slate-100 text-slate-700">Draft</Badge>;
             case 'submitted': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Submitted</Badge>;
+            case 'completed': return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Completed</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
         }
     };
@@ -124,6 +126,9 @@ export default function ShowGrnPage({ grn }: { grn: any }) {
                     
                     <div className="shrink-0 ml-4 hidden sm:flex items-center gap-2">
                         {/* Desktop only buttons */}
+                        <Button variant="outline" size="sm" asChild className="h-9">
+                            <Link href="/inventory/live-stock"><PackageSearch className="mr-2 size-4" /> View Live Stock</Link>
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                             <Printer className="mr-2 size-4" /> Print
                         </Button>

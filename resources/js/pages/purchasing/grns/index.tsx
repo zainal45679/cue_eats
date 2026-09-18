@@ -12,20 +12,20 @@ import { Package, Truck, Factory, FileText, Clock, CheckCircle, ShoppingCart } f
 
 export default function GoodsReceiptNotesIndex() {
     const { props } = usePage<any>();
-    const { grns } = props;
+    const { grns, grnStats } = props;
 
     const [activeTab, setActiveTab] = useState("all");
 
     const stats = useMemo(() => {
         const rows = grns.rows || [];
         return {
-            total: rows.length,
-            draft: rows.filter((grn: any) => grn.status === 'draft').length,
-            processed: rows.filter((grn: any) => grn.status === 'submitted').length,
-            internal: rows.filter((grn: any) => grn.stock_transfer_order).length,
-            external: rows.filter((grn: any) => grn.purchase_order).length,
+            total: grnStats?.total ?? rows.length,
+            draft: grnStats?.draft ?? rows.filter((grn: any) => grn.status === 'draft').length,
+            processed: grnStats?.completed ?? rows.filter((grn: any) => grn.status === 'completed').length,
+            internal: grnStats?.internal ?? rows.filter((grn: any) => grn.stock_transfer_order).length,
+            external: grnStats?.external ?? rows.filter((grn: any) => grn.purchase_order).length,
         };
-    }, [grns]);
+    }, [grns, grnStats]);
 
     const processedData = useMemo(() => {
         let filteredRows = grns.rows || [];
@@ -131,11 +131,11 @@ export default function GoodsReceiptNotesIndex() {
                 variant: "select",
                 options: [
                     { label: "Draft", value: "draft" },
-                    { label: "Submitted", value: "submitted" },
+                    { label: "Completed", value: "completed" },
                 ],
             },
             cell: ({ row }: any) => {
-                const status = row.original.status || "submitted";
+                const status = row.original.status || "completed";
                 const colors: Record<string, string> = {
                     draft: "bg-gray-100 text-gray-800",
                     submitted: "bg-blue-100 text-blue-800",

@@ -94,6 +94,8 @@ final class InventoryLotService
         Model $reference,
         ?string $createdBy
     ): Collection {
+        self::trackLegacyBalance($ingredientId, $storageLocationId, $createdBy);
+
         $lotBalances = InventoryLotBalance::query()
             ->with('lot')
             ->where('storage_location_id', $storageLocationId)
@@ -148,6 +150,66 @@ final class InventoryLotService
         self::refreshNearestExpiry($storageLocationId, $ingredientId);
 
         return $allocations;
+    }
+
+    /**
+     * Keep balance-only stock usable after lot tracking was introduced.
+     *
+     * Older imports, seeders and integrations can create an aggregate
+     * InventoryBalance without a matching InventoryLotBalance.  FEFO must not
+     * report zero stock in that case.  We create one auditable, non-expiring
+     * legacy lot for only the positive difference; existing lots are untouched.
+     */
+    private static function trackLegacyBalance(
+        string $ingredientId,
+        string $storageLocationId,
+        ?string $createdBy
+    ): void {
+        $aggregateBalance = InventoryBalance::query()
+            ->where('ingredient_id', $ingredientId)
+            ->where('storage_location_id', $storageLocationId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $aggregateBalance || (float) $aggregateBalance->available_qty <= 0) {
+            return;
+        }
+
+        $trackedQuantity = (float) InventoryLotBalance::query()
+            ->where('storage_location_id', $storageLocationId)
+            ->whereHas('lot', fn ($query) => $query->where('ingredient_id', $ingredientId))
+            ->sum('available_qty');
+
+        $untrackedQuantity = round((float) $aggregateBalance->available_qty - $trackedQuantity, 3);
+        if ($untrackedQuantity <= 0) {
+            return;
+        }
+
+        $legacyLotNumber = 'LEGACY-'.strtoupper(substr(sha1($ingredientId.':'.$storageLocationId), 0, 12));
+        $lot = InventoryLot::firstOrCreate(
+            ['internal_lot_number' => $legacyLotNumber],
+            [
+                'ingredient_id' => $ingredientId,
+                'received_at' => now(),
+                'status' => 'available',
+                'traceability_status' => 'manual',
+            ]
+        );
+
+        $lotBalance = InventoryLotBalance::firstOrCreate(
+            ['inventory_lot_id' => $lot->id, 'storage_location_id' => $storageLocationId],
+            ['available_qty' => 0, 'reserved_qty' => 0]
+        );
+        $lotBalance->increment('available_qty', $untrackedQuantity);
+
+        InventoryLotMovement::create([
+            'inventory_lot_id' => $lot->id,
+            'to_storage_location_id' => $storageLocationId,
+            'movement_type' => 'legacy_reconciliation',
+            'quantity' => $untrackedQuantity,
+            'created_by' => $createdBy,
+            'reason' => 'Matched pre-lot inventory balance before FEFO movement.',
+        ]);
     }
 
     public static function addExistingLotToStorage(

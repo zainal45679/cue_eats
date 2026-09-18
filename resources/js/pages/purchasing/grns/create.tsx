@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/shadcn/ui
 import { Button } from "@/components/shadcn/ui/button";
 import { Input } from "@/components/shadcn/ui/input";
 import { router } from "@inertiajs/react";
-import { MapPin, Save, Package, AlertCircle } from "lucide-react";
+import { MapPin, Save, Package, AlertCircle, CheckCheck, LoaderCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/shadcn/ui/table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shadcn/ui/alert";
 export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
@@ -22,6 +22,7 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 : Math.max(0, Number(item.dispatched_quantity) - Number(item.received_quantity || 0) - Number(item.rejected_quantity || 0));
                 
             return {
+                source_item_id: item.id,
                 ingredient_id: item.ingredient_id,
                 ingredient_name: item.ingredient?.name,
                 is_perishable: !!item.ingredient?.is_perishable,
@@ -30,9 +31,9 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 uom_id: isPO ? item.purchase_uom_id : item.uom_id,
                 uom_name: item.unit_of_measure?.name,
                 expected_quantity: expectedQty,
-                received_quantity: expectedQty,
+                received_quantity: 0,
                 rejected_quantity: 0,
-                pending_quantity: 0,
+                pending_quantity: expectedQty,
                 source_batches: (item.lot_allocations || []).map((allocation: any) => ({
                     batch_number: allocation.lot?.batch_number || allocation.lot?.internal_lot_number,
                     expiry_date: allocation.lot?.expiry_date || null,
@@ -46,6 +47,16 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
     );
 
     const [error, setError] = useState<string | null>(null);
+    const [processing, setProcessing] = useState(false);
+
+    const receiveAllRemaining = () => {
+        setItems(items.map((item: any) => ({
+            ...item,
+            received_quantity: Math.max(0, item.expected_quantity - item.rejected_quantity),
+            pending_quantity: 0,
+        })));
+        setError(null);
+    };
 
     const handleQuantityChange = (index: number, field: 'received_quantity' | 'rejected_quantity', value: string) => {
         const val = Number(value) || 0;
@@ -82,13 +93,27 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 setError(`Received and Rejected quantities for ${item.ingredient_name} cannot exceed Expected Quantity (${item.expected_quantity}).`);
                 return;
             }
+            if (isPO && item.received_quantity > 0 && item.is_perishable && (!item.batch_number.trim() || !item.expiry_date)) {
+                setError(`Batch number and expiry date are required for ${item.ingredient_name}.`);
+                return;
+            }
+            if (item.mfg_date && item.expiry_date && item.expiry_date < item.mfg_date) {
+                setError(`Expiry date must be on or after the manufacture date for ${item.ingredient_name}.`);
+                return;
+            }
+        }
+
+        if (!items.some((item: any) => item.received_quantity + item.rejected_quantity > 0)) {
+            setError('Enter a received or rejected quantity for at least one item.');
+            return;
         }
         
         if (confirm("Submit Received Goods? This will update your location's inventory.")) {
             router.post("/purchasing/grns", {
                 ...(isPO ? { po_id: document.id } : { sto_id: document.id }),
                 remarks,
-                items: items.map(item => ({
+                items: items.map((item: any) => ({
+                    source_item_id: item.source_item_id,
                     ingredient_id: item.ingredient_id,
                     expected_quantity: item.expected_quantity,
                     received_quantity: item.received_quantity,
@@ -97,7 +122,15 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                     mfg_date: item.mfg_date || null,
                     expiry_date: item.expiry_date || null,
                     uom_id: item.uom_id,
-                }))
+                })),
+            }, {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+                onError: (errors) => {
+                    const firstError = Object.values(errors)[0];
+                    setError(typeof firstError === 'string' ? firstError : 'The receipt could not be saved. Check the entered quantities and batch details.');
+                },
             });
         }
     };
@@ -139,10 +172,16 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 </div>
 
                 <Card className="overflow-hidden border-2 border-primary/10 shadow-sm p-0 gap-0">
-                    <div className="bg-primary/5 px-6 py-4 flex items-center justify-between border-b border-primary/10">
-                        <CardTitle className="flex items-center gap-2">
-                            <Package className="size-5 text-primary" /> Verify Receiving Items
-                        </CardTitle>
+                    <div className="bg-primary/5 px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-primary/10">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <Package className="size-5 text-primary" /> Verify Receiving Items
+                            </CardTitle>
+                            <p className="mt-1 text-xs text-muted-foreground">Enter what physically arrived. Unprocessed quantity stays open for a later receipt.</p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={receiveAllRemaining} disabled={items.length === 0 || processing}>
+                            <CheckCheck className="mr-2 size-4" /> Receive all remaining
+                        </Button>
                     </div>
                     <div className="bg-card">
                         {items.length === 0 ? (
@@ -158,6 +197,7 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                             <TableHead className="text-right">Expected Qty</TableHead>
                                             <TableHead className="text-center">Received Qty</TableHead>
                                             <TableHead className="text-center">Rejected Qty</TableHead>
+                                            <TableHead className="text-center">Still Pending</TableHead>
                                             <TableHead className="text-center">Batch / Lot #</TableHead>
                                             <TableHead className="text-center">Mfg &amp; Expiry Dates</TableHead>
                                             <TableHead className="text-right">UOM</TableHead>
@@ -184,6 +224,7 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                         type="number" 
                                                         step="0.01" 
                                                         min="0"
+                                                        max={item.expected_quantity - item.rejected_quantity}
                                                         className="w-24 text-center mx-auto focus-visible:ring-emerald-500" 
                                                         value={item.received_quantity}
                                                         onChange={(e) => handleQuantityChange(index, 'received_quantity', e.target.value)}
@@ -194,10 +235,16 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                                                         type="number" 
                                                         step="0.01" 
                                                         min="0"
+                                                        max={item.expected_quantity - item.received_quantity}
                                                         className="w-24 text-center mx-auto focus-visible:ring-red-500" 
                                                         value={item.rejected_quantity}
                                                         onChange={(e) => handleQuantityChange(index, 'rejected_quantity', e.target.value)}
                                                     />
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className={item.pending_quantity > 0 ? "font-semibold text-amber-600" : "font-semibold text-emerald-600"}>
+                                                        {item.pending_quantity.toFixed(2)}
+                                                    </span>
                                                 </TableCell>
                                                 <TableCell className="text-center">
                                                     {isPO ? (
@@ -268,8 +315,9 @@ export default function CreateGrnPage({ sto, po }: { sto?: any, po?: any }) {
                 </Card>
 
                 <div className="flex justify-end gap-2">
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={items.length === 0}>
-                        <Save className="mr-2 size-4" /> Submit GRN & Update Inventory
+                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={items.length === 0 || processing}>
+                        {processing ? <LoaderCircle className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+                        {processing ? 'Updating inventory…' : 'Confirm Receipt & Update Stock'}
                     </Button>
                 </div>
             </form>

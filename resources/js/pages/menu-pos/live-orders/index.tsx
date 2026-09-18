@@ -323,42 +323,63 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                         {/* Card Body: Items List directly on the card */}
                                         <div className="flex-1 p-2.5 overflow-y-auto max-h-[300px] divide-y divide-border/20">
                                             <ul className="space-y-1.5">
-                                                {order.items?.map((item: any) => (
-                                                    <li key={item.id} className="py-1 flex items-start justify-between group">
-                                                        <div className="flex items-start flex-1 min-w-0 pr-2">
-                                                            <span className="font-bold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
-                                                            <div className="min-w-0 flex-1">
-                                                                <div className="font-semibold text-sm leading-tight text-foreground">
-                                                                    {item.menu_item?.name || item.menu_item_name}
+                                                {order.items?.map((item: any) => {
+                                                    if (item.is_voided) {
+                                                        return (
+                                                            <li key={item.id} className="py-1 flex items-start justify-between group bg-red-500/10 px-2 py-1.5 rounded-md my-0.5 border-l-2 border-l-red-600">
+                                                                <div className="flex items-start flex-1 min-w-0 pr-2">
+                                                                    <span className="font-bold text-sm w-7 shrink-0 text-red-600 line-through">{item.quantity} x</span>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="font-semibold text-sm leading-tight text-red-600 line-through">
+                                                                            {item.menu_item?.name || item.menu_item_name}
+                                                                        </div>
+                                                                        <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                                                            <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider">VOIDED</span>
+                                                                            {item.void_reason && <span className="italic truncate text-muted-foreground font-normal">({item.void_reason})</span>}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                {item.modifiers && item.modifiers.length > 0 && (
-                                                                    <div className="mt-0.5 text-xs text-muted-foreground">
-                                                                        {item.modifiers.map((mod: any, idx: number) => (
-                                                                            <div key={idx}>+ {mod.modifier?.name || mod.modifier_name || mod.name}</div>
-                                                                        ))}
+                                                            </li>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <li key={item.id} className="py-1 flex items-start justify-between group">
+                                                            <div className="flex items-start flex-1 min-w-0 pr-2">
+                                                                <span className="font-bold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="font-semibold text-sm leading-tight text-foreground">
+                                                                        {item.menu_item?.name || item.menu_item_name}
                                                                     </div>
-                                                                )}
-                                                                {item.notes && (
-                                                                    <div className="mt-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400 italic">
-                                                                        * {item.notes}
-                                                                    </div>
-                                                                )}
+                                                                    {item.modifiers && item.modifiers.length > 0 && (
+                                                                        <div className="mt-0.5 text-xs text-muted-foreground">
+                                                                            {item.modifiers.map((mod: any, idx: number) => (
+                                                                                <div key={idx}>+ {mod.modifier?.name || mod.modifier_name || mod.name}</div>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                    {item.notes && (
+                                                                        <div className="mt-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400 italic">
+                                                                            * {item.notes}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex flex-col items-end shrink-0">
-                                                            <span className="text-xs font-semibold text-foreground">
-                                                                ₹{parseFloat(item.subtotal || '0').toFixed(2)}
-                                                            </span>
-                                                        </div>
-                                                    </li>
-                                                ))}
+                                                            <div className="flex flex-col items-end shrink-0">
+                                                                <span className="text-xs font-semibold text-foreground">
+                                                                    ₹{parseFloat(item.subtotal || '0').toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        </li>
+                                                    );
+                                                })}
                                             </ul>
                                         </div>
 
                                         {/* Card Footer: Read-Only Info & Details */}
                                         <div className="p-2.5 bg-muted/20 border-t mt-auto flex items-center justify-between">
                                             <span className="text-xs text-muted-foreground font-medium">
-                                                {order.items?.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0)} items
+                                                {order.items?.filter((i: any) => !i.is_voided).reduce((acc: number, i: any) => acc + (i.quantity || 1), 0)} items
                                             </span>
                                             <div className="flex items-center gap-1.5">
                                                 <Button
@@ -439,24 +460,42 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                             <div>
                                 <h4 className="font-bold text-xs uppercase tracking-wider text-muted-foreground mb-2">Order Items</h4>
                                 <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1">
-                                    {viewOrder.items?.map((item: any) => (
-                                        <div key={item.id} className="flex justify-between items-start text-xs border-b border-border/30 pb-2">
-                                            <div>
-                                                <span className="font-bold">{item.quantity}x</span> {item.menu_item?.name || item.menu_item_name}
-                                                {item.modifiers?.length > 0 && (
-                                                    <div className="text-[11px] text-muted-foreground pl-4">
-                                                        {item.modifiers.map((mod: any, idx: number) => (
-                                                            <div key={idx}>+ {mod.modifier?.name || mod.modifier_name || mod.name}</div>
-                                                        ))}
+                                    {viewOrder.items?.map((item: any) => {
+                                        if (item.is_voided) {
+                                            return (
+                                                <div key={item.id} className="flex justify-between items-start text-xs border-b border-border/30 pb-2 bg-red-500/10 p-2 rounded-md border-l-2 border-l-red-600 my-1">
+                                                    <div>
+                                                        <span className="font-bold text-red-600 line-through">{item.quantity}x</span>{' '}
+                                                        <span className="line-through text-red-600 font-semibold">{item.menu_item?.name || item.menu_item_name}</span>
+                                                        <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                                            <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider">VOIDED</span>
+                                                            {item.void_reason && <span className="italic text-muted-foreground font-normal">({item.void_reason})</span>}
+                                                        </div>
                                                     </div>
-                                                )}
-                                                {item.notes && (
-                                                    <div className="text-[11px] text-amber-600 dark:text-amber-400 pl-4 italic">* {item.notes}</div>
-                                                )}
+                                                    <span className="text-xs text-muted-foreground line-through">₹{parseFloat(item.subtotal || '0').toFixed(2)}</span>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={item.id} className="flex justify-between items-start text-xs border-b border-border/30 pb-2">
+                                                <div>
+                                                    <span className="font-bold">{item.quantity}x</span> {item.menu_item?.name || item.menu_item_name}
+                                                    {item.modifiers?.length > 0 && (
+                                                        <div className="text-[11px] text-muted-foreground pl-4">
+                                                            {item.modifiers.map((mod: any, idx: number) => (
+                                                                <div key={idx}>+ {mod.modifier?.name || mod.modifier_name || mod.name}</div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {item.notes && (
+                                                        <div className="text-[11px] text-amber-600 dark:text-amber-400 pl-4 italic">* {item.notes}</div>
+                                                    )}
+                                                </div>
+                                                <span className="font-bold">₹{parseFloat(item.subtotal || '0').toFixed(2)}</span>
                                             </div>
-                                            <span className="font-bold">₹{parseFloat(item.subtotal || '0').toFixed(2)}</span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
 

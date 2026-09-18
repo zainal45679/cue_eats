@@ -11,8 +11,11 @@ class KdsController extends Controller
 {
     public function index()
     {
+        $defaultLocation = \App\Models\BusinessLocation::where('is_sales_enabled', true)->first()?->id 
+            ?? \App\Models\BusinessLocation::first()?->id;
+
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', \App\Models\BusinessLocation::first()?->id) 
+            ? session('active_location_id', $defaultLocation) 
             : auth()->user()->business_location_id;
 
         abort_if(! auth()->user()->hasRole('admin') && ! $locationId, 403, 'No outlet is assigned to this user.');
@@ -28,8 +31,7 @@ class KdsController extends Controller
             'waiter'
         ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
-            ->where('status', '!=', 'draft')
-            ->whereHas('kots')
+            ->whereNotIn('status', ['draft', 'Completed', 'completed', 'paid'])
             ->whereHas('items')
             ->where(function ($query) {
                 $query->whereIn('kitchen_status', ['pending', 'preparing'])

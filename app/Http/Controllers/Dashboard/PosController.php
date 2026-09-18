@@ -529,6 +529,14 @@ class PosController extends Controller
                     }
                     $order->status = 'Completed';
                     $order->payment_method = $validated['payment_method'];
+
+                    // Mark kitchen status as ready so completed orders do not linger in live kitchen displays
+                    if (in_array($order->kitchen_status, ['pending', 'preparing', null])) {
+                        $order->kitchen_status = 'ready';
+                        \App\Models\PosKot::where('pos_order_id', $order->id)
+                            ->whereIn('status', ['pending', 'preparing'])
+                            ->update(['status' => 'ready']);
+                    }
                 } else if ($validated['action'] === 'print_bill' || $validated['action'] === 'kot_and_print_bill') {
                     $order->status = 'billed';
                 } else {
@@ -635,18 +643,18 @@ class PosController extends Controller
             }
 
             if ($order->status === 'Completed') {
+                $flashData = [
+                    'success' => "Order {$order->order_number} settled successfully.",
+                    'recent_order' => $order,
+                    'is_bill_only' => true
+                ];
+                if (!empty($recentKot)) {
+                    $flashData['recent_kot'] = $recentKot;
+                }
                 if ($order->dining_table_id) {
-                    return redirect()->route('pos.tables')->with([
-                        'success' => "Order {$order->order_number} settled successfully.",
-                        'recent_order' => $order,
-                        'is_bill_only' => true
-                    ]);
+                    return redirect()->route('pos.tables')->with($flashData);
                 } else {
-                    return redirect()->route('pos.terminal')->with([
-                        'success' => "Order {$order->order_number} settled successfully.",
-                        'recent_order' => $order,
-                        'is_bill_only' => true
-                    ]);
+                    return redirect()->route('pos.terminal')->with($flashData);
                 }
             }
 

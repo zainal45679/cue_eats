@@ -30,6 +30,9 @@ class InventoryBalanceController extends Controller
 
         // Clone query before TableHelper applies filters so categories remain global
         $globalQuery = clone $query;
+        if (! request()->filled('sortBy')) {
+            $query->orderByDesc('updated_at');
+        }
         $data = TableHelper::query($query)
             ->searchColumns(['ingredient.name', 'ingredient.code', 'storageLocation.storage_name', 'ingredient.category.name'])
             ->addCustomFilter('ingredient.name', function ($q, $val) {
@@ -125,6 +128,25 @@ class InventoryBalanceController extends Controller
         }
 
         $allBalances = $globalQuery->with('ingredient.category')->get();
+        $today = today();
+        $nearExpiry = today()->addDays(2);
+        $inventoryStats = [
+            'total' => $allBalances->count(),
+            'inStock' => $allBalances->where('available_qty', '>', 0)->count(),
+            'outOfStock' => $allBalances->where('available_qty', '<=', 0)->count(),
+            'reserved' => $allBalances->where('reserved_qty', '>', 0)->count(),
+            'onOrder' => $allBalances->where('on_order_qty', '>', 0)->count(),
+            'expiringSoon' => $allBalances->filter(fn (InventoryBalance $balance): bool =>
+                (float) $balance->available_qty > 0
+                && $balance->nearest_expiry_date !== null
+                && $balance->nearest_expiry_date->betweenIncluded($today, $nearExpiry)
+            )->count(),
+            'expired' => $allBalances->filter(fn (InventoryBalance $balance): bool =>
+                (float) $balance->available_qty > 0
+                && $balance->nearest_expiry_date !== null
+                && $balance->nearest_expiry_date->lt($today)
+            )->count(),
+        ];
         $balanceCategories = $allBalances->groupBy(function($item) {
             return $item->ingredient?->category?->name;
         })->map->count()->toArray();
@@ -162,6 +184,7 @@ class InventoryBalanceController extends Controller
             ]),
             'serverCategories' => $cleanCategories,
             'totalItemsCount' => $allBalances->count(),
+            'inventoryStats' => $inventoryStats,
             'storageLocations' => $storageLocations,
             'ingredients' => \App\Models\Ingredient::with('baseUom')->select('id', 'name', 'base_uom_id')->get(),
         ]);

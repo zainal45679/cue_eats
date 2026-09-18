@@ -287,7 +287,12 @@ class PurchaseOrderController extends Controller
                     ['available_qty' => 0, 'reserved_qty' => 0, 'on_order_qty' => 0]
                 );
 
-                $balance->increment('on_order_qty', $item->quantity);
+                $uom = \App\Models\UnitOfMeasure::find($item->purchase_uom_id);
+                $conversionFactor = $uom && $uom->conversion_factor
+                    ? (float) $uom->conversion_factor
+                    : 1;
+
+                $balance->increment('on_order_qty', (float) $item->quantity * $conversionFactor);
             }
         });
 

@@ -24,6 +24,15 @@ class GoodsReceiptNoteController extends Controller
             $query->where('location_id', $locationId);
         }
         
+        $statsQuery = clone $query;
+        $stats = [
+            'total' => (clone $statsQuery)->count(),
+            'draft' => (clone $statsQuery)->where('status', 'draft')->count(),
+            'completed' => (clone $statsQuery)->where('status', 'completed')->count(),
+            'internal' => (clone $statsQuery)->whereNotNull('stock_transfer_order_id')->count(),
+            'external' => (clone $statsQuery)->whereNotNull('purchase_order_id')->count(),
+        ];
+
         $query->latest();
             
         return Inertia::render('purchasing/grns/index', [
@@ -38,6 +47,7 @@ class GoodsReceiptNoteController extends Controller
                 })
                 ->transform(fn ($grn): array => $grn->toArray())
                 ->get(),
+            'grnStats' => $stats,
         ]);
     }
 
@@ -81,7 +91,8 @@ class GoodsReceiptNoteController extends Controller
             'sto_id' => 'nullable|exists:stock_transfer_orders,id',
             'po_id' => 'nullable|exists:purchase_orders,id',
             'remarks' => 'nullable|string',
-            'items' => 'required|array',
+            'items' => 'required|array|min:1',
+            'items.*.source_item_id' => 'required|uuid|distinct',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.expected_quantity' => 'required|numeric',
             'items.*.received_quantity' => 'required|numeric|min:0',
@@ -91,6 +102,21 @@ class GoodsReceiptNoteController extends Controller
             'items.*.expiry_date' => 'nullable|date',
             'items.*.uom_id' => 'required|exists:units_of_measure,id',
         ]);
+
+        if (empty($data['po_id']) === empty($data['sto_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'source' => 'Choose exactly one source document for this receipt.',
+            ]);
+        }
+
+        $hasProcessedQuantity = collect($data['items'])->contains(
+            fn (array $item): bool => (float) $item['received_quantity'] + (float) $item['rejected_quantity'] > 0
+        );
+        if (! $hasProcessedQuantity) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'items' => 'Enter a received or rejected quantity for at least one item.',
+            ]);
+        }
         
         if (!empty($data['po_id'])) {
             return $this->storePoGrn($data);
@@ -124,7 +150,7 @@ class GoodsReceiptNoteController extends Controller
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        DB::transaction(function () use ($data, $sto, $targetLocationId) {
+        $grn = DB::transaction(function () use ($data, $sto, $targetLocationId) {
             $stoLocked = StockTransferOrder::where('id', $sto->id)->lockForUpdate()->first();
             if (!in_array($stoLocked->status, ['dispatched', 'partially_received'])) {
                 abort(403, 'STO must be dispatched before receiving.');
@@ -145,7 +171,12 @@ class GoodsReceiptNoteController extends Controller
             ]);
 
             foreach ($data['items'] as $itemData) {
+                if ((float) $itemData['received_quantity'] + (float) $itemData['rejected_quantity'] <= 0) {
+                    continue;
+                }
+
                 $stoItem = $stoLocked->items()
+                    ->whereKey($itemData['source_item_id'])
                     ->where('ingredient_id', $itemData['ingredient_id'])
                     ->lockForUpdate()
                     ->first();
@@ -169,7 +200,7 @@ class GoodsReceiptNoteController extends Controller
 
                 $grnItem = $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
-                    'expected_quantity' => $stoItem->dispatched_quantity,
+                    'expected_quantity' => $remainingQuantity,
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
                     'batch_number' => $itemData['batch_number'] ?? null,
@@ -265,6 +296,7 @@ class GoodsReceiptNoteController extends Controller
 
                     InventoryLedger::create([
                         'business_location_id' => $targetLocationId,
+                        'storage_location_id' => $storageLocation->id,
                         'ingredient_id' => $itemData['ingredient_id'],
                         'transaction_type' => 'transfer_in',
                         'reference_type' => GoodsReceiptNote::class,
@@ -297,9 +329,11 @@ class GoodsReceiptNoteController extends Controller
             } else {
                 $stoLocked->update(['status' => 'partially_received']);
             }
+
+            return $grn;
         });
 
-        return redirect()->route('grns.index')->with('success', 'Received Goods recorded successfully.');
+        return redirect()->route('grns.show', $grn)->with('success', 'Received goods recorded and inventory updated.');
     }
 
     private function storePoGrn($data)
@@ -313,7 +347,7 @@ class GoodsReceiptNoteController extends Controller
             abort(403, 'You are not authorized to receive items for this location.');
         }
 
-        DB::transaction(function () use ($data, $po, $targetLocationId) {
+        $grn = DB::transaction(function () use ($data, $po, $targetLocationId) {
             $poLocked = \App\Models\PurchaseOrder::where('id', $po->id)->lockForUpdate()->first();
             if (!in_array($poLocked->status, ['approved', 'partially_received'])) {
                 abort(403, 'PO must be approved before receiving.');
@@ -334,7 +368,12 @@ class GoodsReceiptNoteController extends Controller
             ]);
 
             foreach ($data['items'] as $itemData) {
+                if ((float) $itemData['received_quantity'] + (float) $itemData['rejected_quantity'] <= 0) {
+                    continue;
+                }
+
                 $poItem = $poLocked->items()
+                    ->whereKey($itemData['source_item_id'])
                     ->where('ingredient_id', $itemData['ingredient_id'])
                     ->lockForUpdate()
                     ->first();
@@ -358,7 +397,7 @@ class GoodsReceiptNoteController extends Controller
 
                 $grnItem = $grn->items()->create([
                     'ingredient_id' => $itemData['ingredient_id'],
-                    'expected_quantity' => $poItem->quantity,
+                    'expected_quantity' => $remainingQuantity,
                     'received_quantity' => $itemData['received_quantity'],
                     'rejected_quantity' => $itemData['rejected_quantity'],
                     'batch_number' => $itemData['batch_number'] ?? null,
@@ -426,6 +465,7 @@ class GoodsReceiptNoteController extends Controller
 
                         InventoryLedger::create([
                             'business_location_id' => $targetLocationId,
+                            'storage_location_id' => $storageLocation->id,
                             'ingredient_id' => $itemData['ingredient_id'],
                             'transaction_type' => 'purchase',
                             'reference_type' => GoodsReceiptNote::class,
@@ -450,9 +490,11 @@ class GoodsReceiptNoteController extends Controller
             }
 
             $poLocked->update(['status' => $isFullyReceived ? 'received' : 'partially_received']);
+
+            return $grn;
         });
 
-        return redirect()->route('grns.index')->with('success', 'Purchase Order GRN created successfully.');
+        return redirect()->route('grns.show', $grn)->with('success', 'Received goods recorded and inventory updated.');
     }
 
     public function show(GoodsReceiptNote $goodsReceiptNote)

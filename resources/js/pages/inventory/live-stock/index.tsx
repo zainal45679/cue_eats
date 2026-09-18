@@ -19,6 +19,7 @@ export default function InventoryBalancesIndex({
   allInventoryBalances = [],
   serverCategories,
   totalItemsCount,
+  inventoryStats,
   storageLocations = [],
   ingredients = [],
 }: PageProps<{
@@ -34,6 +35,15 @@ export default function InventoryBalancesIndex({
   allInventoryBalances?: any[];
   serverCategories?: Record<string, number>;
   totalItemsCount?: number;
+  inventoryStats?: {
+    total: number;
+    inStock: number;
+    outOfStock: number;
+    reserved: number;
+    onOrder: number;
+    expiringSoon: number;
+    expired: number;
+  };
   storageLocations?: any[];
   ingredients?: any[];
 }>) {
@@ -79,7 +89,9 @@ export default function InventoryBalancesIndex({
   // Auto-refresh the live stock data every 15 seconds
   useEffect(() => {
     const dataInterval = setInterval(() => {
-        router.reload({ only: ['inventoryBalances', 'serverCategories', 'totalItemsCount'], preserveScroll: true, preserveState: true });
+        router.reload({
+          only: ['inventoryBalances', 'allInventoryBalances', 'serverCategories', 'totalItemsCount', 'inventoryStats'],
+        });
     }, 15000);
     return () => clearInterval(dataInterval);
   }, []);
@@ -116,7 +128,7 @@ export default function InventoryBalancesIndex({
       }
     });
 
-    return { 
+    const pageStats = {
       total: totalItemsCount ?? inventoryBalances.total ?? rows.length, 
       inStock, 
       outOfStock, 
@@ -125,7 +137,9 @@ export default function InventoryBalancesIndex({
       expiringSoon,
       expired,
     };
-  }, [inventoryBalances, totalItemsCount]);
+
+    return inventoryStats ?? pageStats;
+  }, [inventoryBalances, inventoryStats, totalItemsCount]);
 
   // Extract categories BEFORE filtering by tab, so the sidebar always shows all categories
   const categories = useMemo(() => {
