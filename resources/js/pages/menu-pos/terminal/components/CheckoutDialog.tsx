@@ -102,7 +102,7 @@ export function CheckoutDialog({ isOpen, setIsOpen, cart, subtotal, orderId, tab
             menu_item_id: item.id,
             quantity: item.quantity,
             price: item.price,
-            notes: '',
+            notes: item.notes || '',
             modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
                 modifier_id: mod.id,
                 price_adjustment: parseFloat(mod.price_adjustment ?? mod.price ?? 0)

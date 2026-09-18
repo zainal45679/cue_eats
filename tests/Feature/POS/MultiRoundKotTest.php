@@ -38,6 +38,8 @@ test('saving initial KOT creates Round 1 KOT and sets table status to occupied',
     ]);
 
     $response->assertSessionHasNoErrors();
+    $response->assertSessionHas('recent_kot');
+    $response->assertSessionMissing('recent_order');
     $this->assertDatabaseHas('pos_orders', [
         'dining_table_id' => $this->table->id,
         'status' => 'running',
@@ -168,4 +170,60 @@ test('dining-in print bill returns accumulated order and sets is_bill_only flag'
     $response->assertSessionHasNoErrors();
     $response->assertSessionHas('recent_order');
     $response->assertSessionHas('is_bill_only', true);
+    expect($order->fresh()->status)->toBe('billed');
+    expect($this->table->fresh()->status)->toBe('billed');
 });
+
+test('saving KOT and checkout preserves item notes on order items and KOT items', function () {
+    $this->actingAs($this->user);
+
+    $response = $this->post('/menu-pos/terminal/checkout', [
+        'action' => 'save_kot',
+        'dining_table_id' => $this->table->id,
+        'order_type' => 'Dine-in',
+        'cart' => [
+            [
+                'menu_item_id' => $this->burger->id,
+                'quantity' => 1,
+                'price' => 10.00,
+                'notes' => 'No Onions • Extra Crispy'
+            ],
+            [
+                'menu_item_id' => $this->fries->id,
+                'quantity' => 1,
+                'price' => 5.00,
+                'notes' => 'Extra Salt'
+            ],
+        ]
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $order = Order::where('dining_table_id', $this->table->id)->first();
+    
+    // Check order items have notes
+    $this->assertDatabaseHas('pos_order_items', [
+        'pos_order_id' => $order->id,
+        'menu_item_id' => $this->burger->id,
+        'notes' => 'No Onions • Extra Crispy'
+    ]);
+    $this->assertDatabaseHas('pos_order_items', [
+        'pos_order_id' => $order->id,
+        'menu_item_id' => $this->fries->id,
+        'notes' => 'Extra Salt'
+    ]);
+
+    // Check KOT items have notes
+    $kot = $order->kots()->first();
+    $this->assertDatabaseHas('pos_kot_items', [
+        'pos_kot_id' => $kot->id,
+        'menu_item_id' => $this->burger->id,
+        'notes' => 'No Onions • Extra Crispy'
+    ]);
+    $this->assertDatabaseHas('pos_kot_items', [
+        'pos_kot_id' => $kot->id,
+        'menu_item_id' => $this->fries->id,
+        'notes' => 'Extra Salt'
+    ]);
+});
+
+

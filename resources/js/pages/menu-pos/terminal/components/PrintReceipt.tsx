@@ -20,11 +20,27 @@ export function PrintReceipt({
 
     useEffect(() => {
         if (order && mounted) {
+            let printedHandled = false;
+            const handleAfterPrint = () => {
+                if (printedHandled) return;
+                printedHandled = true;
+                if (onPrinted) onPrinted();
+            };
+
+            window.addEventListener('afterprint', handleAfterPrint);
+
             const timer = setTimeout(() => {
                 window.print();
-                if (onPrinted) onPrinted();
+                // Safe fallback in case afterprint doesn't fire in headless or embedded environments
+                setTimeout(() => {
+                    handleAfterPrint();
+                }, 1500);
             }, 350);
-            return () => clearTimeout(timer);
+
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('afterprint', handleAfterPrint);
+            };
         }
     }, [order, mounted]);
 

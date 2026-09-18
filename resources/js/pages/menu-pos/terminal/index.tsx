@@ -5,8 +5,9 @@ import { Card, CardContent } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/shadcn/ui/dialog';
 import { Input } from '@/components/shadcn/ui/input';
+import { Textarea } from '@/components/shadcn/ui/textarea';
 import { ScrollArea, ScrollBar } from '@/components/shadcn/ui/scroll-area';
-import { Search, Plus, Minus, Trash2, ShoppingCart, Utensils, Receipt, CreditCard, Printer, AlertTriangle, Lock, ShieldAlert } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, Utensils, Receipt, CreditCard, Printer, AlertTriangle, Lock, ShieldAlert, Pencil, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModifierSelectionDialog } from './components/ModifierSelectionDialog';
 import { CheckoutDialog } from './components/CheckoutDialog';
@@ -241,6 +242,8 @@ export default function PosTerminal({
     const [selectedItemForMod, setSelectedItemForMod] = useState<any | null>(null);
     const [isModModalOpen, setIsModModalOpen] = useState(false);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+    const [editingNoteItem, setEditingNoteItem] = useState<any | null>(null);
+    const [itemNoteText, setItemNoteText] = useState('');
 
     // Flatten all items for search or "All" category view
     const allItems = useMemo(() => {
@@ -340,13 +343,14 @@ export default function PosTerminal({
         return base;
     };
 
-    const addToCart = (item: any, selectedModifiers: Record<string, any[]>) => {
+    const addToCart = (item: any, selectedModifiers: Record<string, any[]>, notes?: string) => {
         if (!checkInventory(item, selectedModifiers, 1)) {
             toast.warning('Insufficient stock for this item or its modifiers.');
             return;
         }
 
-        const hash = getModifierHash(selectedModifiers);
+        const cleanNotes = (notes || '').trim();
+        const hash = `${getModifierHash(selectedModifiers)}_${cleanNotes}`;
         const existingItemIndex = cart.findIndex(c => c.id === item.id && c.modHash === hash);
         const itemUnitPrice = getItemUnitPrice(item, selectedModifiers);
 
@@ -362,9 +366,29 @@ export default function PosTerminal({
                 quantity: 1, 
                 modHash: hash,
                 selectedModifiers,
+                notes: cleanNotes,
                 unitPriceWithMods: itemUnitPrice
             }]);
         }
+    };
+
+    const openItemNoteModal = (item: any) => {
+        setEditingNoteItem(item);
+        setItemNoteText(item.notes || '');
+    };
+
+    const saveItemNote = () => {
+        if (!editingNoteItem) return;
+        const cleanNotes = itemNoteText.trim();
+        setCart(prev => prev.map(cartItem => {
+            if (cartItem.cart_id === editingNoteItem.cart_id) {
+                const hash = `${getModifierHash(cartItem.selectedModifiers)}_${cleanNotes}`;
+                return { ...cartItem, notes: cleanNotes, modHash: hash };
+            }
+            return cartItem;
+        }));
+        setEditingNoteItem(null);
+        setItemNoteText('');
     };
 
     const updateQuantity = (cartId: number, delta: number) => {
@@ -405,6 +429,7 @@ export default function PosTerminal({
                 menu_item_id: item.id,
                 quantity: item.quantity,
                 price: item.price,
+                notes: item.notes || null,
                 modifiers: item.selectedModifiers ? Object.values(item.selectedModifiers).flat().map((mod: any) => ({
                     modifier_id: mod.id,
                     price_adjustment: mod.price_adjustment
@@ -418,7 +443,7 @@ export default function PosTerminal({
                 if (recentKot) {
                     triggerKotPrint(recentKot);
                 }
-                if (recentOrder) {
+                if (actionType !== 'save_kot' && recentOrder) {
                     triggerOrderPrint(recentOrder);
                 }
             },
@@ -734,11 +759,34 @@ export default function PosTerminal({
                                                     {parseFloat(mod.price_adjustment) > 0 && <span className="font-medium">+₹{parseFloat(mod.price_adjustment).toFixed(2)}</span>}
                                                 </p>
                                             ))}
+                                            {item.notes ? (
+                                                <div 
+                                                    onClick={() => openItemNoteModal(item)}
+                                                    className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md cursor-pointer hover:bg-amber-500/15 transition-colors"
+                                                    title="Click to edit instructions"
+                                                >
+                                                    <FileText className="w-3 h-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                                                    <span className="truncate flex-1 font-medium italic">Note: {item.notes}</span>
+                                                    <Pencil className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                                                </div>
+                                            ) : null}
                                         </div>
                                         <p className="font-bold text-sm whitespace-nowrap text-foreground">₹{(getItemUnitPrice(item) * item.quantity).toFixed(2)}</p>
                                     </div>
                                     <div className="flex items-center justify-between pt-1.5 border-t border-border/30">
-                                        <span className="text-xs text-muted-foreground font-medium">₹{getItemUnitPrice(item).toFixed(2)} / ea</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground font-medium">₹{getItemUnitPrice(item).toFixed(2)} / ea</span>
+                                            {!item.notes && (
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => openItemNoteModal(item)}
+                                                    className="text-[11px] font-medium text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer"
+                                                >
+                                                    <Pencil className="w-2.5 h-2.5" />
+                                                    <span>Add Note</span>
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="flex items-center bg-muted/50 border border-border/50 rounded-lg overflow-hidden h-7">
                                             <button 
                                                 type="button"
@@ -996,6 +1044,78 @@ export default function PosTerminal({
                         >
                             Confirm Void
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Special Instructions / Notes Modal */}
+            <Dialog open={Boolean(editingNoteItem)} onOpenChange={(open) => !open && setEditingNoteItem(null)}>
+                <DialogContent className="sm:max-w-[450px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <span>Special Instructions — {editingNoteItem?.name}</span>
+                        </DialogTitle>
+                        <DialogDescription>
+                            Add cooking requests, customizations, or allergy warnings for the kitchen.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-3 space-y-3">
+                        <Textarea 
+                            placeholder="e.g. Extra crispy, no onions, sauce on the side, gluten allergy..."
+                            value={itemNoteText}
+                            onChange={e => setItemNoteText(e.target.value)}
+                            rows={3}
+                            className="text-sm resize-none"
+                            autoFocus
+                        />
+                        <div className="space-y-1.5">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Quick Suggestions</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {['No Onions', 'Extra Spicy', 'Less Spicy', 'Sauce on Side', 'Gluten Free', 'Nut Allergy', 'No Ice'].map((preset) => (
+                                    <button
+                                        key={preset}
+                                        type="button"
+                                        onClick={() => setItemNoteText(prev => prev ? `${prev} • ${preset}` : preset)}
+                                        className="text-xs font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-md border border-border/60 transition-colors cursor-pointer"
+                                    >
+                                        + {preset}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="flex justify-between sm:justify-between items-center gap-2">
+                        <div>
+                            {editingNoteItem?.notes && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    onClick={() => {
+                                        setItemNoteText('');
+                                        setCart(prev => prev.map(cartItem => {
+                                            if (cartItem.cart_id === editingNoteItem.cart_id) {
+                                                const hash = `${getModifierHash(cartItem.selectedModifiers)}_`;
+                                                return { ...cartItem, notes: '', modHash: hash };
+                                            }
+                                            return cartItem;
+                                        }));
+                                        setEditingNoteItem(null);
+                                    }}
+                                >
+                                    Remove Note
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setEditingNoteItem(null)} className="cursor-pointer">
+                                Cancel
+                            </Button>
+                            <Button size="sm" onClick={saveItemNote} className="font-bold cursor-pointer">
+                                Save Note
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

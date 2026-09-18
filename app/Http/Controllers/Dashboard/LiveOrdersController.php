@@ -12,14 +12,11 @@ class LiveOrdersController extends Controller
 {
     public function index()
     {
-        $defaultLocation = \App\Models\BusinessLocation::where('is_sales_enabled', true)->first()?->id 
-            ?? \App\Models\BusinessLocation::first()?->id;
-
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', $defaultLocation) 
+            ? session('active_location_id') 
             : auth()->user()->business_location_id;
 
-        // Fetch only active live kitchen orders (pending and preparing)
+        // Fetch active live kitchen orders (pending, preparing) + ready orders from the last 30 minutes
         $orders = Order::with([
             'items.menuItem', 
             'items.modifiers.modifier', 
@@ -32,11 +29,23 @@ class LiveOrdersController extends Controller
             'cashier'
         ])
             ->when($locationId, fn($q) => $q->where('business_location_id', $locationId))
-            ->whereIn('status', ['running', 'billed'])
+            ->where('status', '!=', 'draft')
+            ->where('status', '!=', 'cancelled')
             ->whereHas('items')
             ->where(function ($query) {
-                $query->whereIn('kitchen_status', ['pending', 'preparing'])
-                      ->orWhereNull('kitchen_status');
+                // Active kitchen orders (pending, preparing, or unassigned)
+                $query->where(function ($q) {
+                    $q->whereIn('status', ['running', 'billed'])
+                      ->where(function ($k) {
+                          $k->whereIn('kitchen_status', ['pending', 'preparing'])
+                            ->orWhereNull('kitchen_status');
+                      });
+                })
+                // Ready orders from the last 30 minutes
+                ->orWhere(function ($q) {
+                    $q->where('kitchen_status', 'ready')
+                      ->where('updated_at', '>=', now()->subMinutes(30));
+                });
             })
             ->orderBy('created_at', 'desc')
             ->get();

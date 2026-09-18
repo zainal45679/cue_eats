@@ -14,7 +14,14 @@ class TableController extends Controller
     public function index(Request $request)
     {
         $query = DiningZone::with(['tables' => function ($q) {
-            $q->with(['activeOrder.items.menuItem', 'activeOrder.waiter', 'activeOrder.location', 'children']);
+            $q->with([
+                'activeOrder.items.menuItem',
+                'activeOrder.items.modifiers.modifier',
+                'activeOrder.waiter',
+                'activeOrder.cashier',
+                'activeOrder.location',
+                'children'
+            ]);
         }]);
 
         if (auth()->user()->hasRole('admin')) {

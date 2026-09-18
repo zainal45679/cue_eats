@@ -180,3 +180,133 @@ test('settling an order transitions kitchen_status and active kots to ready', fu
     expect($order->kitchen_status)->toBe('ready');
     expect($kot->status)->toBe('ready');
 });
+
+test('live orders includes ready orders updated within the last 30 minutes', function () {
+    $this->actingAs($this->user);
+
+    $recentReadyOrder = Order::create([
+        'order_number' => 'ORD-READY-RECENT',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'order_type' => 'Dine-in',
+        'status' => 'Completed',
+        'kitchen_status' => 'ready',
+        'dining_table_id' => $this->table->id,
+        'grand_total' => 12.00,
+    ]);
+    $recentReadyOrder->timestamps = false;
+    $recentReadyOrder->updated_at = now()->subMinutes(10);
+    $recentReadyOrder->save();
+
+    OrderItem::create([
+        'pos_order_id' => $recentReadyOrder->id,
+        'menu_item_id' => $this->menuItem->id,
+        'quantity' => 1,
+        'unit_price' => 12.00,
+        'subtotal' => 12.00,
+    ]);
+
+    $response = $this->withSession(['active_location_id' => $this->location->id])
+        ->get('/menu-pos/live-orders');
+
+    $response->assertOk();
+    $orders = $response->viewData('page')['props']['orders'];
+    $orderNumbers = collect($orders)->pluck('order_number')->all();
+
+    expect($orderNumbers)->toContain('ORD-READY-RECENT');
+});
+
+test('live orders excludes ready orders updated more than 30 minutes ago', function () {
+    $this->actingAs($this->user);
+
+    $oldReadyOrder = Order::create([
+        'order_number' => 'ORD-READY-OLD',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'order_type' => 'Dine-in',
+        'status' => 'Completed',
+        'kitchen_status' => 'ready',
+        'dining_table_id' => $this->table->id,
+        'grand_total' => 12.00,
+    ]);
+    $oldReadyOrder->timestamps = false;
+    $oldReadyOrder->updated_at = now()->subMinutes(35);
+    $oldReadyOrder->save();
+
+    OrderItem::create([
+        'pos_order_id' => $oldReadyOrder->id,
+        'menu_item_id' => $this->menuItem->id,
+        'quantity' => 1,
+        'unit_price' => 12.00,
+        'subtotal' => 12.00,
+    ]);
+
+    $response = $this->withSession(['active_location_id' => $this->location->id])
+        ->get('/menu-pos/live-orders');
+
+    $response->assertOk();
+    $orders = $response->viewData('page')['props']['orders'];
+    $orderNumbers = collect($orders)->pluck('order_number')->all();
+
+    expect($orderNumbers)->not->toContain('ORD-READY-OLD');
+});
+
+test('kds shows orders across all outlets when in All Outlets mode', function () {
+    $this->actingAs($this->user);
+
+    $secondLocation = BusinessLocation::factory()->create([
+        'is_sales_enabled' => true,
+    ]);
+
+    $orderLoc1 = Order::create([
+        'order_number' => 'ORD-KDS-LOC1',
+        'business_location_id' => $this->location->id,
+        'user_id' => $this->user->id,
+        'order_type' => 'Takeaway',
+        'status' => 'running',
+        'kitchen_status' => 'pending',
+        'grand_total' => 12.00,
+    ]);
+    OrderItem::create([
+        'pos_order_id' => $orderLoc1->id,
+        'menu_item_id' => $this->menuItem->id,
+        'quantity' => 1,
+        'unit_price' => 12.00,
+        'subtotal' => 12.00,
+    ]);
+
+    $orderLoc2 = Order::create([
+        'order_number' => 'ORD-KDS-LOC2',
+        'business_location_id' => $secondLocation->id,
+        'user_id' => $this->user->id,
+        'order_type' => 'Takeaway',
+        'status' => 'running',
+        'kitchen_status' => 'pending',
+        'grand_total' => 12.00,
+    ]);
+    OrderItem::create([
+        'pos_order_id' => $orderLoc2->id,
+        'menu_item_id' => $this->menuItem->id,
+        'quantity' => 1,
+        'unit_price' => 12.00,
+        'subtotal' => 12.00,
+    ]);
+
+    // 1. In All Outlets mode (active_location_id is null)
+    $responseAll = $this->withSession([])->get('/menu-pos/kds');
+    $responseAll->assertOk();
+    $ordersAll = $responseAll->viewData('page')['props']['orders'];
+    $orderNumbersAll = collect($ordersAll)->pluck('order_number')->all();
+
+    expect($orderNumbersAll)->toContain('ORD-KDS-LOC1');
+    expect($orderNumbersAll)->toContain('ORD-KDS-LOC2');
+
+    // 2. When filtered to a specific location
+    $responseLoc1 = $this->withSession(['active_location_id' => $this->location->id])->get('/menu-pos/kds');
+    $responseLoc1->assertOk();
+    $ordersLoc1 = $responseLoc1->viewData('page')['props']['orders'];
+    $orderNumbersLoc1 = collect($ordersLoc1)->pluck('order_number')->all();
+
+    expect($orderNumbersLoc1)->toContain('ORD-KDS-LOC1');
+    expect($orderNumbersLoc1)->not->toContain('ORD-KDS-LOC2');
+});

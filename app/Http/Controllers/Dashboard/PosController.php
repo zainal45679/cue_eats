@@ -336,6 +336,9 @@ class PosController extends Controller
                     if (isset($validated['dining_table_id'])) $order->dining_table_id = $validated['dining_table_id'];
                     if ($validated['action'] === 'save' || $validated['action'] === 'save_kot') $order->status = 'running';
                     if ($validated['action'] === 'kot_and_print_bill' || $validated['action'] === 'print_bill') $order->status = 'billed';
+                    if (empty($order->kitchen_status)) {
+                        $order->kitchen_status = 'pending';
+                    }
                     $order->save();
                 } else {
                     // Generate sequential order number
@@ -367,8 +370,8 @@ class PosController extends Controller
                 // Create KOT Round if saving KOT or placing order with items
                 $recentKotPayload = null;
                 if (!empty($validated['cart'])) {
-                    // Reset kitchen_status to pending if order was previously marked ready or rejected
-                    if (in_array($order->kitchen_status, ['ready', 'rejected'])) {
+                    // Reset kitchen_status to pending if order was previously marked ready, rejected, or unassigned
+                    if (in_array($order->kitchen_status, ['ready', 'rejected', null]) || empty($order->kitchen_status)) {
                         $order->kitchen_status = 'pending';
                     }
 
@@ -621,7 +624,6 @@ class PosController extends Controller
                 return redirect()->route('pos.terminal', $params)->with([
                     'success' => "KOT Round #" . ($recentKot['round_number'] ?? 1) . " sent to kitchen.",
                     'recent_kot' => $recentKot,
-                    'recent_order' => $order
                 ]);
             }
 

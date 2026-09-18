@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import React, { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/shadcn/ui/badge';
 import { Button } from '@/components/shadcn/ui/button';
@@ -16,45 +16,59 @@ import {
     LayoutGrid, 
     ShoppingBag, 
     Eye, 
-    User
+    User,
+    CheckCircle2
 } from 'lucide-react';
 export default function LiveOrdersScreen({ orders = [], locationId }: { orders: any[], locationId?: string | null }) {
+    const { auth } = usePage<any>().props;
+    const allLocations = auth?.all_business_locations || [];
     const [now, setNow] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'preparing' | 'ready'>('all');
     
     // Read-only order view dialog state
     const [viewOrder, setViewOrder] = useState<any | null>(null);
 
-    // Live WebSockets updates via Echo + 15-sec polling fallback
+    // Live WebSockets updates via Echo + 5-sec polling fallback
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 60000);
 
-        let channel: any = null;
-        if (window.Echo && locationId) {
-            channel = window.Echo.private(`orders.${locationId}`)
-                .listen('.App\\Events\\OrderCreated', () => {
-                    router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
-                })
-                .listen('.App\\Events\\OrderStatusUpdated', () => {
-                    router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
-                });
+        const channels: any[] = [];
+        if (window.Echo) {
+            const reloadOrders = () => {
+                router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+            };
+
+            const subscribeToLocation = (locId: string) => {
+                const channel = window.Echo.private(`orders.${locId}`)
+                    .listen('.App\\Events\\OrderCreated', reloadOrders)
+                    .listen('.App\\Events\\OrderStatusUpdated', reloadOrders);
+                channels.push({ name: `orders.${locId}`, instance: channel });
+            };
+
+            if (locationId) {
+                subscribeToLocation(locationId);
+            } else if (allLocations && allLocations.length > 0) {
+                allLocations.forEach((loc: any) => subscribeToLocation(loc.id));
+            }
         }
 
         const pollInterval = setInterval(() => {
             router.reload({ only: ['orders'], preserveState: true, preserveScroll: true });
-        }, 15000);
+        }, 5000);
 
         return () => {
             clearInterval(timer);
             clearInterval(pollInterval);
-            if (channel && window.Echo && locationId) {
-                channel.stopListening('.App\\Events\\OrderCreated');
-                channel.stopListening('.App\\Events\\OrderStatusUpdated');
-                window.Echo.leave(`orders.${locationId}`);
+            if (window.Echo) {
+                channels.forEach(ch => {
+                    ch.instance.stopListening('.App\\Events\\OrderCreated');
+                    ch.instance.stopListening('.App\\Events\\OrderStatusUpdated');
+                    window.Echo.leave(ch.name);
+                });
             }
         };
-    }, [locationId]);
+    }, [locationId, allLocations]);
 
     // Elapsed time calculation
     const getElapsedTime = (createdAt: string) => {
@@ -64,9 +78,16 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
         return `${diffInMinutes}m ago`;
     };
 
-    // Summary counts (only active live kitchen orders)
+    // Summary counts: pending, preparing, and ready within the last 30 minutes
     const pendingOrders = useMemo(() => orders.filter(o => o.kitchen_status === 'pending' || !o.kitchen_status), [orders]);
     const preparingOrders = useMemo(() => orders.filter(o => o.kitchen_status === 'preparing'), [orders]);
+    const readyOrders = useMemo(() => {
+        return orders.filter(o => {
+            if (o.kitchen_status !== 'ready') return false;
+            const time = new Date(o.updated_at || o.created_at).getTime();
+            return (now.getTime() - time) <= 30 * 60000;
+        });
+    }, [orders, now]);
 
     // Filter by tab and search
     const filteredOrders = useMemo(() => {
@@ -76,9 +97,11 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
             list = pendingOrders;
         } else if (activeTab === 'preparing') {
             list = preparingOrders;
+        } else if (activeTab === 'ready') {
+            list = readyOrders;
         } else {
-            // All Active: show pending orders first, then preparing orders
-            list = [...pendingOrders, ...preparingOrders];
+            // All: show pending orders first, then preparing, then ready
+            list = [...pendingOrders, ...preparingOrders, ...readyOrders];
         }
 
         if (!searchQuery.trim()) {
@@ -94,7 +117,7 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
             const items = (order.items || []).map((i: any) => (i.menu_item?.name || '').toLowerCase()).join(' ');
             return num.includes(q) || tableName.includes(q) || cust.includes(q) || waiter.includes(q) || items.includes(q);
         });
-    }, [orders, activeTab, searchQuery, pendingOrders, preparingOrders]);
+    }, [orders, activeTab, searchQuery, pendingOrders, preparingOrders, readyOrders]);
 
     return (
         <>
@@ -142,9 +165,9 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                         {/* Middle & Right: Stats Capsule & Search */}
                         <div className="flex items-center gap-3">
                             {/* Stats Summary Capsule */}
-                            <div className="text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-4">
+                            <div className="text-xs font-medium hidden sm:flex bg-muted/50 px-3 py-1.5 rounded-full border border-border/50 items-center gap-3.5">
                                 <div className="text-foreground font-bold">
-                                    All Active: <span>{orders.length}</span>
+                                    All: <span>{pendingOrders.length + preparingOrders.length + readyOrders.length}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
@@ -153,6 +176,10 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                 <div className="flex items-center gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
                                     <span className="text-muted-foreground">Preparing: <span className="text-foreground font-semibold">{preparingOrders.length}</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    <span className="text-muted-foreground">Ready (30m): <span className="text-foreground font-semibold">{readyOrders.length}</span></span>
                                 </div>
                             </div>
 
@@ -184,9 +211,10 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                         <div className="flex-1 overflow-x-auto no-scrollbar">
                             <div className="flex space-x-2 pb-1 items-center">
                                 {[
-                                    { id: 'all', label: `All Active (${orders.length})` },
+                                    { id: 'all', label: `All (${pendingOrders.length + preparingOrders.length + readyOrders.length})` },
                                     { id: 'pending', label: `Pending (${pendingOrders.length})` },
                                     { id: 'preparing', label: `Preparing (${preparingOrders.length})` },
+                                    { id: 'ready', label: `Ready (${readyOrders.length})` },
                                 ].map((tab) => {
                                     const isActive = activeTab === tab.id;
                                     return (
@@ -224,7 +252,7 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card/50 w-full">
                             <ChefHat className="w-16 h-16 mb-4 opacity-20" />
                             <h2 className="text-xl font-medium mb-1 text-foreground">
-                                {searchQuery ? 'No Orders Found' : 'No Active Orders'}
+                                {searchQuery ? 'No Orders Found' : 'No Orders'}
                             </h2>
                             <p className="text-sm text-muted-foreground text-center max-w-sm">
                                 {searchQuery 
@@ -233,7 +261,9 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                     ? 'Kitchen is clear. Waiting for new orders...'
                                     : activeTab === 'pending'
                                     ? 'No pending orders right now. Kitchen is all caught up!'
-                                    : 'No orders are currently in preparation.'}
+                                    : activeTab === 'preparing'
+                                    ? 'No orders are currently in preparation.'
+                                    : 'No ready orders in the last 30 minutes.'}
                             </p>
                         </div>
                     ) : (
@@ -246,18 +276,24 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                         >
                             {filteredOrders.map((order) => {
                                 const orderTime = new Date(order.created_at);
-                                const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000;
+                                const isReady = order.kitchen_status === 'ready';
                                 const isPreparing = order.kitchen_status === 'preparing';
-                                const isPending = !isPreparing;
+                                const isPending = !isPreparing && !isReady;
+                                const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000;
                                 const tableName = order.dining_table?.name || order.diningTable?.name;
                                 const elapsedTime = getElapsedTime(order.created_at);
+                                const readyElapsedTime = order.updated_at ? getElapsedTime(order.updated_at) : elapsedTime;
 
                                 return (
                                     <div 
                                         key={order.id} 
                                         className={cn(
                                             "flex flex-col bg-card border border-border/70 shadow-xs rounded-xl overflow-hidden min-h-[290px] transition-all hover:shadow-sm",
-                                            isPreparing ? "border-t-[5px] border-t-blue-600" : "border-t-[5px] border-t-amber-500",
+                                            isReady 
+                                                ? "border-t-[5px] border-t-emerald-600 bg-emerald-500/[0.02]" 
+                                                : isPreparing 
+                                                ? "border-t-[5px] border-t-blue-600" 
+                                                : "border-t-[5px] border-t-amber-500",
                                             isOverdue && isPending && "border-t-red-600 ring-1 ring-red-500/40 animate-pulse"
                                         )}
                                     >
@@ -286,10 +322,11 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className={cn(
                                                         "text-xs font-bold shrink-0 flex items-center gap-1",
+                                                        isReady ? "text-emerald-600 font-semibold" :
                                                         isOverdue && isPending ? "text-red-600 font-extrabold" : "text-muted-foreground"
                                                     )}>
                                                         <Clock className="w-3 h-3" />
-                                                        {elapsedTime}
+                                                        {isReady ? `Ready ${readyElapsedTime}` : elapsedTime}
                                                     </span>
                                                     <span className="font-extrabold text-xs text-foreground">
                                                         ₹{parseFloat(order.grand_total || '0').toFixed(2)}
@@ -310,11 +347,14 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                                                     )}
                                                 </div>
                                                 <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
-                                                    isPreparing 
+                                                    "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border flex items-center gap-1",
+                                                    isReady
+                                                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                                        : isPreparing 
                                                         ? "bg-blue-500/10 text-blue-600 border-blue-500/20" 
                                                         : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                                                 )}>
+                                                    {isReady && <CheckCircle2 className="w-3 h-3" />}
                                                     {order.kitchen_status || 'pending'}
                                                 </span>
                                             </div>
@@ -416,7 +456,11 @@ export default function LiveOrdersScreen({ orders = [], locationId }: { orders: 
                         <DialogTitle className="flex items-center justify-between pr-4">
                             <span>Order #{viewOrder?.order_number}</span>
                             {viewOrder?.kitchen_status && (
-                                <Badge className="text-[10px] uppercase tracking-wider">
+                                <Badge className={cn(
+                                    "text-[10px] uppercase tracking-wider flex items-center gap-1",
+                                    viewOrder.kitchen_status === 'ready' && "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-600"
+                                )}>
+                                    {viewOrder.kitchen_status === 'ready' && <CheckCircle2 className="w-3 h-3" />}
                                     {viewOrder.kitchen_status}
                                 </Badge>
                             )}

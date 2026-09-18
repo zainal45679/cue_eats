@@ -11,11 +11,8 @@ class KdsController extends Controller
 {
     public function index()
     {
-        $defaultLocation = \App\Models\BusinessLocation::where('is_sales_enabled', true)->first()?->id 
-            ?? \App\Models\BusinessLocation::first()?->id;
-
         $locationId = auth()->user()->hasRole('admin') 
-            ? session('active_location_id', $defaultLocation) 
+            ? session('active_location_id') 
             : auth()->user()->business_location_id;
 
         abort_if(! auth()->user()->hasRole('admin') && ! $locationId, 403, 'No outlet is assigned to this user.');
@@ -34,12 +31,15 @@ class KdsController extends Controller
             ->whereNotIn('status', ['draft', 'Completed', 'completed', 'paid'])
             ->whereHas('items')
             ->where(function ($query) {
-                $query->whereIn('kitchen_status', ['pending', 'preparing'])
-                      ->orWhere(function ($q) {
-                          $q->where('kitchen_status', 'cancelled')
-                            ->whereNull('kitchen_dismissed_at')
-                            ->where('updated_at', '>=', now()->subHours(2));
-                      });
+                $query->where(function ($q) {
+                    $q->whereIn('kitchen_status', ['pending', 'preparing'])
+                      ->orWhereNull('kitchen_status');
+                })
+                ->orWhere(function ($q) {
+                    $q->where('kitchen_status', 'cancelled')
+                      ->whereNull('kitchen_dismissed_at')
+                      ->where('updated_at', '>=', now()->subHours(2));
+                });
             })
             ->orderBy('created_at', 'asc')
             ->get();

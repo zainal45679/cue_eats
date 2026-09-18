@@ -4,22 +4,25 @@ import { Button } from '@/components/shadcn/ui/button';
 import { Checkbox } from '@/components/shadcn/ui/checkbox';
 import { Label } from '@/components/shadcn/ui/label';
 import { Badge } from '@/components/shadcn/ui/badge';
+import { Input } from '@/components/shadcn/ui/input';
 
 interface ModifierSelectionDialogProps {
     item: any | null;
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
-    onAddToCart: (item: any, selectedModifiers: any) => void;
+    onAddToCart: (item: any, selectedModifiers: any, notes?: string) => void;
 }
 
 export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }: ModifierSelectionDialogProps) {
     // Record<groupId, array of selected modifier objects>
     const [selectedModifiers, setSelectedModifiers] = useState<Record<string, any[]>>({});
+    const [notes, setNotes] = useState('');
     
     // Reset state when a new item is selected
     useEffect(() => {
         if (item && isOpen) {
             setSelectedModifiers({});
+            setNotes('');
         }
     }, [item, isOpen]);
 
@@ -63,7 +66,7 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
 
     const handleConfirm = () => {
         if (!isValid) return;
-        onAddToCart(item, selectedModifiers);
+        onAddToCart(item, selectedModifiers, notes.trim());
         setIsOpen(false);
     };
 
@@ -147,6 +150,31 @@ export function ModifierSelectionDialog({ item, isOpen, setIsOpen, onAddToCart }
                                 </div>
                             );
                         })}
+
+                        {/* Special Cooking Notes / Instructions */}
+                        <div className="space-y-2 pt-4 border-t">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                Special Instructions / Cooking Notes (Optional)
+                            </Label>
+                            <Input
+                                value={notes}
+                                onChange={e => setNotes(e.target.value)}
+                                placeholder="e.g. Extra spicy, no onions, sauce on side, allergy..."
+                                className="h-10 text-sm"
+                            />
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                {['No Onions', 'Extra Spicy', 'Less Spicy', 'Sauce on Side', 'Gluten Free', 'Nut Allergy'].map((preset) => (
+                                    <button
+                                        key={preset}
+                                        type="button"
+                                        onClick={() => setNotes(prev => prev ? `${prev} • ${preset}` : preset)}
+                                        className="text-[11px] font-medium bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground px-2 py-0.5 rounded-md border border-border/60 transition-colors cursor-pointer"
+                                    >
+                                        + {preset}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 

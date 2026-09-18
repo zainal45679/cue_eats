@@ -159,6 +159,34 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
         router.post('/menu-pos/terminal/open-table', { table_id: table.id });
     };
 
+    const handlePrintBill = (table: any) => {
+        const order = table.active_order;
+        if (!order) return;
+
+        if (order.status === 'running') {
+            router.post('/menu-pos/terminal/checkout', {
+                action: 'print_bill',
+                order_id: order.id,
+                dining_table_id: table.id,
+                order_type: order.order_type || 'Dine-in'
+            }, {
+                preserveScroll: true,
+                preserveState: false,
+                onSuccess: (page: any) => {
+                    const recentOrder = page?.props?.flash?.recent_order;
+                    setOrderToPrint(recentOrder ? { ...recentOrder, _ts: Date.now() } : { ...order, status: 'billed', _ts: Date.now() });
+                    toast.success(`Bill generated for ${table.name}`);
+                },
+                onError: () => {
+                    setOrderToPrint({ ...order, _ts: Date.now() });
+                }
+            });
+        } else {
+            setOrderToPrint({ ...order, _ts: Date.now() });
+            toast.success(`Reprinting bill for ${table.name}`);
+        }
+    };
+
     const getRunningTime = (createdAt: string) => {
         const start = new Date(createdAt);
         const diffMs = currentTime.getTime() - start.getTime();
@@ -313,16 +341,17 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                 )}
 
                 {!mergeMode && isRunning && (
-                    <div 
+                    <button 
+                        type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setOrderToPrint(order);
+                            handlePrintBill(table);
                         }}
                         title="Print Bill"
                         className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                         <Printer className="w-3.5 h-3.5 text-slate-700 dark:text-slate-200" />
-                    </div>
+                    </button>
                 )}
 
                 {!mergeMode && isBilled && (
@@ -331,7 +360,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setOrderToPrint(order);
+                                handlePrintBill(table);
                             }}
                             title="Reprint Bill"
                             className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs rounded-md px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
@@ -694,7 +723,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
                                 size="sm" 
                                 className="gap-1.5 text-xs h-8 cursor-pointer"
                                 onClick={() => {
-                                    setOrderToPrint(viewOrder);
+                                    setOrderToPrint({ ...viewOrder, _ts: Date.now() });
                                 }}
                             >
                                 <Printer className="w-3.5 h-3.5" />
@@ -728,6 +757,7 @@ export default function TablesScreen({ zones = [] }: { zones?: any[] }) {
             {/* Direct Receipt Print Trigger */}
             {orderToPrint && (
                 <PrintReceipt 
+                    key={`print-${orderToPrint.id || 'order'}-${orderToPrint._ts || Date.now()}`}
                     order={orderToPrint} 
                     isBillOnly={true} 
                     onPrinted={() => setOrderToPrint(null)} 

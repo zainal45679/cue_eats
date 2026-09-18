@@ -1,22 +1,51 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Badge } from '@/components/shadcn/ui/badge';
-import { Clock, CheckCircle, ChefHat, XCircle, AlertTriangle } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { 
+    Clock, 
+    CheckCircle, 
+    ChefHat, 
+    XCircle, 
+    AlertTriangle, 
+    AlertCircle,
+    Utensils, 
+    ShoppingBag, 
+    Bike, 
+    Flame, 
+    Volume2, 
+    VolumeX, 
+    Maximize2, 
+    Minimize2,
+    FileText
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/shadcn/ui/dialog';
 import { Textarea } from '@/components/shadcn/ui/textarea';
 import { XPage } from '@/components/x/page/XPage';
 
 export default function KdsScreen({ orders, locationId }: { orders: any[], locationId: string }) {
+    const { auth } = usePage<any>().props;
+    const allLocations = auth?.all_business_locations || [];
     const [localOrders, setLocalOrders] = useState<any[]>(orders);
     const [now, setNow] = useState(new Date());
+    const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'preparing'>('all');
     const [rejectOrder, setRejectOrder] = useState<any | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set(orders.map(o => o.id.toString())));
     const [isSoundReady, setIsSoundReady] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const toggleFullscreen = () => {
+        if (typeof document === 'undefined') return;
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            setIsFullscreen(true);
+        } else {
+            document.exitFullscreen().catch(() => {});
+            setIsFullscreen(false);
+        }
+    };
 
     useEffect(() => {
         setLocalOrders(orders);
@@ -108,9 +137,9 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
         setPreviousOrderIds(currentIds);
     }, [localOrders, isSoundReady]);
 
-    // Update timers and handle real-time sync with fast 3-sec fallback
+    // Live 1-second clock ticker for precise MM:SS elapsed times
     useEffect(() => {
-        const timerInterval = setInterval(() => setNow(new Date()), 60000);
+        const timerInterval = setInterval(() => setNow(new Date()), 1000);
         
         const channels: any[] = [];
 
@@ -153,11 +182,17 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                 router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
             };
 
-            if (locationId) {
-                const locChannel = window.Echo.private(`orders.${locationId}`);
+            const subscribeToLocation = (locId: string) => {
+                const locChannel = window.Echo.private(`orders.${locId}`);
                 locChannel.listen('.App\\Events\\OrderCreated', handleOrderCreated);
                 locChannel.listen('.App\\Events\\OrderStatusUpdated', handleOrderStatusUpdated);
-                channels.push({ name: `orders.${locationId}`, instance: locChannel });
+                channels.push({ name: `orders.${locId}`, instance: locChannel });
+            };
+
+            if (locationId) {
+                subscribeToLocation(locationId);
+            } else if (allLocations && allLocations.length > 0) {
+                allLocations.forEach((loc: any) => subscribeToLocation(loc.id));
             }
         }
 
@@ -177,7 +212,7 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                 });
             }
         };
-    }, [locationId]);
+    }, [locationId, allLocations]);
 
     const updateStatus = (orderId: string, status: string, reason?: string) => {
         // Instant optimistic update
@@ -200,12 +235,14 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
         });
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
-            case 'preparing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            default: return 'bg-muted text-muted-foreground';
-        }
+    const updateKotStatus = (kotId: string, status: string) => {
+        router.post(`/menu-pos/kds/kot/${kotId}/status`, { status }, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                router.reload({ only: ['orders'], preserveScroll: true, preserveState: true });
+            }
+        });
     };
 
     let showNav = false;
@@ -213,330 +250,472 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
         showNav = new URLSearchParams(window.location.search).get('layout') === 'dashboard';
     }
 
-    const content = (
-        <>
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Kitchen Display</h1>
-                    <p className="text-muted-foreground">Manage active orders</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    {!isSoundReady && (
-                        <div className="text-xs text-amber-500 animate-pulse font-medium bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
-                            Tap anywhere to enable sound
+    const pendingCount = validOrders.filter(o => o.kitchen_status === 'pending' || !o.kitchen_status).length;
+    const preparingCount = validOrders.filter(o => o.kitchen_status === 'preparing').length;
+
+    const displayedOrders = useMemo(() => {
+        if (activeFilter === 'pending') {
+            return validOrders.filter(o => o.kitchen_status === 'pending' || !o.kitchen_status);
+        }
+        if (activeFilter === 'preparing') {
+            return validOrders.filter(o => o.kitchen_status === 'preparing');
+        }
+        return validOrders;
+    }, [validOrders, activeFilter]);
+
+    const renderItemRow = (item: any, isParentReady = false) => {
+        const isVoided = Boolean(item.is_voided);
+        const itemName = item.menu_item?.name || item.menu_item_name || 'Unnamed Item';
+
+        if (isVoided) {
+            return (
+                <li key={item.id} className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800">
+                    <div className="flex items-start gap-2.5">
+                        <span className="font-mono font-bold text-sm line-through shrink-0 text-rose-600">
+                            {item.quantity}×
+                        </span>
+                        <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm line-through text-rose-700 leading-snug">
+                                {itemName}
+                            </div>
+                            <div className="text-[10px] font-bold mt-0.5 flex items-center gap-1 uppercase tracking-wide text-rose-600">
+                                <XCircle className="w-3 h-3 shrink-0" />
+                                <span>Voided</span>
+                                {item.void_reason && (
+                                    <span className="normal-case opacity-90 truncate">— {item.void_reason}</span>
+                                )}
+                            </div>
                         </div>
-                    )}
-                    <div className="flex gap-2">
-                        <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {validOrders.filter(o => o.kitchen_status === 'pending').length} Pending
-                        </Badge>
-                        <Badge variant="outline" className="px-3 py-1 bg-card">
-                            {validOrders.filter(o => o.kitchen_status === 'preparing').length} Preparing
-                        </Badge>
+                    </div>
+                </li>
+            );
+        }
+
+        return (
+            <li 
+                key={item.id} 
+                className={cn(
+                    "p-2 rounded-lg transition-colors border",
+                    isParentReady 
+                        ? "opacity-50 bg-muted/20 border-border/30" 
+                        : "bg-muted/15 hover:bg-muted/30 border-border/50"
+                )}
+            >
+                <div className="flex items-start gap-2.5">
+                    {/* Quantity Badge: Clean light-mode badge */}
+                    <div className={cn(
+                        "w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs font-mono shrink-0",
+                        isParentReady 
+                            ? "bg-muted text-muted-foreground" 
+                            : "bg-muted/80 text-foreground border border-border/60"
+                    )}>
+                        {item.quantity}×
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                        <div className={cn(
+                            "font-bold text-sm leading-snug tracking-tight",
+                            isParentReady ? "line-through text-muted-foreground" : "text-foreground"
+                        )}>
+                            {itemName}
+                        </div>
+
+                        {/* Modifiers List */}
+                        {item.modifiers && item.modifiers.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                                {item.modifiers.map((mod: any) => (
+                                    <span 
+                                        key={mod.id} 
+                                        className="inline-flex items-center text-[11px] font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40"
+                                    >
+                                        + {mod.modifier?.name || mod.modifier_name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Special Kitchen Cooking Note / Allergies */}
+                        {item.notes && (
+                            <div className="mt-1.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-medium leading-tight">
+                                <FileText className="w-3.5 h-3.5 shrink-0 text-amber-600 mt-0.5" />
+                                <span>Note: {item.notes}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
-            </div>
+            </li>
+        );
+    };
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-                {validOrders.length === 0 && (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed rounded-xl bg-card/50">
-                        <ChefHat className="w-16 h-16 mb-4 opacity-20" />
-                        <h2 className="text-xl font-medium mb-1">No Active Orders</h2>
-                        <p>Kitchen is clear. Waiting for new orders...</p>
+    const content = (
+        <div className="flex flex-col gap-5">
+            {/* Top Command Bar */}
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card border border-border/80 p-3.5 sm:px-4 rounded-2xl shadow-xs">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                        </span>
+                        <h1 className="text-xl font-black tracking-tight text-foreground">Kitchen Display</h1>
+                    </div>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted/80 text-muted-foreground border border-border/50">
+                        Live Feed
+                    </span>
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 p-1 bg-muted/50 border border-border/60 rounded-xl">
+                    {[
+                        { id: 'all', label: `All (${validOrders.length})` },
+                        { id: 'pending', label: `Pending (${pendingCount})` },
+                        { id: 'preparing', label: `Preparing (${preparingCount})` },
+                    ].map((tab) => {
+                        const isActive = activeFilter === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveFilter(tab.id as any)}
+                                className={cn(
+                                    "px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer select-none",
+                                    isActive
+                                        ? "bg-background text-foreground shadow-xs font-bold"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Audio Toggle / Test */}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className={cn(
+                            "h-8 text-xs font-medium gap-1.5 cursor-pointer rounded-lg",
+                            !isSoundReady && "border-amber-400 text-amber-700 bg-amber-50"
+                        )}
+                        onClick={() => {
+                            if (!isSoundReady) setIsSoundReady(true);
+                            playKdsBeep();
+                        }}
+                    >
+                        {isSoundReady ? (
+                            <>
+                                <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Sound On</span>
+                            </>
+                        ) : (
+                            <>
+                                <VolumeX className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Enable Sound</span>
+                            </>
+                        )}
+                    </Button>
+
+                    {/* Fullscreen Button */}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-xs font-medium gap-1.5 cursor-pointer rounded-lg hidden sm:inline-flex"
+                        onClick={toggleFullscreen}
+                    >
+                        {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                        <span>{isFullscreen ? 'Exit' : 'Fullscreen'}</span>
+                    </Button>
+                </div>
+            </header>
+
+            {/* KDS Order Cards Grid */}
+            <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+                {displayedOrders.length === 0 && (
+                    <div className="col-span-full flex flex-col items-center justify-center py-20 text-muted-foreground border-2 border-dashed border-border/80 rounded-2xl bg-card/60">
+                        <div className="w-14 h-14 rounded-full bg-muted/80 flex items-center justify-center mb-3">
+                            <ChefHat className="w-7 h-7 opacity-40 text-foreground" />
+                        </div>
+                        <h2 className="text-lg font-bold text-foreground mb-1">
+                            {activeFilter === 'all' 
+                                ? 'Kitchen All Clear' 
+                                : activeFilter === 'pending' 
+                                ? 'No Pending Orders' 
+                                : 'No Preparing Orders'}
+                        </h2>
+                        <p className="text-xs text-muted-foreground">
+                            {activeFilter === 'all'
+                                ? 'No active tickets. New orders will appear automatically.'
+                                : activeFilter === 'pending'
+                                ? 'All orders are currently in preparation or finished.'
+                                : 'Start preparing a pending ticket to view it here.'}
+                        </p>
                     </div>
                 )}
                 
-                {validOrders.map((order) => {
+                {displayedOrders.map((order) => {
                     const orderTime = new Date(order.created_at);
-                    const isOverdue = (now.getTime() - orderTime.getTime()) > 15 * 60000; // 15 mins
+                    const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - orderTime.getTime()) / 1000));
+                    const mins = Math.floor(elapsedSeconds / 60);
+                    const secs = elapsedSeconds % 60;
+                    const formattedTimer = mins > 59 
+                        ? `${Math.floor(mins / 60)}h ${mins % 60}m` 
+                        : `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                     
                     const isCancelled = order.kitchen_status === 'cancelled';
                     const isPreparing = order.kitchen_status === 'preparing';
-                    const isPending = order.kitchen_status === 'pending';
+                    const isPending = order.kitchen_status === 'pending' || !order.kitchen_status;
+                    
+                    // Urgency thresholds (commercial kitchen benchmark: 8m warning, 15m overdue)
+                    const isOverdue = mins >= 15;
+                    const isWarning = mins >= 8 && mins < 15;
+
                     const tableName = order.dining_table?.name || order.diningTable?.name;
 
-                    const updateKotStatus = (kotId: string, status: string) => {
-                        router.post(`/menu-pos/kds/kot/${kotId}/status`, { status }, { preserveScroll: true });
+                    // Calculate total items accurately
+                    const itemsFromOrder = order.items?.reduce((sum: number, item: any) => sum + (item.is_voided ? 0 : (Number(item.quantity) || 1)), 0) || 0;
+                    const itemsFromKots = order.kots?.reduce((acc: number, kot: any) => {
+                        return acc + (kot.items?.reduce((sum: number, item: any) => sum + (item.is_voided ? 0 : (Number(item.quantity) || 1)), 0) || 0);
+                    }, 0) || 0;
+                    const totalItemsCount = Math.max(itemsFromOrder, itemsFromKots);
+
+                    const renderDestinationBadge = () => {
+                        if (tableName) {
+                            return (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full">
+                                    <Utensils className="w-3 h-3" />
+                                    <span>{tableName}</span>
+                                </span>
+                            );
+                        }
+                        if (order.order_type?.toLowerCase() === 'takeaway') {
+                            return (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full">
+                                    <ShoppingBag className="w-3 h-3" />
+                                    <span>Takeaway</span>
+                                </span>
+                            );
+                        }
+                        if (order.order_type?.toLowerCase() === 'delivery') {
+                            return (
+                                <span className="inline-flex items-center gap-1 text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 px-2.5 py-0.5 rounded-full">
+                                    <Bike className="w-3 h-3" />
+                                    <span>Delivery</span>
+                                </span>
+                            );
+                        }
+                        return (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-muted text-muted-foreground border border-border/50 px-2 py-0.5 rounded-full uppercase">
+                                {order.order_type || 'Order'}
+                            </span>
+                        );
                     };
 
                     return (
-                        <div key={order.id} className={cn(
-                            "flex flex-col bg-card border shadow-sm rounded-lg overflow-hidden min-h-[260px]",
-                            isCancelled ? "border-t-[6px] border-t-red-600 border-red-500/40 bg-red-500/5 shadow-md" :
-                            isPreparing ? "border-t-[6px] border-t-blue-600" : "border-t-[6px] border-t-amber-500",
-                            isOverdue && isPending && "border-t-red-600 animate-pulse"
-                        )}>
-                            {/* Card Header: Primary Order & Table Info */}
-                            <div className={cn("flex flex-col p-3 border-b space-y-1.5", isCancelled ? "bg-red-500/15" : "bg-muted/20")}>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="text-xl font-black leading-none tracking-tight text-foreground flex items-center gap-2">
-                                            <span className={cn(isCancelled && "line-through text-red-600")}>#{order.order_number}</span>
-                                            {tableName && (
-                                                <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
-                                                    {tableName}
-                                                </span>
-                                            )}
-                                        </div>
+                        <div 
+                            key={order.id} 
+                            className={cn(
+                                "flex flex-col bg-card border border-border/75 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 min-h-[300px]",
+                                isCancelled 
+                                    ? "border-rose-200 bg-rose-50/15" 
+                                    : isOverdue && isPending 
+                                        ? "border-rose-300 ring-1 ring-rose-300/50" 
+                                        : isPreparing 
+                                            ? "border-blue-300" 
+                                            : "border-border/75"
+                            )}
+                        >
+                            {/* Top Urgency Color Strip */}
+                            <div className={cn(
+                                "h-1.5 w-full shrink-0",
+                                isCancelled ? "bg-rose-500" :
+                                isOverdue && isPending ? "bg-rose-500" :
+                                isPreparing ? "bg-blue-600" :
+                                "bg-amber-500"
+                            )} />
+
+                            {/* Card Header: Order #, Table, Timer, and Metadata */}
+                            <div className="p-3.5 border-b border-border/60 bg-muted/20 flex flex-col gap-2">
+                                {/* Row 1: Order #, Destination, and Live Timer */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                        <span className={cn(
+                                            "text-lg font-black tracking-tight text-foreground",
+                                            isCancelled && "line-through text-rose-600"
+                                        )}>
+                                            #{order.order_number}
+                                        </span>
+                                        {renderDestinationBadge()}
                                     </div>
-                                    <span className={cn(
-                                        "text-xs font-bold shrink-0",
-                                        isOverdue ? "text-red-600 font-extrabold" : "text-muted-foreground"
+
+                                    {/* Live Timer Pill */}
+                                    <div className={cn(
+                                        "flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold tracking-tight shrink-0 font-mono",
+                                        isCancelled ? "bg-muted text-muted-foreground line-through" :
+                                        isOverdue && isPending ? "bg-rose-50 text-rose-700 border border-rose-200" :
+                                        isWarning ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                        "bg-muted/70 text-muted-foreground border border-border/60"
                                     )}>
-                                        {formatDistanceToNow(orderTime, { addSuffix: true })}
-                                    </span>
+                                        <Clock className="w-3.5 h-3.5" />
+                                        <span>{formattedTimer}</span>
+                                    </div>
                                 </div>
 
-                                <div className="flex justify-between items-center text-xs">
-                                    <span className="font-bold uppercase tracking-wider bg-foreground/10 px-1.5 py-0.5 rounded text-foreground text-[10px]">
-                                        {order.order_type}
-                                    </span>
+                                {/* Row 2: Ticket Summary & Status Badge */}
+                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 font-medium">
+                                        <span className="font-semibold text-foreground/80">
+                                            {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'}
+                                        </span>
+                                        {order.waiter?.name && (
+                                            <>
+                                                <span>•</span>
+                                                <span className="truncate max-w-[120px]">Server: {order.waiter.name}</span>
+                                            </>
+                                        )}
+                                    </div>
+
                                     <span className={cn(
                                         "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border",
-                                        isCancelled ? "bg-red-600 text-white border-red-600 animate-pulse font-black" :
-                                        isPreparing ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                        isCancelled ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                        isPreparing ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                        "bg-amber-50 text-amber-700 border-amber-200"
                                     )}>
-                                        {isCancelled ? 'CANCELLED' : order.kitchen_status}
+                                        {isCancelled ? 'CANCELLED' : isPreparing ? 'PREPARING' : 'PENDING'}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Cancelled Order Notification Banner */}
                             {isCancelled && (
-                                <>
-                                    <div className="bg-red-600 text-white px-3 py-1.5 flex items-center justify-between text-xs font-black tracking-wide uppercase">
-                                        <div className="flex items-center gap-1.5">
-                                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                            <span>Order Cancelled</span>
-                                        </div>
-                                        <span className="text-[10px] opacity-90">DO NOT PREPARE</span>
+                                <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-3.5 py-2.5 flex flex-col gap-1 text-xs">
+                                    <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-rose-700">
+                                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                                        <span>Order Cancelled — Do Not Prepare</span>
                                     </div>
                                     {order.rejection_reason && (
-                                        <div className="bg-red-500/10 px-3 py-1.5 text-xs text-red-600 dark:text-red-400 font-semibold border-b border-red-500/20">
+                                        <p className="text-[11px] opacity-90 pl-5">
                                             Reason: {order.rejection_reason}
-                                        </div>
+                                        </p>
                                     )}
-                                </>
+                                </div>
                             )}
-                            
-                            {/* Card Body: Round-by-Round Submissions */}
-                            <div className="flex-1 p-2.5 overflow-y-auto max-h-[340px] custom-scrollbar space-y-3">
+
+                            {/* Card Body: Unified Ticket Items List */}
+                            <div className="flex-1 p-3.5 overflow-y-auto max-h-[380px] custom-scrollbar space-y-3">
                                 {order.kots && order.kots.length > 0 ? (
                                     order.kots.map((kot: any) => {
                                         const isKotReady = kot.status === 'ready';
                                         const isKotPreparing = kot.status === 'preparing';
 
                                         return (
-                                            <div 
-                                                key={kot.id} 
-                                                className={cn(
-                                                    "border rounded-lg overflow-hidden transition-all",
-                                                    isKotReady 
-                                                        ? "bg-muted/30 border-emerald-500/30 opacity-75" 
-                                                        : isKotPreparing 
-                                                            ? "bg-blue-500/5 border-blue-500/40 shadow-sm" 
-                                                            : "bg-amber-500/5 border-amber-500/40 shadow-sm"
-                                                )}
-                                            >
-                                                {/* Round Header */}
-                                                <div className={cn(
-                                                    "px-2.5 py-1.5 flex justify-between items-center border-b text-xs font-bold",
-                                                    isKotReady 
-                                                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" 
-                                                        : isKotPreparing 
-                                                            ? "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20" 
-                                                            : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
-                                                )}>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="font-mono">Round #{kot.round_number}</span>
-                                                        <span className="text-[10px] opacity-75 font-normal">({kot.kot_number})</span>
+                                            <div key={kot.id} className="pt-2 first:pt-0 space-y-2">
+                                                {/* Round Section Divider */}
+                                                <div className="flex items-center justify-between text-xs py-1 border-b border-border/40 pb-1.5 gap-2">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="font-bold uppercase tracking-wide text-foreground/80 text-[11px] shrink-0">
+                                                            Round #{kot.round_number}
+                                                        </span>
+                                                        {kot.kot_number && (
+                                                            <span className="text-[10px] text-muted-foreground font-mono truncate max-w-[85px]" title={kot.kot_number}>
+                                                                #{kot.kot_number.replace(/^KOT-/, '')}
+                                                            </span>
+                                                        )}
                                                     </div>
 
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1.5">
                                                         <span className={cn(
-                                                            "text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded border",
-                                                            isKotReady ? "bg-emerald-600 text-white border-emerald-600" :
-                                                            isKotPreparing ? "bg-blue-600 text-white border-blue-600" :
-                                                            "bg-amber-600 text-white border-amber-600"
+                                                            "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border",
+                                                            isKotReady ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                                            isKotPreparing ? "bg-blue-50 text-blue-700 border-blue-200" :
+                                                            "bg-amber-50 text-amber-700 border-amber-200"
                                                         )}>
-                                                            {isKotReady ? '✓ PREPARED' : isKotPreparing ? '⚡ PREPARING' : '🔴 NEW'}
+                                                            {isKotReady ? '✓ PREPARED' : isKotPreparing ? 'PREPARING' : 'NEW'}
                                                         </span>
 
                                                         {!isKotReady && !isCancelled && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-6 text-[10px] font-bold px-2 bg-background hover:bg-muted"
+                                                            <button
+                                                                type="button"
                                                                 onClick={() => updateKotStatus(kot.id, isKotPreparing ? 'ready' : 'preparing')}
+                                                                className="text-[10px] font-semibold px-2 py-0.5 rounded border border-border/70 bg-background hover:bg-muted text-foreground transition-colors cursor-pointer"
                                                             >
                                                                 {isKotPreparing ? 'Mark Ready' : 'Start Prep'}
-                                                            </Button>
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Round Items List */}
-                                                <ul className="py-1 divide-y divide-border/20">
-                                                    {kot.items?.map((item: any) => {
-                                                        if (item.is_voided) {
-                                                            return (
-                                                                <li key={item.id} className="px-2.5 py-1.5 bg-red-500/10 border-l-4 border-l-red-600 my-0.5">
-                                                                    <div className="flex items-start">
-                                                                        <span className="font-extrabold text-sm w-7 shrink-0 text-red-600 line-through">{item.quantity} x</span>
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="font-bold text-sm leading-tight text-red-600 line-through">
-                                                                                {item.menu_item?.name || item.menu_item_name}
-                                                                            </div>
-                                                                            <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5">
-                                                                                <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider no-underline">VOIDED</span>
-                                                                                {item.void_reason && <span className="italic truncate text-muted-foreground font-normal">Reason: {item.void_reason}</span>}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </li>
-                                                            );
-                                                        }
-
-                                                        return (
-                                                            <li key={item.id} className="px-2.5 py-1.5 hover:bg-muted/20">
-                                                                <div className="flex items-start">
-                                                                    <span className="font-extrabold text-sm w-7 shrink-0 text-foreground">{item.quantity} x</span>
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className={cn(
-                                                                            "font-bold text-sm leading-tight",
-                                                                            isKotReady ? "text-muted-foreground line-through" : "text-foreground"
-                                                                        )}>
-                                                                            {item.menu_item?.name || item.menu_item_name}
-                                                                        </div>
-                                                                        {item.modifiers && item.modifiers.length > 0 && (
-                                                                            <div className="mt-0.5">
-                                                                                {item.modifiers.map((mod: any) => (
-                                                                                    <div key={mod.id} className="text-xs text-muted-foreground font-medium">
-                                                                                        - {mod.modifier?.name || mod.modifier_name}
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                        {item.notes && (
-                                                                            <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
-                                                                                * {item.notes}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </li>
-                                                        );
-                                                    })}
+                                                {/* Round Items */}
+                                                <ul className="space-y-1.5">
+                                                    {kot.items?.map((item: any) => renderItemRow(item, isKotReady))}
                                                 </ul>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <ul className="py-1">
-                                        {order.items?.map((item: any) => {
-                                            if (item.is_voided) {
-                                                return (
-                                                    <li key={item.id} className="px-2 py-1.5 bg-red-500/10 border-l-4 border-l-red-600 my-0.5">
-                                                        <div className="flex items-start">
-                                                            <span className="font-bold text-sm w-7 shrink-0 text-red-600 line-through">{item.quantity} x</span>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="font-bold text-sm leading-tight text-red-600 line-through">
-                                                                    {item.menu_item?.name}
-                                                                </div>
-                                                                <div className="text-[10px] font-bold text-red-600 mt-0.5 flex items-center gap-1.5">
-                                                                    <span className="bg-red-600 text-white text-[8px] font-black px-1 rounded uppercase tracking-wider">VOIDED</span>
-                                                                    {item.void_reason && <span className="italic truncate text-muted-foreground font-normal">Reason: {item.void_reason}</span>}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </li>
-                                                );
-                                            }
-
-                                            return (
-                                                <li key={item.id} className="px-2 py-1.5 hover:bg-muted/30 transition-colors border-b border-border/30 last:border-0">
-                                                    <div className="flex items-start">
-                                                        <span className="font-bold text-sm w-7 shrink-0">{item.quantity} x</span>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="font-bold text-sm leading-tight text-foreground">
-                                                                {item.menu_item?.name}
-                                                            </div>
-                                                            {item.modifiers && item.modifiers.length > 0 && (
-                                                                <div className="mt-0.5">
-                                                                    {item.modifiers.map((mod: any) => (
-                                                                        <div key={mod.id} className="text-xs text-muted-foreground font-medium">
-                                                                            - {mod.modifier?.name}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                            {item.notes && (
-                                                                <div className="mt-1 text-xs font-bold text-red-600 dark:text-red-400 leading-tight">
-                                                                    * {item.notes}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            );
-                                        })}
+                                    <ul className="space-y-1.5">
+                                        {order.items?.map((item: any) => renderItemRow(item, false))}
                                     </ul>
                                 )}
                             </div>
-                            
-                            {/* Card Footer: Overall Order Bump Controls */}
-                            <div className="p-2 bg-muted/20 border-t mt-auto flex gap-2">
+
+                            {/* Card Footer: Action Controls */}
+                            <div className="p-3 bg-muted/20 border-t border-border/60 mt-auto flex items-center gap-2">
                                 {isCancelled ? (
                                     <Button 
                                         variant="destructive" 
-                                        size="sm"
-                                        className="w-full bg-red-600 hover:bg-red-700 text-white h-9 text-xs font-bold shadow-sm"
+                                        size="lg"
+                                        className="w-full h-10 text-xs font-bold shadow-xs cursor-pointer rounded-xl"
                                         onClick={() => {
                                             setLocalOrders(prev => prev.filter(o => o.id !== order.id));
                                             router.post(`/menu-pos/kds/${order.id}/dismiss`, {}, { preserveScroll: true });
                                         }}
                                     >
-                                        <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                                        <CheckCircle className="w-4 h-4 mr-1.5" />
                                         Acknowledge & Clear Ticket
                                     </Button>
                                 ) : isPending ? (
                                     <>
                                         <Button 
                                             variant="outline" 
-                                            size="sm"
-                                            className="flex-1 text-destructive border-destructive/30 hover:bg-destructive hover:text-white h-8 text-xs font-bold px-0"
+                                            size="lg"
+                                            className="h-10 px-3.5 text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 cursor-pointer transition-colors shadow-2xs rounded-xl"
                                             onClick={() => setRejectOrder(order)}
                                         >
+                                            <XCircle className="w-3.5 h-3.5 mr-1 text-rose-500" />
                                             Reject
                                         </Button>
                                         <Button 
-                                            size="sm"
-                                            className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white h-8 text-xs font-bold px-0"
+                                            size="lg"
+                                            className="h-10 flex-1 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer transition-colors rounded-xl"
                                             onClick={() => updateStatus(order.id, 'preparing')}
                                         >
-                                            Start Prep All
+                                            <Flame className="w-4 h-4 mr-1.5" />
+                                            Start Preparing
                                         </Button>
                                     </>
                                 ) : (
                                     <Button 
-                                        size="sm"
-                                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-9 text-sm font-bold"
+                                        size="lg"
+                                        className="w-full h-10 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs cursor-pointer transition-colors rounded-xl"
                                         onClick={() => updateStatus(order.id, 'ready')}
                                     >
-                                        Mark All Ready
+                                        <CheckCircle className="w-4 h-4 mr-1.5" />
+                                        Mark Order Ready
                                     </Button>
                                 )}
                             </div>
                         </div>
                     );
                 })}
-            </div>
+            </main>
 
             {/* Reject Order Dialog */}
-            <Dialog open={!!rejectOrder} onOpenChange={(open) => !open && setRejectOrder(null)}>
+            <Dialog open={Boolean(rejectOrder)} onOpenChange={(open) => !open && setRejectOrder(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Reject Order {rejectOrder?.order_number}</DialogTitle>
+                        <DialogTitle>Reject Order #{rejectOrder?.order_number}</DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
                         <label className="block text-sm font-medium mb-2">Reason for rejection</label>
@@ -559,13 +738,13 @@ export default function KdsScreen({ orders, locationId }: { orders: any[], locat
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 
     return showNav ? (
         <XPage title="Kitchen Display System">{content}</XPage>
     ) : (
-        <div className="h-screen overflow-y-auto bg-background p-4 md:p-6">
+        <div className="min-h-screen overflow-y-auto bg-muted/10 p-4 md:p-6">
             <Head title="Kitchen Display System" />
             {content}
         </div>
